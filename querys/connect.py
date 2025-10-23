@@ -1,22 +1,25 @@
 import mysql.connector
 import psycopg2
+from dotenv import load_dotenv
+import os
 
 class Conexao:
     def __init__(self):
+        load_dotenv()
         # Configurações de conexão ao banco de dados MySQL
         self.config_mysql = {
-            'user'    : 'Jeferson',
-            'password': '58GRY4Kj1oCbdEEfJbha',
-            'host'    : 'sistema-crm.cwzfl6uvan6o.us-east-1.rds.amazonaws.com',
-            'database': 'sistema',
-            'port'    : '3306'
+            'user'    : os.getenv("USER_MYSQL"),
+            'password': os.getenv("PASS_MYSQL"),
+            'host'    : os.getenv("HOST_MYSQL"),
+            'database': os.getenv("DATABASE_MYSQL"),
+            'port'    : os.getenv("PORT_MYSQL")
         }
         self.config_postgres = {
-            "host":"localhost",
-            "port":"5432",
-            "database":"postgres",
-            "user":"postgres",
-            "password":"admin"
+            "user"    : os.getenv("USER_POSTGRES"),
+            "password": os.getenv("PASS_POSTGRES"),
+            "host"    : os.getenv("HOST_POSTGRES"),
+            "database": os.getenv("DATABASE_POSTGRES"),
+            "port"    : os.getenv("PORT_POSTGRES")
         }
         self.conn_mysql    = None
         self.conn_postgres = None
