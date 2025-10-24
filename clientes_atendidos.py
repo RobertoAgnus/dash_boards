@@ -89,7 +89,7 @@ with st.container():
     col_1, col_2 = st.columns((1, 8.5))
 
     with col_1:
-        st.image("image/logo_agnus_v3.jpg", width=200)
+        st.image("image/logo_agnus.jpg", width=200)
     with col_2:
         st.title(":blue[Análise dos clientes atendidos no sistema]")
 
