@@ -85,10 +85,10 @@ def tratar_numero(num):
 
 @st.cache_resource
 def get_connection():
-    # conectar_mysql = Conexao()
-    conectar_mysql.conectar_mysql()
-    conn_mysql = conectar_mysql.obter_conexao_mysql()
-    return conn_mysql
+    conectar = Conexao()
+    conectar.conectar_mysql()
+    conn = conectar.obter_conexao_mysql()
+    return conn
 
 @st.cache_data
 def get_telefones_corban(telefones_corban):
