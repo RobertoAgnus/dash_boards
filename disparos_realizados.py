@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import itertools
 import altair as alt
 from datetime import date, datetime
 
@@ -108,7 +109,7 @@ with st.container():
     ##### GERA O DATAFRAME #####
     disparos = consulta.disparos_por_cliente(selectbox_status, intervalo_data, selectbox_disparos)
     df_disparados = get_disparos(disparos)
-
+    
     df_disparados = df_disparados[df_disparados['Status'].isin(['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO'])]
 
     df_disparados_2 = df_disparados.groupby(['Data','Telefone']).size().reset_index(name="Qtd")
@@ -120,15 +121,18 @@ with st.container():
     df_disparados = df_disparados[['Data','Telefone','CPF','Nome','Status']]
 
     df_disparos_agrupados = df_disparados.groupby(['Data', 'Status']).size().reset_index(name='Qtd')
-    df_disparos_agrupados['Data'] = pd.to_datetime(df_disparos_agrupados['Data'],format="%d/%m/%Y") #.dt.date
-    
+    df_disparos_agrupados['Data'] = pd.to_datetime(df_disparos_agrupados['Data'],format="%d/%m/%Y")
 
-    df_pivot = df_disparos_agrupados.pivot_table(
-        index='Data',
-        columns='Status',
-        values='Qtd',
-        aggfunc='sum'
-    ).fillna(0)
+    if df_disparos_agrupados.empty:
+        datas = pd.date_range(start=data_inicio, end=data_fim)
+        status = df_disparos_agrupados['Status'].unique() if not df_disparos_agrupados.empty else ['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO']
+        
+        combinacoes = list(itertools.product(datas, status))
+
+        # Cria o DataFrame com Qtd zerada
+        df_disparos_agrupados = pd.DataFrame(combinacoes, columns=['Data', 'Status'])
+        df_disparos_agrupados['Qtd'] = 0
+
 
     with col_1:
         st.markdown("### :blue[Status por Data]")
