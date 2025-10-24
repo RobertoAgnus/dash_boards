@@ -30,10 +30,33 @@ conn = conectar.obter_conexao_postgres()
 ##### CRIAR INSTÂNCIA DO BANCO #####
 consulta = QuerysSQL()
 
+@st.cache_data
+def get_data_proposta():
+    data_proposta = consulta.data_proposta_corban()
+    df = pd.read_sql_query(data_proposta, conn)
+    # df = dk.query(data_proposta).to_df()
+
+    return df
+
+@st.cache_data
+def get_origem_proposta():
+    origem_proposta = consulta.origem_proposta_corban()
+    df = pd.read_sql_query(origem_proposta, conn)
+    # df = dk.query(origem_proposta).to_df()
+
+    return df
+
+@st.cache_data
+def get_corban(selectbox_origem, intervalo_data):
+    corban = consulta.join_corban(selectbox_origem, intervalo_data)
+    df = pd.read_sql_query(corban, conn)
+    # df = dk.query(corban).to_df()
+
+    return df
+
+
 ##### INTERVALO DE DATA DO ARQUIVO #####
-data_proposta = consulta.data_proposta_corban()
-data = pd.read_sql_query(data_proposta, conn)
-# data = dk.query(data_proposta).to_df()
+data = get_data_proposta()
 
 # Converting the 'data' column to datetime format (caso não esteja)
 data['data'] = pd.to_datetime(data['data'])
@@ -43,9 +66,7 @@ menor_data = data['data'].min()
 maior_data = data['data'].max()
 
 ##### ORIGEM DAS PROPOSTAS CONTRATADAS #####
-origem_proposta = consulta.origem_proposta_corban()
-origem = pd.read_sql_query(origem_proposta, conn)
-# origem = dk.query(origem_proposta).to_df()
+origem = get_origem_proposta()
 
 ##### BARRA LATERAL #####
 with st.sidebar:
@@ -92,9 +113,7 @@ def metric_card(label, value):
     )
 
 ##### OBTEM TABELA DE COMISSOES #####
-corban = consulta.join_corban(selectbox_origem, intervalo_data)
-df_comissao = pd.read_sql_query(corban, conn)
-# df_comissao = dk.query(corban).to_df()
+df_comissao = get_corban(selectbox_origem, intervalo_data)
 
 df_comissao['Data Status'] = pd.to_datetime(df_comissao['Data Status']).dt.strftime('%d/%m/%Y')
 

@@ -81,15 +81,49 @@ def tratar_numero(num):
     
     return num
 
+@st.cache_data
+def get_telefones_corban():
+    telefones_corban = consulta.obtem_telefones()
+    df = pd.read_sql_query(telefones_corban, conn_postgres)
+
+    return df
+
+@st.cache_data
+def get_clientes_contratados(condicao):
+    clientes_contratados = consulta.consulta_base_fgts(condicao)
+    df = pd.read_sql(clientes_contratados, conn_mysql)
+
+    return df
+
+@st.cache_data
+def get_clientes_contratados_mais_3_meses(condicao):
+    clientes_contratados_mais_3_meses = consulta.consulta_base_fgts(condicao)
+    df = pd.read_sql(clientes_contratados_mais_3_meses, conn_mysql)
+
+    return df
+
+@st.cache_data
+def get_clientes_sem_contratos(condicao):
+    clientes_sem_contratos = consulta.consulta_base_fgts(condicao)
+    df = pd.read_sql(clientes_sem_contratos, conn_mysql)
+
+    return df
+
+@st.cache_data
+def get_clientes_sem_cpf():
+    clientes_sem_cpf = consulta.clientes_sem_cpf()
+    df = pd.read_sql(clientes_sem_cpf, conn_mysql)
+
+    return df
+
+
 ##### OBTEM TELEFONES DA API CORBAN #####
-telefones_corban = consulta.obtem_telefones()
-df_telefones_corban = pd.read_sql_query(telefones_corban, conn_postgres)
+df_telefones_corban = get_telefones_corban()
 df_telefones_corban["telefoneAPICorban"] = df_telefones_corban["telefoneAPICorban"].apply(tratar_numero)
 
 ##### CLIENTES CONTRATADOS #####
 condicao = "produto = '4111' AND dataInclusao IS NOT NULL"
-clientes_contratados = consulta.consulta_base_fgts(condicao)
-df_clientes_contratados = pd.read_sql(clientes_contratados, conn_mysql)
+df_clientes_contratados = get_clientes_contratados(condicao)
 
 df_clientes_contratados["telefone"] = df_clientes_contratados["telefone"].apply(tratar_numero)
 df_clientes_contratados["telefoneLeads"] = df_clientes_contratados["telefoneLeads"].apply(tratar_numero)
@@ -103,8 +137,7 @@ qtd_clientes_contratados = len(df_clientes_contratados_telefones.drop_duplicates
 
 ##### CLIENTES CONTRATADOS +3MESES #####
 condicao = "produto = '4111' and dataInclusao < '2025-08-01 00:00:00'"
-clientes_contratados_mais_3_meses = consulta.consulta_base_fgts(condicao)
-df_clientes_contratados_mais_3_meses = pd.read_sql(clientes_contratados_mais_3_meses, conn_mysql)
+df_clientes_contratados_mais_3_meses = get_clientes_contratados_mais_3_meses(condicao)
 
 df_clientes_contratados_mais_3_meses["telefone"] = df_clientes_contratados_mais_3_meses["telefone"].apply(tratar_numero)
 df_clientes_contratados_mais_3_meses["telefoneLeads"] = df_clientes_contratados_mais_3_meses["telefoneLeads"].apply(tratar_numero)
@@ -118,8 +151,7 @@ qtd_clientes_contratados_mais_3_meses = len(df_clientes_contratados_mais_3_meses
 
 ##### CLIENTES SEM CONTRATOS #####
 condicao = "dataInclusao is null"
-clientes_sem_contratos = consulta.consulta_base_fgts(condicao)
-df_clientes_sem_contratos = pd.read_sql(clientes_sem_contratos, conn_mysql)
+df_clientes_sem_contratos = get_clientes_sem_contratos(condicao)
 
 df_clientes_sem_contratos["telefone"] = df_clientes_sem_contratos["telefone"].apply(tratar_numero)
 df_clientes_sem_contratos["telefoneLeads"] = df_clientes_sem_contratos["telefoneLeads"].apply(tratar_numero)
@@ -129,8 +161,7 @@ df_clientes_sem_contratos_telefones = pd.merge(df_clientes_sem_contratos, df_tel
 qtd_clientes_sem_contratos = len(df_clientes_sem_contratos_telefones.drop_duplicates(subset='CPF'))
 
 ##### CLIENTES SEM CPF #####
-clientes_sem_cpf = consulta.clientes_sem_cpf()
-df_clientes_sem_cpf = pd.read_sql(clientes_sem_cpf, conn_mysql)
+df_clientes_sem_cpf = get_clientes_sem_cpf()
 df_clientes_sem_cpf["telefone"] = df_clientes_sem_cpf["telefone"].apply(tratar_numero)
 
 qtd_clientes_sem_cpf = len(df_clientes_sem_cpf.drop_duplicates(subset='telefone'))

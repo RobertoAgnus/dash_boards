@@ -61,6 +61,39 @@ def metric_card(label, value):
         unsafe_allow_html=True
     )
 
+@st.cache_data
+def get_qtd_clientes_novos():
+    qtd_clientes_novos = consulta.qtd_clientes_novos()
+    # df = pd.read_sql(qtd_clientes_novos, conn)
+    df = dk.query(qtd_clientes_novos).to_df()
+
+    return df
+
+@st.cache_data
+def get_qtd_clientes():
+    qtd_clientes = consulta.qtd_clientes()
+    # df  = pd.read_sql(qtd_clientes, conn)
+    df  = dk.query(qtd_clientes).to_df()
+
+    return df
+
+@st.cache_data
+def get_clientes_novos(selectbox_tipo_cliente):
+    clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
+    df = dk.query(clientes_novos).to_df()
+
+    return df
+
+@st.cache_data
+def get_clientes_recorrentes(selectbox_tipo_cliente):
+    clientes_recorrentes = consulta.clientes_novos(selectbox_tipo_cliente)
+    df = dk.query(clientes_recorrentes).to_df()
+
+    return df
+
+
+
+
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
     col_1, col_2 = st.columns((1, 8.5))
@@ -79,16 +112,12 @@ with st.container():
         st.markdown("#### :blue[Quantidade de Clientes]")
         
         ##### CARD CLIENTES NOVOS #####
-        qtd_clientes_novos = consulta.qtd_clientes_novos()
-        # cd_clientes_novos = pd.read_sql(qtd_clientes_novos, conn)
-        cd_clientes_novos = dk.query(qtd_clientes_novos).to_df()
+        cd_clientes_novos = get_qtd_clientes_novos()
         
         metric_card("Clientes Novos", f"{format(int(cd_clientes_novos.shape[0]), ",").replace(",", ".")}")
 
         ##### CARD TOTAL DE CLIENTES #####
-        qtd_clientes = consulta.qtd_clientes()
-        # cd_clientes  = pd.read_sql(qtd_clientes, conn)
-        cd_clientes  = dk.query(qtd_clientes).to_df()
+        cd_clientes  = get_qtd_clientes()
 
         metric_card("Total de Clientes", f"{format(int(cd_clientes.shape[0]), ',').replace(',', '.')}")
 
@@ -101,8 +130,8 @@ with st.container():
         ##### TABELA DE CLIENTES #####
         if selectbox_tipo_cliente == "Sem Contrato":
             st.markdown("#### :blue[Detalhamento dos Clientes Novos]")
-            clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
-            tb_clientes_novos = dk.query(clientes_novos).to_df()
+            
+            tb_clientes_novos = get_clientes_novos(selectbox_tipo_cliente)
 
             tb_clientes_novos = tb_clientes_novos[['CPF','Nome','Telefone']]
 
@@ -112,8 +141,8 @@ with st.container():
             
         elif selectbox_tipo_cliente == "Com Contrato":
             st.markdown("#### :blue[Detalhamento dos Clientes Recorrentes]")
-            clientes_recorrentes = consulta.clientes_novos(selectbox_tipo_cliente)
-            tb_clientes_recorrentes = dk.query(clientes_recorrentes).to_df()
+            
+            tb_clientes_recorrentes = get_clientes_recorrentes(selectbox_tipo_cliente)
 
             tb_clientes_recorrentes = tb_clientes_recorrentes[['Inclusão','Inclusão Corban','CPF','Nome','Telefone']]
 
@@ -125,8 +154,8 @@ with st.container():
             
         else:
             st.markdown("#### :blue[Detalhamento de todos os Clientes]")
-            clientes_todos = consulta.clientes_novos(selectbox_tipo_cliente)
-            tb_clientes_todos = dk.query(clientes_todos).to_df()
+            
+            tb_clientes_todos = get_clientes_novos(selectbox_tipo_cliente)
 
             tb_clientes_todos = tb_clientes_todos[['Inclusão','Inclusão Corban','CPF','Nome','Telefone']]
 

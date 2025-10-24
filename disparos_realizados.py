@@ -32,16 +32,34 @@ alt.themes.enable("dark")
 ##### CRIAR INSTÂNCIA DO BANCO #####
 consulta = QuerysSQL()
 
+@st.cache_data
+def get_status_atendimento():
+    status_atendimento = consulta.status_atendimentos()
+    df = dk.query(status_atendimento).to_df()
+
+    return df
+
+@st.cache_data
+def get_qtd_disparos(selectbox_status, intervalo_data):
+    qtd_disparos = consulta.contagem_de_disparos(selectbox_status, intervalo_data)
+    # df = pd.read_sql(qtd_disparos, conn)
+    df = dk.query(qtd_disparos).to_df()
+
+    return df
+
+@st.cache_data
+def get_disparos(selectbox_status, intervalo_data, selectbox_disparos):
+    disparos = consulta.disparos_por_cliente(selectbox_status, intervalo_data, selectbox_disparos)
+    df = dk.query(disparos).to_df()
+
+    return df
 
 ##### BARRA LATERAL #####
 with st.sidebar:
     st.title('Filtros')
 
     ##### FILTRO DE STATUS #####
-    status_atendimento = consulta.status_atendimentos()
-    
-    # status = pd.read_sql(status_atendimento, conn)
-    status = dk.query(status_atendimento).to_df()
+    status = get_status_atendimento()
     status = status[status['Status'].isin(['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO'])]
 
 
@@ -67,9 +85,7 @@ with st.sidebar:
         data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
         intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
 
-    qtd_disparos = consulta.contagem_de_disparos(selectbox_status, intervalo_data)
-    # total_disparos = pd.read_sql(qtd_disparos, conn)
-    total_disparos = dk.query(qtd_disparos).to_df()
+    total_disparos = get_qtd_disparos(selectbox_status, intervalo_data)
 
     selectbox_disparos = st.selectbox(
         'Selecione a Quantidade de Disparos',
@@ -91,10 +107,7 @@ with st.container():
     col_1, col_2 = st.columns((5, 5), gap="medium")
 
     ##### GERA O DATAFRAME #####
-    disparos = consulta.disparos_por_cliente(selectbox_status, intervalo_data, selectbox_disparos)
-
-    # df_disparados = pd.read_sql(disparos, conn)
-    df_disparados = dk.query(disparos).to_df()
+    df_disparados = get_disparos(selectbox_status, intervalo_data, selectbox_disparos)
 
     df_disparados = df_disparados[df_disparados['Status'].isin(['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO'])]
 
