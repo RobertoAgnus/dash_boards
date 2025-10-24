@@ -3,8 +3,8 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-from querys.querys_sql import QuerysSQL
-from querys.connect import Conexao
+# from querys.querys_sql import QuerysSQL
+# from querys.connect import Conexao
 
 from querys.querys_csv import QuerysCSV
 import duckdb as dk
@@ -22,14 +22,14 @@ dk.execute("PRAGMA memory_limit='8GB';")
 
 ##### CONEXÃO COM O BANCO DE DADOS #####
 # Criar uma instância da classe Conexao
-conectar = Conexao()
-conectar.conectar_postgres()
+# conectar = Conexao()
+# conectar.conectar_postgres()
 
 # Conectando ao banco de dados PostgreSQL
-conn = conectar.obter_conexao_postgres()
+# conn = conectar.obter_conexao_postgres()
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
-consulta_sql = QuerysSQL()
+# consulta_sql = QuerysSQL()
 consulta_csv = QuerysCSV()
 
 @st.cache_data

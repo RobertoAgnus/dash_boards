@@ -24,13 +24,13 @@ dk.execute("PRAGMA memory_limit='8GB';")
 ##### CONEXÃO COM O BANCO DE DADOS #####
 # Criar uma instância da classe Conexao
 conectar_mysql = Conexao()
-conectar_postgres = Conexao()
-conectar_mysql.conectar_mysql()
-conectar_postgres.conectar_postgres()
+# conectar_postgres = Conexao()
+# conectar_mysql.conectar_mysql()
+# conectar_postgres.conectar_postgres()
 
 # Conectando ao banco de dados MySQL
-conn_mysql = conectar_mysql.obter_conexao_mysql()
-conn_postgres = conectar_postgres.obter_conexao_postgres()
+# conn_mysql = conectar_mysql.obter_conexao_mysql()
+# conn_postgres = conectar_postgres.obter_conexao_postgres()
 
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
@@ -83,6 +83,13 @@ def tratar_numero(num):
     
     return num
 
+@st.cache_resource
+def get_connection():
+    # conectar_mysql = Conexao()
+    conectar_mysql.conectar_mysql()
+    conn_mysql = conectar_mysql.obter_conexao_mysql()
+    return conn_mysql
+
 @st.cache_data
 def get_telefones_corban(telefones_corban):
     # df = pd.read_sql_query(telefones_corban, conn_postgres)
@@ -92,25 +99,37 @@ def get_telefones_corban(telefones_corban):
 
 @st.cache_data
 def get_clientes_contratados(clientes_contratados):
+    conn_mysql = get_connection()
     df = pd.read_sql(clientes_contratados, conn_mysql)
+
+    conectar_mysql.desconectar_mysql()
 
     return df
 
 @st.cache_data
 def get_clientes_contratados_mais_3_meses(clientes_contratados_mais_3_meses):
+    conn_mysql = get_connection()
     df = pd.read_sql(clientes_contratados_mais_3_meses, conn_mysql)
+
+    conectar_mysql.desconectar_mysql()
 
     return df
 
 @st.cache_data
 def get_clientes_sem_contratos(clientes_sem_contratos):
+    conn_mysql = get_connection()
     df = pd.read_sql(clientes_sem_contratos, conn_mysql)
+
+    conectar_mysql.desconectar_mysql()
 
     return df
 
 @st.cache_data
 def get_clientes_sem_cpf(clientes_sem_cpf):
+    conn_mysql = get_connection()
     df = pd.read_sql(clientes_sem_cpf, conn_mysql)
+
+    conectar_mysql.desconectar_mysql()
 
     return df
 
