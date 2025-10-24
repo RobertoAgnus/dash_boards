@@ -153,7 +153,8 @@ with st.container():
         else:
             st.markdown("#### :blue[Detalhamento de todos os Clientes]")
             
-            tb_clientes_todos = get_clientes_novos(selectbox_tipo_cliente)
+            clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
+            tb_clientes_todos = get_clientes_novos(clientes_novos)
 
             tb_clientes_todos = tb_clientes_todos[['Inclusão','Inclusão Corban','CPF','Nome','Telefone']]
 
