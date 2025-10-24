@@ -1,13 +1,41 @@
-from datetime import datetime
 import pandas as pd
 import duckdb as dk
 import csv
+import streamlit as st
 
-path_1 = 'C:/workspace/scripts_python/dash_boards/arquivos'
-path_2 = "C:/workspace/scripts_python/arquivos/CSV/corban"
+# Caminho dos arquivos localmente (será removido futuramente)
+path_1 = st.secrets["paths"]["PATH_1"]
+path_2 = st.secrets["paths"]["PATH_2"]
+
+# ID's dos arquivos baixados do Banco de Dados (será feita conexão direta futuramente)
+id_atendimentos_bd     = st.secrets["files_id"]["ID_ATENDIMENTOS_BD"]
+id_clientes_bd         = st.secrets["files_id"]["ID_CLIENTES_BD"]
+id_contratos_corban_bd = st.secrets["files_id"]["ID_CONTRATOS_CORBAN_BD"]
+id_contratos_bd        = st.secrets["files_id"]["ID_CONTRATOS_BD"]
+id_tabelas_bd          = st.secrets["files_id"]["ID_TABELAS_BD"]
+id_telefones_bd        = st.secrets["files_id"]["ID_TELEFONES_BD"]
+
+# ID's dos arquivos baixados via API do Corban
+id_agendamentos        = st.secrets["files_id"]["ID_AGENDAMENTOS"]
+id_api                 = st.secrets["files_id"]["ID_API"]
+id_averbacoes          = st.secrets["files_id"]["ID_AVERBACOES"]
+id_clientes            = st.secrets["files_id"]["ID_CLIENTES"]
+id_comissionamentos    = st.secrets["files_id"]["ID_COMISSIONAMENTOS"]
+id_comissoes           = st.secrets["files_id"]["ID_COMISSOES"]
+id_contratos           = st.secrets["files_id"]["ID_CONTRATOS"]
+id_datas               = st.secrets["files_id"]["ID_DATAS"]
+id_documentos          = st.secrets["files_id"]["ID_DOCUMENTOS"]
+id_enderecos           = st.secrets["files_id"]["ID_ENDERECOS"]
+id_observacoes         = st.secrets["files_id"]["ID_OBSERVACOES"]
+id_proposta            = st.secrets["files_id"]["ID_PROPOSTA"]
+id_propostas           = st.secrets["files_id"]["ID_PROPOSTAS"]
+id_repasse_calculado   = st.secrets["files_id"]["ID_REPASSE_CALCULADO"]
+id_sinalizadores       = st.secrets["files_id"]["ID_SINALIZADORES"]
+id_telefones           = st.secrets["files_id"]["ID_TELEFONES"]
+
 
 clientes         = pd.read_csv(
-                        f'{path_1}/clientes.csv', 
+                        f"https://drive.google.com/uc?id={id_clientes_bd}", 
                         sep=',', 
                         encoding='UTF-8', 
                         quoting=csv.QUOTE_ALL, 
@@ -15,7 +43,7 @@ clientes         = pd.read_csv(
                         on_bad_lines='skip', 
                         engine='python')
 atendimentos     = pd.read_csv(
-                        f'{path_1}/atendimentos.csv', 
+                        f"https://drive.google.com/uc?id={id_atendimentos_bd}", 
                         sep=',', 
                         encoding='UTF-8', 
                         quoting=csv.QUOTE_ALL, 
@@ -23,7 +51,7 @@ atendimentos     = pd.read_csv(
                         on_bad_lines='skip', 
                         engine='python')
 telefones        = pd.read_csv(
-                        f'{path_1}/telefones.csv', 
+                        f"https://drive.google.com/uc?id={id_telefones_bd}", 
                         sep=',', 
                         encoding='UTF-8', 
                         quoting=csv.QUOTE_ALL, 
@@ -32,7 +60,8 @@ telefones        = pd.read_csv(
                         engine='python'
                     )
 contratos        = pd.read_csv(
-                        f'{path_1}/contratos.csv', sep=',', 
+                        f"https://drive.google.com/uc?id={id_contratos_bd}", 
+                        sep=',', 
                         encoding='UTF-8', 
                         quoting=csv.QUOTE_ALL, 
                         quotechar='"', 
@@ -40,7 +69,7 @@ contratos        = pd.read_csv(
                         engine='python'
                     )
 contratos_corban = pd.read_csv(
-                        f'{path_1}/contratos_corban.csv', 
+                        f"https://drive.google.com/uc?id={id_contratos_corban_bd}", 
                         sep=',', 
                         encoding='UTF-8', 
                         quoting=csv.QUOTE_ALL, 
@@ -50,15 +79,15 @@ contratos_corban = pd.read_csv(
                     )
 
 propostas        = pd.read_csv(
-                        f'{path_2}/propostas/propostas_concatenado.csv', 
+                        f"https://drive.google.com/uc?id={id_propostas}", 
                         low_memory=False
                     )
 comissoes        = pd.read_csv(
-                        f'{path_2}/comissoes/comissoes_concatenado.csv', 
+                        f"https://drive.google.com/uc?id={id_comissoes}", 
                         low_memory=False
                     )
 comissionamento  = pd.read_csv(
-                        f'{path_2}/comissionamentos/comissionamentos_concatenado.csv', 
+                        f"https://drive.google.com/uc?id={id_comissionamentos}", 
                         low_memory=False
                     )
 

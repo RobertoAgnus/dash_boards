@@ -1,5 +1,3 @@
-from datetime import datetime
-
 class QuerysSQL:
     def __init__(self):
         ...

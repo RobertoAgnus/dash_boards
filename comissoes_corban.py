@@ -1,9 +1,7 @@
-from datetime import date, datetime
-from functools import reduce
+from datetime import datetime
 import streamlit as st
 import pandas as pd
 import altair as alt
-import os
 
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao

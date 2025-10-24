@@ -1,25 +1,23 @@
 import mysql.connector
 import psycopg2
-from dotenv import load_dotenv
-import os
+import streamlit as st
 
 class Conexao:
     def __init__(self):
-        load_dotenv()
         # Configurações de conexão ao banco de dados MySQL
         self.config_mysql = {
-            'user'    : os.getenv("USER_MYSQL"),
-            'password': os.getenv("PASS_MYSQL"),
-            'host'    : os.getenv("HOST_MYSQL"),
-            'database': os.getenv("DATABASE_MYSQL"),
-            'port'    : os.getenv("PORT_MYSQL")
+            'user'    : st.secrets["database"]["USER_MYSQL"],
+            'password': st.secrets["database"]["PASS_MYSQL"],
+            'host'    : st.secrets["database"]["HOST_MYSQL"],
+            'database': st.secrets["database"]["DATABASE_MYSQL"],
+            'port'    : st.secrets["database"]["PORT_MYSQL"]
         }
         self.config_postgres = {
-            "user"    : os.getenv("USER_POSTGRES"),
-            "password": os.getenv("PASS_POSTGRES"),
-            "host"    : os.getenv("HOST_POSTGRES"),
-            "database": os.getenv("DATABASE_POSTGRES"),
-            "port"    : os.getenv("PORT_POSTGRES")
+            "user"    : st.secrets["database"]["USER_POSTGRES"],
+            "password": st.secrets["database"]["PASS_POSTGRES"],
+            "host"    : st.secrets["database"]["HOST_POSTGRES"],
+            "database": st.secrets["database"]["DATABASE_POSTGRES"],
+            "port"    : st.secrets["database"]["PORT_POSTGRES"]
         }
         self.conn_mysql    = None
         self.conn_postgres = None

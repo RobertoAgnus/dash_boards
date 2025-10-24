@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from datetime import datetime
 
 # from querys.querys_sql import QuerysSQL
 # from querys.connect import Conexao
