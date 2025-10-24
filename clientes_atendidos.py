@@ -1,5 +1,6 @@
 import streamlit as st
 import altair as alt
+import pandas as pd
 from datetime import date, datetime
 
 # from querys.querys_sql import QuerysSQL
@@ -69,6 +70,12 @@ def get_status_atendimento(status_atendimento):
 
     return df
 
+@st.cache_data
+def get_datas(datas):
+    df = dk.query(datas).to_df()
+
+    return df
+
 ##### BARRA LATERAL #####
 with st.sidebar:
     st.title('Filtros')
@@ -85,10 +92,20 @@ with st.sidebar:
         index=0
     )
 
+    datas = consulta.datas_atendimentos()
+    df_datas = get_datas(datas)
+    
+    # Converting the 'data' column to datetime format (caso não esteja)
+    df_datas['data'] = pd.to_datetime(df_datas['data'])
+
+    # Obtendo a menor e a maior data da coluna 'data'
+    menor_data = df_datas['data'].min()
+    maior_data = df_datas['data'].max()
+
     ##### FILTRO DE INTERVALO DE DATA #####
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
-        value=(date(2020, 1, 1),date(2030, 12, 31))
+        value=(menor_data,maior_data)
     )
 
     # Trata o intervalo de data para busca no banco de dados

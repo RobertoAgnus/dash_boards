@@ -153,6 +153,18 @@ class QuerysCSV:
         
         return query
     
+    def datas_atendimentos(self):
+        query = f"""select distinct
+                        strftime(CAST(a.data AS DATE), '%d/%m/%Y') as data
+                    from clientes c 
+                    inner join atendimentos a 
+                    on c.id = a.clienteId
+                    inner join telefones t
+                    on c.id = t.clienteId
+                    order by a.data asc;"""
+        
+        return query
+    
     def total_clientes(self):
         query = f"""select distinct 
                         c.CPF as TOTAL_CPF
@@ -200,6 +212,18 @@ class QuerysCSV:
                 on c.id = t.clienteId 
                 {condicao}
                 order by a.data desc;"""
+        
+        return query
+    
+    def datas_cliente(self):
+        query = f"""select 
+                    strftime(CAST(a.data AS DATE), '%d/%m/%Y') as data
+                from clientes c 
+                inner join atendimentos a 
+                on c.id = a.clienteId
+                inner join telefones t
+                on c.id = t.clienteId 
+                order by a.data asc;"""
         
         return query
     
