@@ -117,7 +117,7 @@ con = dk.connect()
 # Registra o DataFrame como uma tabela no contexto do DuckDB
 con.register("atendimentos", atendimentos)
 
-class QuerysSQL:
+class QuerysSQLcsv:
     def __init__(self):
         ...
 

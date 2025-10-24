@@ -6,7 +6,7 @@ import altair as alt
 # from querys.connect import Conexao
 
 ## REMOVER QUANDO FOR PARA PRODUÇÃO ##
-from querys.querys_csv import QuerysSQL
+from querys.querys_csv import QuerysSQLcsv
 import duckdb as dk
 
 
@@ -29,7 +29,7 @@ alt.themes.enable("dark")
 
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
-consulta = QuerysSQL()
+consulta = QuerysSQLcsv()
 
 
 ##### BARRA LATERAL #####

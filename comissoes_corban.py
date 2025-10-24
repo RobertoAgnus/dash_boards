@@ -6,7 +6,7 @@ import altair as alt
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
 
-from querys.querys_csv import QuerysSQL
+from querys.querys_csv import QuerysSQLcsv
 import duckdb as dk
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
@@ -29,11 +29,12 @@ conectar.conectar_postgres()
 conn = conectar.obter_conexao_postgres()
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
-consulta = QuerysSQL()
+consulta_sql = QuerysSQL()
+consulta_csv = QuerysSQLcsv()
 
 @st.cache_data
 def get_data_proposta():
-    data_proposta = consulta.data_proposta_corban()
+    data_proposta = consulta_csv.data_proposta_corban()
     # df = pd.read_sql_query(data_proposta, conn)
     df = dk.query(data_proposta).to_df()
 
@@ -41,7 +42,7 @@ def get_data_proposta():
 
 @st.cache_data
 def get_origem_proposta():
-    origem_proposta = consulta.origem_proposta_corban()
+    origem_proposta = consulta_csv.origem_proposta_corban()
     # df = pd.read_sql_query(origem_proposta, conn)
     df = dk.query(origem_proposta).to_df()
 
@@ -49,7 +50,7 @@ def get_origem_proposta():
 
 @st.cache_data
 def get_corban(selectbox_origem, intervalo_data):
-    corban = consulta.join_corban(selectbox_origem, intervalo_data)
+    corban = consulta_csv.join_corban(selectbox_origem, intervalo_data)
     # df = pd.read_sql_query(corban, conn)
     df = dk.query(corban).to_df()
 
@@ -150,7 +151,7 @@ with st.container():
 
 ##### CORPO DO DASHBOARD #####
 with st.container():
-    col_1, col_2, col_3 = st.columns((2, 2, 8.5), gap="medium")
+    col_1, col_2 = st.columns((2, 8.5), gap="medium")   #, col_3 = st.columns((2, 2, 8.5), gap="medium")
 
     ##### ÁREA DOS CARDS #####
     with col_1:
@@ -167,22 +168,22 @@ with st.container():
         # qtd_cancelado = f"{int(total_qtd_conversao)}"
         metric_card("Conversão", f"{format(float(total_qtd_conversao), ',.2f').replace('.',',')} %")
 
-    with col_2:
-        st.markdown("### :blue[Valor Comissões]")
-        valor_total = f"R$ {format(float(total_metric), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
-        metric_card("Valor Total", f"{valor_total}")
+    # with col_2:
+    #     st.markdown("### :blue[Valor Comissões]")
+    #     valor_total = f"R$ {format(float(total_metric), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+    #     metric_card("Valor Total", f"{valor_total}")
 
-        valor_pago = f"R$ {format(float(total_pago), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
-        metric_card("Valor Pago", f"{valor_pago}")
+    #     valor_pago = f"R$ {format(float(total_pago), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+    #     metric_card("Valor Pago", f"{valor_pago}")
 
-        valor_aguardando = f"R$ {format(float(total_aguardando), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
-        metric_card("Valor Aguardando", f"{valor_aguardando}")
+    #     valor_aguardando = f"R$ {format(float(total_aguardando), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+    #     metric_card("Valor Aguardando", f"{valor_aguardando}")
 
-        # qtd_cancelado = f"{int(total_qtd_conversao)}"
-        metric_card("Conversão", f"{format(float(total_qtd_conversao), ',.2f').replace('.',',')} %")
+    #     # qtd_cancelado = f"{int(total_qtd_conversao)}"
+    #     metric_card("Conversão", f"{format(float(total_qtd_conversao), ',.2f').replace('.',',')} %")
         
 ##### ÁREA DA TABELA #####
-    with col_3:
+    with col_2:
         ##### TABELA DE CLIENTES #####
         st.markdown("### :blue[Detalhamento das Comissões]")
         st.dataframe(df_comissao_agrupado, height=500, hide_index=True)

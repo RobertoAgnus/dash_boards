@@ -6,7 +6,7 @@ from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
 
 ## REMOVER QUANDO FOR PARA PRODUÇÃO ##
-from querys.querys_csv import QuerysSQL
+from querys.querys_csv import QuerysSQLcsv
 import duckdb as dk
 
 
@@ -34,7 +34,8 @@ conn_postgres = conectar_postgres.obter_conexao_postgres()
 
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
-consulta = QuerysSQL()
+consulta_csv = QuerysSQLcsv()
+consulta_sql = QuerysSQL()
 
 
 ##### BARRA LATERAL #####
@@ -84,7 +85,7 @@ def tratar_numero(num):
 
 @st.cache_data
 def get_telefones_corban():
-    telefones_corban = consulta.obtem_telefones()
+    telefones_corban = consulta_csv.obtem_telefones()
     # df = pd.read_sql_query(telefones_corban, conn_postgres)
     df = dk.query(telefones_corban).to_df()
 
@@ -92,28 +93,28 @@ def get_telefones_corban():
 
 @st.cache_data
 def get_clientes_contratados(condicao):
-    clientes_contratados = consulta.consulta_base_fgts(condicao)
+    clientes_contratados = consulta_sql.consulta_base_fgts(condicao)
     df = pd.read_sql(clientes_contratados, conn_mysql)
 
     return df
 
 @st.cache_data
 def get_clientes_contratados_mais_3_meses(condicao):
-    clientes_contratados_mais_3_meses = consulta.consulta_base_fgts(condicao)
+    clientes_contratados_mais_3_meses = consulta_sql.consulta_base_fgts(condicao)
     df = pd.read_sql(clientes_contratados_mais_3_meses, conn_mysql)
 
     return df
 
 @st.cache_data
 def get_clientes_sem_contratos(condicao):
-    clientes_sem_contratos = consulta.consulta_base_fgts(condicao)
+    clientes_sem_contratos = consulta_sql.consulta_base_fgts(condicao)
     df = pd.read_sql(clientes_sem_contratos, conn_mysql)
 
     return df
 
 @st.cache_data
 def get_clientes_sem_cpf():
-    clientes_sem_cpf = consulta.clientes_sem_cpf()
+    clientes_sem_cpf = consulta_sql.clientes_sem_cpf()
     df = pd.read_sql(clientes_sem_cpf, conn_mysql)
 
     return df
