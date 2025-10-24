@@ -6,8 +6,8 @@ import altair as alt
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
 
-# from querys.querys_csv import QuerysSQL
-# import duckdb as dk
+from querys.querys_csv import QuerysSQL
+import duckdb as dk
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
@@ -18,7 +18,8 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
-# dk.execute("PRAGMA memory_limit='8GB';")
+dk.execute("PRAGMA memory_limit='8GB';")
+
 ##### CONEXÃO COM O BANCO DE DADOS #####
 # Criar uma instância da classe Conexao
 conectar = Conexao()
@@ -33,24 +34,24 @@ consulta = QuerysSQL()
 @st.cache_data
 def get_data_proposta():
     data_proposta = consulta.data_proposta_corban()
-    df = pd.read_sql_query(data_proposta, conn)
-    # df = dk.query(data_proposta).to_df()
+    # df = pd.read_sql_query(data_proposta, conn)
+    df = dk.query(data_proposta).to_df()
 
     return df
 
 @st.cache_data
 def get_origem_proposta():
     origem_proposta = consulta.origem_proposta_corban()
-    df = pd.read_sql_query(origem_proposta, conn)
-    # df = dk.query(origem_proposta).to_df()
+    # df = pd.read_sql_query(origem_proposta, conn)
+    df = dk.query(origem_proposta).to_df()
 
     return df
 
 @st.cache_data
 def get_corban(selectbox_origem, intervalo_data):
     corban = consulta.join_corban(selectbox_origem, intervalo_data)
-    df = pd.read_sql_query(corban, conn)
-    # df = dk.query(corban).to_df()
+    # df = pd.read_sql_query(corban, conn)
+    df = dk.query(corban).to_df()
 
     return df
 

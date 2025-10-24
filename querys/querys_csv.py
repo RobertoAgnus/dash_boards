@@ -90,6 +90,14 @@ comissionamento  = pd.read_csv(
                         f"https://drive.google.com/uc?id={id_comissionamentos}", 
                         low_memory=False
                     )
+clientes_corban  = pd.read_csv(
+                        f"https://drive.google.com/uc?id={id_clientes}", 
+                        low_memory=False
+                    )
+telefones_corban = pd.read_csv(
+                        f"https://drive.google.com/uc?id={id_telefones}", 
+                        low_memory=False
+                    )
 
 dk.register("clientes", clientes)
 dk.register("atendimentos", atendimentos)
@@ -97,9 +105,11 @@ dk.register("telefones", telefones)
 dk.register("contratos", contratos)
 dk.register("contratos_corban", contratos_corban)
 
-dk.register("propostas", propostas)
-dk.register("comissoes", comissoes)
-dk.register("comissionamento", comissionamento)
+dk.register("propostas_concatenado", propostas)
+dk.register("comissoes_concatenado", comissoes)
+dk.register("comissionamentos_concatenado", comissionamento)
+dk.register("clientes_concatenado", clientes_corban)
+dk.register("telefones_concatenado", telefones_corban)
 
 # Cria conexão com DuckDB
 con = dk.connect()
@@ -306,4 +316,122 @@ class QuerysSQL:
                     on p.proposta_id = co.proposta_id
                     {condicao}
                     order by p.data_status;"""
+        return query
+    
+
+    ##### POSTGRESQL #####
+    def data_proposta_corban(self):
+        query = f"""select
+                        p.data_status as data
+                    from propostas_concatenado p;"""
+        return query
+    
+    def origem_proposta_corban(self):
+        query = f"""select distinct
+                        p.origem as origem
+                    from propostas_concatenado p
+                    order by p.origem;"""
+        return query
+
+    def join_corban(self, origem, data):
+        condicao = None
+        if origem == 'Selecionar':
+            condicao = f"""where p.data_status {data}"""
+        elif origem != 'Selecionar':
+            condicao = f"""where p.origem='{origem}'
+                            and p.data_status {data}"""
+        
+        query = f"""select
+                        p.data_status as "Data Status", 
+                        p.origem as "Origem", 
+                        p.status_nome as "Status", 
+                        c.valor as "Valor", 
+                        c.data as "Data da Comissão", 
+                        co.percentual_valor_base as "Percetual Valor Base", 
+                        co.valor_fixo as "Valor Fixo"
+                    from propostas_concatenado p
+                    left join comissoes_concatenado c
+                    on p.proposta_id = c.proposta_id
+                    left join comissionamentos_concatenado co
+                    on p.proposta_id = co.proposta_id
+                    {condicao}
+                    order by p.data_status;"""
+        return query
+    
+    #################### BASE FGTS ####################
+
+    def consulta_base_fgts(self, condicao):
+        query = f"""with consulta as (
+                        select
+                            c.id,
+                            LPAD(CAST(c.CPF AS CHAR), 11, '0') AS CPF,
+                            c.nome,
+                            cb.produto,
+                            cb.propostaIdBanco as numContrato,
+                            cb.inclusao as dataInclusao,
+                            cb.pagamento as dataPagamento,
+                            cb.valorFinanciado,
+                            cb.valorLiberado,
+                            cb.status as status,
+                            'Corban' as origem
+                        from clientes c 
+                        left join contratosCorban cb on c.id = cb.clienteId
+                        union
+                        select
+                            c.id,
+                            LPAD(CAST(c.CPF AS CHAR), 11, '0') AS CPF,
+                            c.nome,
+                            ct.produto,
+                            ct.numContrato,
+                            ct.dataInclusao,
+                            ct.dataPagamento,
+                            ct.valorFinanciado,
+                            ct.valorLiberado,
+                            sb.descricao as status,
+                            'CRM' as origem
+                        from clientes c 
+                        left join contratos ct on c.id = ct.clienteId 
+                        left join statusBanco sb on sb.id = ct.statusBancoId
+                    )
+                    select distinct
+                        c.CPF,
+                        c.nome,
+                        c.numContrato,
+                        c.dataInclusao,
+                        c.dataPagamento,
+                        c.valorFinanciado,
+                        c.valorLiberado,
+                        c.status,
+                        c.origem,
+                        l.telefone as telefoneLeads,
+                        t.telefone as telefone
+                    from consulta c 
+                    left join leads l on c.id = l.clientId 
+                    left join telefones t on c.id = t.clienteId 
+                    where {condicao} limit 100;"""
+        return query
+    
+    def clientes_sem_cpf(self):
+        query = """SELECT 
+                        c.CPF,
+                        t.telefone
+                    FROM clientes c 
+                    RIGHT JOIN telefones t ON c.id = t.clienteId
+                    WHERE c.CPF IS NULL limit 100;"""
+        return query
+    
+    def obtem_telefones(self):
+        query = """select distinct
+                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF",
+                        concat(tc.ddd, tc.numero) as "telefoneAPICorban" 
+                    from clientes_concatenado cc  
+                    left join telefones_concatenado tc on cc.cliente_id = tc.cliente_id;"""
+        return query
+    
+    def obtem_telefones_api_corban(self):
+        query = """select 
+                        concat(tc.ddd, tc.numero) as telefoneAPI, 
+                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF"
+                    from telefones_concatenado tc 
+                    left join clientes_concatenado cc on tc.cliente_id = cc.cliente_id;"""
         return query

@@ -5,9 +5,9 @@ import altair as alt
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
 
-# ## REMOVER QUANDO FOR PARA PRODUÇÃO ##
-# from querys.querys_csv import QuerysSQL
-# import duckdb as dk
+## REMOVER QUANDO FOR PARA PRODUÇÃO ##
+from querys.querys_csv import QuerysSQL
+import duckdb as dk
 
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
@@ -19,6 +19,8 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
+dk.execute("PRAGMA memory_limit='8GB';")
+
 ##### CONEXÃO COM O BANCO DE DADOS #####
 # Criar uma instância da classe Conexao
 conectar_mysql = Conexao()
@@ -29,7 +31,6 @@ conectar_postgres.conectar_postgres()
 # Conectando ao banco de dados MySQL
 conn_mysql = conectar_mysql.obter_conexao_mysql()
 conn_postgres = conectar_postgres.obter_conexao_postgres()
-
 
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
@@ -84,7 +85,8 @@ def tratar_numero(num):
 @st.cache_data
 def get_telefones_corban():
     telefones_corban = consulta.obtem_telefones()
-    df = pd.read_sql_query(telefones_corban, conn_postgres)
+    # df = pd.read_sql_query(telefones_corban, conn_postgres)
+    df = dk.query(telefones_corban).to_df()
 
     return df
 
