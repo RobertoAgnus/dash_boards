@@ -62,36 +62,30 @@ def metric_card(label, value):
     )
 
 @st.cache_data
-def get_qtd_clientes_novos():
-    qtd_clientes_novos = consulta.qtd_clientes_novos()
+def get_qtd_clientes_novos(qtd_clientes_novos):
     # df = pd.read_sql(qtd_clientes_novos, conn)
     df = dk.query(qtd_clientes_novos).to_df()
 
     return df
 
 @st.cache_data
-def get_qtd_clientes():
-    qtd_clientes = consulta.qtd_clientes()
+def get_qtd_clientes(qtd_clientes):
     # df  = pd.read_sql(qtd_clientes, conn)
     df  = dk.query(qtd_clientes).to_df()
 
     return df
 
 @st.cache_data
-def get_clientes_novos(selectbox_tipo_cliente):
-    clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
+def get_clientes_novos(clientes_novos):
     df = dk.query(clientes_novos).to_df()
 
     return df
 
 @st.cache_data
-def get_clientes_recorrentes(selectbox_tipo_cliente):
-    clientes_recorrentes = consulta.clientes_novos(selectbox_tipo_cliente)
+def get_clientes_recorrentes(clientes_recorrentes):
     df = dk.query(clientes_recorrentes).to_df()
 
     return df
-
-
 
 
 ##### TÍTULO DO DASHBOARD #####
@@ -101,7 +95,7 @@ with st.container():
     with col_1:
         st.image("image/logo_agnus.jpg", width=200)
     with col_2:
-        st.title(":blue[Análise dos clientes atendidos no sistema]")
+        st.title(":blue[Análise dos Clientes]")
 
 ##### CORPO DO DASHBOARD #####
 with st.container():
@@ -112,12 +106,14 @@ with st.container():
         st.markdown("#### :blue[Quantidade de Clientes]")
         
         ##### CARD CLIENTES NOVOS #####
-        cd_clientes_novos = get_qtd_clientes_novos()
+        qtd_clientes_novos = consulta.qtd_clientes_novos()
+        cd_clientes_novos = get_qtd_clientes_novos(qtd_clientes_novos)
         
         metric_card("Clientes Novos", f"{format(int(cd_clientes_novos.shape[0]), ",").replace(",", ".")}")
 
         ##### CARD TOTAL DE CLIENTES #####
-        cd_clientes  = get_qtd_clientes()
+        qtd_clientes = consulta.qtd_clientes()
+        cd_clientes  = get_qtd_clientes(qtd_clientes)
 
         metric_card("Total de Clientes", f"{format(int(cd_clientes.shape[0]), ',').replace(',', '.')}")
 
@@ -131,7 +127,8 @@ with st.container():
         if selectbox_tipo_cliente == "Sem Contrato":
             st.markdown("#### :blue[Detalhamento dos Clientes Novos]")
             
-            tb_clientes_novos = get_clientes_novos(selectbox_tipo_cliente)
+            clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
+            tb_clientes_novos = get_clientes_novos(clientes_novos)
 
             tb_clientes_novos = tb_clientes_novos[['CPF','Nome','Telefone']]
 
@@ -142,7 +139,8 @@ with st.container():
         elif selectbox_tipo_cliente == "Com Contrato":
             st.markdown("#### :blue[Detalhamento dos Clientes Recorrentes]")
             
-            tb_clientes_recorrentes = get_clientes_recorrentes(selectbox_tipo_cliente)
+            clientes_recorrentes = consulta.clientes_novos(selectbox_tipo_cliente)
+            tb_clientes_recorrentes = get_clientes_recorrentes(clientes_recorrentes)
 
             tb_clientes_recorrentes = tb_clientes_recorrentes[['Inclusão','Inclusão Corban','CPF','Nome','Telefone']]
 

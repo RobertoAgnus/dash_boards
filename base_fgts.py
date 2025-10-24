@@ -84,49 +84,46 @@ def tratar_numero(num):
     return num
 
 @st.cache_data
-def get_telefones_corban():
-    telefones_corban = consulta_csv.obtem_telefones()
+def get_telefones_corban(telefones_corban):
     # df = pd.read_sql_query(telefones_corban, conn_postgres)
     df = dk.query(telefones_corban).to_df()
 
     return df
 
 @st.cache_data
-def get_clientes_contratados(condicao):
-    clientes_contratados = consulta_sql.consulta_base_fgts(condicao)
+def get_clientes_contratados(clientes_contratados):
     df = pd.read_sql(clientes_contratados, conn_mysql)
 
     return df
 
 @st.cache_data
-def get_clientes_contratados_mais_3_meses(condicao):
-    clientes_contratados_mais_3_meses = consulta_sql.consulta_base_fgts(condicao)
+def get_clientes_contratados_mais_3_meses(clientes_contratados_mais_3_meses):
     df = pd.read_sql(clientes_contratados_mais_3_meses, conn_mysql)
 
     return df
 
 @st.cache_data
-def get_clientes_sem_contratos(condicao):
-    clientes_sem_contratos = consulta_sql.consulta_base_fgts(condicao)
+def get_clientes_sem_contratos(clientes_sem_contratos):
     df = pd.read_sql(clientes_sem_contratos, conn_mysql)
 
     return df
 
 @st.cache_data
-def get_clientes_sem_cpf():
-    clientes_sem_cpf = consulta_sql.clientes_sem_cpf()
+def get_clientes_sem_cpf(clientes_sem_cpf):
     df = pd.read_sql(clientes_sem_cpf, conn_mysql)
 
     return df
 
 
 ##### OBTEM TELEFONES DA API CORBAN #####
-df_telefones_corban = get_telefones_corban()
+telefones_corban = consulta_csv.obtem_telefones()
+df_telefones_corban = get_telefones_corban(telefones_corban)
 df_telefones_corban["telefoneAPICorban"] = df_telefones_corban["telefoneAPICorban"].apply(tratar_numero)
 
 ##### CLIENTES CONTRATADOS #####
 condicao = "produto = '4111' AND dataInclusao IS NOT NULL"
-df_clientes_contratados = get_clientes_contratados(condicao)
+clientes_contratados = consulta_sql.consulta_base_fgts(condicao)
+df_clientes_contratados = get_clientes_contratados(clientes_contratados)
 
 df_clientes_contratados["telefone"] = df_clientes_contratados["telefone"].apply(tratar_numero)
 df_clientes_contratados["telefoneLeads"] = df_clientes_contratados["telefoneLeads"].apply(tratar_numero)
@@ -140,7 +137,8 @@ qtd_clientes_contratados = len(df_clientes_contratados_telefones.drop_duplicates
 
 ##### CLIENTES CONTRATADOS +3MESES #####
 condicao = "produto = '4111' and dataInclusao < '2025-08-01 00:00:00'"
-df_clientes_contratados_mais_3_meses = get_clientes_contratados_mais_3_meses(condicao)
+clientes_contratados_mais_3_meses = consulta_sql.consulta_base_fgts(condicao)
+df_clientes_contratados_mais_3_meses = get_clientes_contratados_mais_3_meses(clientes_contratados_mais_3_meses)
 
 df_clientes_contratados_mais_3_meses["telefone"] = df_clientes_contratados_mais_3_meses["telefone"].apply(tratar_numero)
 df_clientes_contratados_mais_3_meses["telefoneLeads"] = df_clientes_contratados_mais_3_meses["telefoneLeads"].apply(tratar_numero)
@@ -154,7 +152,8 @@ qtd_clientes_contratados_mais_3_meses = len(df_clientes_contratados_mais_3_meses
 
 ##### CLIENTES SEM CONTRATOS #####
 condicao = "dataInclusao is null"
-df_clientes_sem_contratos = get_clientes_sem_contratos(condicao)
+clientes_sem_contratos = consulta_sql.consulta_base_fgts(condicao)
+df_clientes_sem_contratos = get_clientes_sem_contratos(clientes_sem_contratos)
 
 df_clientes_sem_contratos["telefone"] = df_clientes_sem_contratos["telefone"].apply(tratar_numero)
 df_clientes_sem_contratos["telefoneLeads"] = df_clientes_sem_contratos["telefoneLeads"].apply(tratar_numero)
@@ -164,7 +163,8 @@ df_clientes_sem_contratos_telefones = pd.merge(df_clientes_sem_contratos, df_tel
 qtd_clientes_sem_contratos = len(df_clientes_sem_contratos_telefones.drop_duplicates(subset='CPF'))
 
 ##### CLIENTES SEM CPF #####
-df_clientes_sem_cpf = get_clientes_sem_cpf()
+clientes_sem_cpf = consulta_sql.clientes_sem_cpf()
+df_clientes_sem_cpf = get_clientes_sem_cpf(clientes_sem_cpf)
 df_clientes_sem_cpf["telefone"] = df_clientes_sem_cpf["telefone"].apply(tratar_numero)
 
 qtd_clientes_sem_cpf = len(df_clientes_sem_cpf.drop_duplicates(subset='telefone'))
@@ -192,7 +192,7 @@ with st.container():
     with col_1:
         st.image("image/logo_agnus.jpg", width=200)
     with col_2:
-        st.title(":blue[Análise dos clientes atendidos no sistema]")
+        st.title(":blue[Análise dos Clientes]")
 
 ##### CORPO DO DASHBOARD #####
 with st.container():

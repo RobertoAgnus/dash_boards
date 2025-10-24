@@ -33,24 +33,21 @@ consulta_sql = QuerysSQL()
 consulta_csv = QuerysCSV()
 
 @st.cache_data
-def get_data_proposta():
-    data_proposta = consulta_csv.data_proposta_corban()
+def get_data_proposta(data_proposta):
     # df = pd.read_sql_query(data_proposta, conn)
     df = dk.query(data_proposta).to_df()
 
     return df
 
 @st.cache_data
-def get_origem_proposta():
-    origem_proposta = consulta_csv.origem_proposta_corban()
+def get_origem_proposta(origem_proposta):
     # df = pd.read_sql_query(origem_proposta, conn)
     df = dk.query(origem_proposta).to_df()
 
     return df
 
 @st.cache_data
-def get_corban(selectbox_origem, intervalo_data):
-    corban = consulta_csv.join_corban(selectbox_origem, intervalo_data)
+def get_corban(corban):
     # df = pd.read_sql_query(corban, conn)
     df = dk.query(corban).to_df()
 
@@ -58,7 +55,8 @@ def get_corban(selectbox_origem, intervalo_data):
 
 
 ##### INTERVALO DE DATA DO ARQUIVO #####
-data = get_data_proposta()
+data_proposta = consulta_csv.data_proposta_corban()
+data = get_data_proposta(data_proposta)
 
 # Converting the 'data' column to datetime format (caso não esteja)
 data['data'] = pd.to_datetime(data['data'])
@@ -68,7 +66,8 @@ menor_data = data['data'].min()
 maior_data = data['data'].max()
 
 ##### ORIGEM DAS PROPOSTAS CONTRATADAS #####
-origem = get_origem_proposta()
+origem_proposta = consulta_csv.origem_proposta_corban()
+origem = get_origem_proposta(origem_proposta)
 
 ##### BARRA LATERAL #####
 with st.sidebar:
@@ -115,7 +114,8 @@ def metric_card(label, value):
     )
 
 ##### OBTEM TABELA DE COMISSOES #####
-df_comissao = get_corban(selectbox_origem, intervalo_data)
+corban = consulta_csv.join_corban(selectbox_origem, intervalo_data)
+df_comissao = get_corban(corban)
 
 df_comissao['Data Status'] = pd.to_datetime(df_comissao['Data Status']).dt.strftime('%d/%m/%Y')
 
@@ -147,7 +147,7 @@ with st.container():
     with col_1:
         st.image("image/logo_agnus.jpg", width=200)
     with col_2:
-        st.title(":blue[Análise dos clientes atendidos no sistema]")
+        st.title(":blue[Análise das Comissões]")
 
 ##### CORPO DO DASHBOARD #####
 with st.container():
