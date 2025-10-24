@@ -6,7 +6,7 @@ import altair as alt
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
 
-from querys.querys_csv import QuerysSQLcsv
+from querys.querys_csv import QuerysCSV
 import duckdb as dk
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
@@ -30,7 +30,7 @@ conn = conectar.obter_conexao_postgres()
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
 consulta_sql = QuerysSQL()
-consulta_csv = QuerysSQLcsv()
+consulta_csv = QuerysCSV()
 
 @st.cache_data
 def get_data_proposta():

@@ -6,7 +6,7 @@ from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
 
 ## REMOVER QUANDO FOR PARA PRODUÇÃO ##
-from querys.querys_csv import QuerysSQLcsv
+from querys.querys_csv import QuerysCSV
 import duckdb as dk
 
 
@@ -34,7 +34,7 @@ conn_postgres = conectar_postgres.obter_conexao_postgres()
 
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
-consulta_csv = QuerysSQLcsv()
+consulta_csv = QuerysCSV()
 consulta_sql = QuerysSQL()
 
 
