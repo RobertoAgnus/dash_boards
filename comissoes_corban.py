@@ -114,7 +114,7 @@ def metric_card(label, value):
     )
 
 ##### OBTEM TABELA DE COMISSOES #####
-corban = consulta_csv.join_corban(selectbox_origem, intervalo_data)
+corban = consulta_csv.tabela_corban(selectbox_origem, intervalo_data)
 df_comissao = get_corban(corban)
 
 df_comissao['Data Status'] = pd.to_datetime(df_comissao['Data Status']).dt.strftime('%d/%m/%Y')

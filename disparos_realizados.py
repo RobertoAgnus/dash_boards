@@ -75,7 +75,7 @@ with st.sidebar:
         index=0
     )
 
-    datas = consulta.datas_cliente()
+    datas = consulta.datas_atendimentos()
     df_datas = get_datas(datas)
     
     # Converting the 'data' column to datetime format (caso não esteja)

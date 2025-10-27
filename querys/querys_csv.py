@@ -121,6 +121,37 @@ class QuerysCSV:
     def __init__(self):
         ...
 
+    ##### CLIENTES ATENDIDOS #####
+    def status_atendimentos(self):
+        query = '''select 
+                        a.status as Status
+                    from atendimentos a;'''
+        
+        return query
+    
+    def datas_atendimentos(self):
+        query = f"""select distinct
+                        strftime(CAST(a.data AS DATE), '%d/%m/%Y') as data
+                    from clientes c 
+                    inner join atendimentos a 
+                    on c.id = a.clienteId
+                    inner join telefones t
+                    on c.id = t.clienteId
+                    order by a.data asc;"""
+        
+        return query
+    
+    def total_clientes(self):
+        query = f"""select distinct 
+                        c.CPF as TOTAL_CPF
+                    from clientes c 
+                    inner join atendimentos a 
+                    on c.id = a.clienteId
+                    inner join telefones t
+                    on c.id = t.clienteId;"""
+        
+        return query
+    
     def clientes_atendidos(self, status=None, data=None):
         condicao = None
         if status == 'Selecionar' and data != 'Selecionar':
@@ -153,34 +184,83 @@ class QuerysCSV:
         
         return query
     
-    def datas_atendimentos(self):
+    ##### CLIENTES NOVOS #####
+    def qtd_clientes_novos(self):
         query = f"""select distinct
-                        strftime(CAST(a.data AS DATE), '%d/%m/%Y') as data
-                    from clientes c 
-                    inner join atendimentos a 
-                    on c.id = a.clienteId
+                        c.CPF as CPF
+                    from clientes c
                     inner join telefones t
                     on c.id = t.clienteId
-                    order by a.data asc;"""
-        
+                    left join contratos ct
+                    on c.id = ct.clienteId
+                    left join contratos_corban ctb
+                    on c.id = ctb.clienteId
+                    where ct.prazo is null
+                    and ctb.prazo is null;"""
         return query
     
-    def total_clientes(self):
-        query = f"""select distinct 
-                        c.CPF as TOTAL_CPF
-                    from clientes c 
-                    inner join atendimentos a 
-                    on c.id = a.clienteId
+    def qtd_clientes(self):
+        query = f"""select distinct
+                        c.CPF as CPF
+                    from clientes c;"""
+        return query
+    
+    def clientes_novos(self, tipo):
+        if tipo == 'Todos':
+            condicao = 'where 1 = 1'
+        elif tipo == 'Sem Contrato':
+            condicao = 'where ct.prazo is null and ctb.prazo is null'
+        elif tipo == 'Com Contrato':
+            condicao = 'where ct.prazo is not null or ctb.prazo is not null'
+
+        query = f"""select distinct
+                        ct.dataInclusao as "Inclusão",
+                        ctb.inclusao as "Inclusão Corban",
+                        c.CPF as CPF, 
+                        c.nome as Nome,
+                        t.telefone as Telefone
+                    from clientes c
                     inner join telefones t
-                    on c.id = t.clienteId;"""
+                    on c.id = t.clienteId
+                    left join contratos ct
+                    on c.id = ct.clienteId
+                    left join contratos_corban ctb
+                    on c.id = ctb.clienteId
+                    {condicao};"""
         
         return query
     
-    def status_atendimentos(self):
-        query = '''select 
-                        a.status as Status
-                    from atendimentos a;'''
-        
+    ##### DISPAROS REALIZADOS #####
+    def contagem_de_disparos(self, status=None, data=None):
+        condicao = None
+        if status == 'Selecionar' and data != 'Selecionar':
+            condicao = f"""where a.data {data}"""
+        elif data == 'Selecionar' and status != 'Selecionar':
+            condicao = f"""where a.status='{status}'"""
+        elif data != 'Selecionar' and status != 'Selecionar':
+            condicao = f"""where a.status='{status}'
+                            and a.data {data}"""
+        elif status == 'Selecionar' and data == 'Selecionar':
+            condicao = "where 1 = 1"
+
+        query = f"""with consulta as (
+                        select 
+                            t.telefone as Telefone, 
+                            strftime(CAST(a.data AS DATE), '%d/%m/%Y') as Data
+                        from clientes c 
+                        inner join atendimentos a 
+                        on c.id = a.clienteId
+                        inner join telefones t
+                        on c.id = t.clienteId 
+                        {condicao}
+                    )
+                    SELECT
+                        COUNT(*) AS TOTAL
+                    FROM
+                        consulta
+                    GROUP BY
+                        Data,
+                        Telefone;"""
         return query
     
     def disparos_por_cliente(self, status=None, data=None, disparos=None):
@@ -215,175 +295,15 @@ class QuerysCSV:
         
         return query
     
-    def datas_cliente(self):
-        query = f"""select 
-                    strftime(CAST(a.data AS DATE), '%d/%m/%Y') as data
-                from clientes c 
-                inner join atendimentos a 
-                on c.id = a.clienteId
-                inner join telefones t
-                on c.id = t.clienteId 
-                order by a.data asc;"""
-        
+    ##### BASE FGTS #####
+    def obtem_telefones(self):
+        query = """select distinct
+                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF",
+                        concat(tc.ddd, tc.numero) as "telefoneAPICorban" 
+                    from clientes_concatenado cc  
+                    left join telefones_concatenado tc on cc.cliente_id = tc.cliente_id;"""
         return query
     
-    def contagem_de_disparos(self, status=None, data=None):
-        condicao = None
-        if status == 'Selecionar' and data != 'Selecionar':
-            condicao = f"""where a.data {data}"""
-        elif data == 'Selecionar' and status != 'Selecionar':
-            condicao = f"""where a.status='{status}'"""
-        elif data != 'Selecionar' and status != 'Selecionar':
-            condicao = f"""where a.status='{status}'
-                            and a.data {data}"""
-        elif status == 'Selecionar' and data == 'Selecionar':
-            condicao = "where 1 = 1"
-
-        query = f"""with consulta as (
-                        select 
-                            t.telefone as Telefone, 
-                            strftime(CAST(a.data AS DATE), '%d/%m/%Y') as Data
-                        from clientes c 
-                        inner join atendimentos a 
-                        on c.id = a.clienteId
-                        inner join telefones t
-                        on c.id = t.clienteId 
-                        {condicao}
-                    )
-                    SELECT
-                        COUNT(*) AS TOTAL
-                    FROM
-                        consulta
-                    GROUP BY
-                        Data,
-                        Telefone;"""
-        return query
-    
-    def clientes_novos(self, tipo):
-        if tipo == 'Todos':
-            condicao = 'where 1 = 1'
-        elif tipo == 'Sem Contrato':
-            condicao = 'where ct.prazo is null and ctb.prazo is null'
-        elif tipo == 'Com Contrato':
-            condicao = 'where ct.prazo is not null or ctb.prazo is not null'
-
-        query = f"""select distinct
-                        ct.dataInclusao as "Inclusão",
-                        ctb.inclusao as "Inclusão Corban",
-                        c.CPF as CPF, 
-                        c.nome as Nome,
-                        t.telefone as Telefone
-                    from clientes c
-                    inner join telefones t
-                    on c.id = t.clienteId
-                    left join contratos ct
-                    on c.id = ct.clienteId
-                    left join contratos_corban ctb
-                    on c.id = ctb.clienteId
-                    {condicao};"""
-        
-        return query
-    
-    def qtd_clientes_novos(self):
-        query = f"""select distinct
-                        c.CPF as CPF
-                    from clientes c
-                    inner join telefones t
-                    on c.id = t.clienteId
-                    left join contratos ct
-                    on c.id = ct.clienteId
-                    left join contratos_corban ctb
-                    on c.id = ctb.clienteId
-                    where ct.prazo is null
-                    and ctb.prazo is null;"""
-        return query
-    
-    def qtd_clientes(self):
-        query = f"""select distinct
-                        c.CPF as CPF
-                    from clientes c;"""
-        return query
-    
-    def data_proposta_corban(self):
-        query = f"""select
-                        p.data_status as data
-                    from propostas p;"""
-        return query
-    
-    def origem_proposta_corban(self):
-        query = f"""select distinct
-                        p.origem as origem
-                    from propostas p
-                    order by p.origem;"""
-        return query
-
-    def join_corban(self, origem, data):
-        condicao = None
-        if origem == 'Selecionar':
-            condicao = f"""where p.data_status {data}"""
-        elif origem != 'Selecionar':
-            condicao = f"""where p.origem='{origem}'
-                            and p.data_status {data}"""
-        
-        query = f"""select
-                        p.data_status as 'Data Status', 
-                        p.origem as Origem, 
-                        p.status_nome as Status, 
-                        c.valor as Valor, 
-                        c.data as 'Data da Comissão', 
-                        co.percentual_valor_base as 'Percetual Valor Base', 
-                        co.valor_fixo as 'Valor Fixo'
-                    from propostas p
-                    left join comissoes c
-                    on p.proposta_id = c.proposta_id
-                    left join comissionamento co
-                    on p.proposta_id = co.proposta_id
-                    {condicao}
-                    order by p.data_status;"""
-        return query
-    
-
-    ##### POSTGRESQL #####
-    def data_proposta_corban(self):
-        query = f"""select
-                        p.data_status as data
-                    from propostas_concatenado p;"""
-        return query
-    
-    def origem_proposta_corban(self):
-        query = f"""select distinct
-                        p.origem as origem
-                    from propostas_concatenado p
-                    order by p.origem;"""
-        return query
-
-    def join_corban(self, origem, data):
-        condicao = None
-        if origem == 'Selecionar':
-            condicao = f"""where p.data_status {data}"""
-        elif origem != 'Selecionar':
-            condicao = f"""where p.origem='{origem}'
-                            and p.data_status {data}"""
-        
-        query = f"""select
-                        p.data_status as "Data Status", 
-                        p.origem as "Origem", 
-                        p.status_nome as "Status", 
-                        c.valor as "Valor", 
-                        c.data as "Data da Comissão", 
-                        co.percentual_valor_base as "Percetual Valor Base", 
-                        co.valor_fixo as "Valor Fixo"
-                    from propostas_concatenado p
-                    left join comissoes_concatenado c
-                    on p.proposta_id = c.proposta_id
-                    left join comissionamentos_concatenado co
-                    on p.proposta_id = co.proposta_id
-                    {condicao}
-                    order by p.data_status;"""
-        return query
-    
-    #################### BASE FGTS ####################
-
     def consulta_base_fgts(self, condicao):
         query = f"""with consulta as (
                         select
@@ -444,14 +364,49 @@ class QuerysCSV:
                     WHERE c.CPF IS NULL limit 100;"""
         return query
     
-    def obtem_telefones(self):
-        query = """select distinct
-                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF",
-                        concat(tc.ddd, tc.numero) as "telefoneAPICorban" 
-                    from clientes_concatenado cc  
-                    left join telefones_concatenado tc on cc.cliente_id = tc.cliente_id;"""
+    ##### COMISSÕES CORBAN #####
+    def data_proposta_corban(self):
+        query = f"""select
+                        p.data_status as data
+                    from propostas_concatenado p;"""
         return query
     
+    def origem_proposta_corban(self):
+        query = f"""select distinct
+                        p.origem as origem
+                    from propostas_concatenado p
+                    order by p.origem;"""
+        return query
+
+    def tabela_corban(self, origem, data):
+        condicao = None
+        if origem == 'Selecionar':
+            condicao = f"""where p.data_status {data}"""
+        elif origem != 'Selecionar':
+            condicao = f"""where p.origem='{origem}'
+                            and p.data_status {data}"""
+        
+        query = f"""select
+                        p.data_status as "Data Status", 
+                        p.origem as "Origem", 
+                        p.status_nome as "Status", 
+                        c.valor as "Valor", 
+                        c.data as "Data da Comissão", 
+                        co.percentual_valor_base as "Percetual Valor Base", 
+                        co.valor_fixo as "Valor Fixo"
+                    from propostas_concatenado p
+                    left join comissoes_concatenado c
+                    on p.proposta_id = c.proposta_id
+                    left join comissionamentos_concatenado co
+                    on p.proposta_id = co.proposta_id
+                    {condicao}
+                    order by p.data_status;"""
+        return query
+    
+    
+
+    #################### BASE FGTS ####################
+
     def obtem_telefones_api_corban(self):
         query = """select 
                         concat(tc.ddd, tc.numero) as telefoneAPI, 
