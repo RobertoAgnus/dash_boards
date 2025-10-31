@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -85,7 +85,7 @@ data['data'] = pd.to_datetime(data['data'])
 
 # Obtendo a menor e a maior data da coluna 'data'
 menor_data = data['data'].min()
-maior_data = data['data'].max()
+maior_data = date.today()
 
 ##### ORIGEM DAS PROPOSTAS CONTRATADAS #####
 origem_proposta = consulta_sql.origem_proposta_corban()
@@ -118,6 +118,7 @@ with st.sidebar:
         
         data_inicio = intervalo[0]
         data_fim = data_atual.date()
+        
         intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
         i_qtd = f"BETWEEN GREATEST('{data_inicio}'::date, CURRENT_DATE - INTERVAL '7 days') AND '{data_fim}'::date"
 

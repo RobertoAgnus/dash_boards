@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import itertools
 import altair as alt
-from datetime import datetime
+from datetime import date, datetime
 
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
@@ -116,13 +116,12 @@ with st.sidebar:
 
     datas = consulta_sql.datas_disparos()
     df_datas = get_datas(datas)
-    
+
     # Converting the 'data' column to datetime format (caso não esteja)
     df_datas['data'] = pd.to_datetime(df_datas['data'])
 
-    # Obtendo a menor e a maior data da coluna 'data'
     menor_data = df_datas['data'].min()
-    maior_data = df_datas['data'].max()
+    maior_data = date.today()
 
     ##### FILTRO DE INTERVALO DE DATA #####
     intervalo = st.date_input(
@@ -135,8 +134,11 @@ with st.sidebar:
         data_inicio, data_fim = intervalo
         intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
     else:
+        data_atual = pd.Timestamp.today()
+        
         data_inicio = intervalo[0]
-        data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+        data_fim = data_atual.date()
+
         intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
 
     qtd_disparos = consulta_sql.contagem_de_disparos(selectbox_status, intervalo_data)
