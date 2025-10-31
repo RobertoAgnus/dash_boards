@@ -290,9 +290,9 @@ class QuerysSQL:
         #             order by p.data_status;"""
         query = f"""select 
                         cc.data as "Data da Comissão",
-                        pc.origem  as origem,
-                        cc.valor as Valor,
-                        pc.proposta_id as proposta
+                        pc.origem as "Origem",
+                        cc.valor as "Valor",
+                        pc.proposta_id as "Proposta"
                     from "propostasCorban".comissoes_concatenado cc 
                     left join "propostasCorban".propostas_concatenado pc
                         on cc.proposta_id = pc.proposta_id

@@ -124,6 +124,22 @@ with st.sidebar:
         index=0
     )
     
+    origem = {
+                "BioWpp": ["BioWpp"],
+                "Chat Bot": ["Chat Bot"],
+                "Disparo": ["Disparo"],
+                "Indicação": ["INDICAÇÃO"],
+                "Instagram": ["Instagram"],
+                "Não Identificado": ["NÃO IDENTIFICADO"],
+                "Planilha": ["Planilha"],
+                "Site": ["Site"],
+                "TINTIN": ["TINTIN"],
+                "Facebook": ["FA","Facebook","Facebook (M1)","FB","FC","FD","TA","TB","TC","TD","TE","Trafego","CMP [M1]","CMP [T01]","CMP [TP1]","CMP [TP2]","CP 01","CP 02","CLT trafego"],
+                "TikTok": ["TKT 4","TKT 5","TN1","TN2","TQ","Tráfego - Tiktok1","Tráfego - Tiktok2","Tráfego - Tiktok3"],
+                "SMS": ["SMS 01","SMS 02","SMS 03","SMS 04"],
+                "carteira": ["Cliente de Carteira","CLT carteira"]
+            }
+
     ##### FILTRO DE DATA #####
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
@@ -180,29 +196,32 @@ df_comissao = get_corban(corban)
 
 df_comissao['Data da Comissão'] = pd.to_datetime(df_comissao['Data da Comissão']).dt.strftime('%d/%m/%Y')
 
-df_comissao['Valor'] = df_comissao['Valor'].astype(float)
+# df_comissao['Valor'] = df_comissao['Valor'].astype(float)
 
-df_comissao_agrupado = df_comissao.groupby(['Data da Comissão', 'Origem', 'Status'], as_index=False).agg({'Valor': 'sum'})
+df_comissao_agrupado = df_comissao.groupby(['Data da Comissão', 'Proposta', 'Origem'], as_index=False).agg({'Valor': 'sum'})
 
 total = pd.DataFrame({"Categoria": ["Total"], "Valor": [df_comissao_agrupado["Valor"].sum()]})
 
 total_metric = f'{df_qtd_comissao_total['total'].sum():.2f}'
 
-df_comissao_pago = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Pago']
-total_pago = f'{df_comissao_pago['Valor'].sum():.2f}'
+# df_comissao_pago = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Pago']
+# total_pago = f'{df_comissao_pago['Valor'].sum():.2f}'
 
-taxa_pagamento = (float(total_pago) / float(total_metric)) * 100
-
-df_comissao_aguardando = df_comissao_agrupado[(df_comissao_agrupado['Status'] == 'Aguardando Pagamento') | (df_comissao_agrupado['Status'] == '')]
+# df_comissao_aguardando = df_comissao_agrupado[(df_comissao_agrupado['Status'] == 'Aguardando Pagamento') | (df_comissao_agrupado['Status'] == '')]
 total_aguardando = f'{df_qtd_comissao_aguardando['aguardando'].sum():.2f}'
-# total_pago = f'{df_qtd_comissao_pagas['pago'].sum():.2f}'
+total_pago = f'{df_qtd_comissao_pagas['pago'].sum():.2f}'
+print(total_metric)
+if total_metric == '0.00':
+    taxa_pagamento = 0.0
+else:
+    taxa_pagamento = (float(total_pago) / float(total_metric)) * 100
 
-total_qtd = df_comissao_agrupado['Status'].count()
+# total_qtd = df_comissao_agrupado['Status'].count()
 
-df_comissao_cancelado = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Cancelado']
-total_cancelado = df_comissao_cancelado['Status'].count()
+# df_comissao_cancelado = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Cancelado']
+# total_cancelado = df_comissao_cancelado['Status'].count()
 
-total_qtd_conversao = f'{((total_qtd - total_cancelado) / total_qtd) * 100:.2f}'
+# total_qtd_conversao = f'{((total_qtd - total_cancelado) / total_qtd) * 100:.2f}'
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
