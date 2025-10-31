@@ -268,26 +268,80 @@ class QuerysSQL:
     def tabela_corban(self, origem, data):
         condicao = None
         if origem == 'Selecionar':
-            condicao = f"""where p.data_status {data}"""
+            condicao = f"""where cc.data {data}"""
         elif origem != 'Selecionar':
-            condicao = f"""where p.origem='{origem}'
-                            and p.data_status {data}"""
+            condicao = f"""where pc.origem='{origem}'
+                            and cc.data {data}"""
         
-        query = f"""select
-                        p.data_status as "Data Status", 
-                        p.origem as "Origem", 
-                        p.status_nome as "Status", 
-                        c.valor as "Valor", 
-                        c.data as "Data da Comissão", 
-                        co.percentual_valor_base as "Percetual Valor Base", 
-                        co.valor_fixo as "Valor Fixo"
-                    from "propostasCorban".propostas_concatenado p
-                    left join "propostasCorban".comissoes_concatenado c
-                    on p.proposta_id = c.proposta_id
-                    left join "propostasCorban".comissionamentos_concatenado co
-                    on p.proposta_id = co.proposta_id
-                    {condicao}
-                    order by p.data_status;"""
+        # query = f"""select
+        #                 p.data_status as "Data Status", 
+        #                 p.origem as "Origem", 
+        #                 p.status_nome as "Status", 
+        #                 c.valor as "Valor", 
+        #                 c.data as "Data da Comissão", 
+        #                 co.percentual_valor_base as "Percetual Valor Base", 
+        #                 co.valor_fixo as "Valor Fixo"
+        #             from "propostasCorban".propostas_concatenado p
+        #             left join "propostasCorban".comissoes_concatenado c
+        #             on p.proposta_id = c.proposta_id
+        #             left join "propostasCorban".comissionamentos_concatenado co
+        #             on p.proposta_id = co.proposta_id
+        #             {condicao}
+        #             order by p.data_status;"""
+        query = f"""select 
+                        cc.data as "Data da Comissão",
+                        pc.origem  as origem,
+                        cc.valor as Valor,
+                        pc.proposta_id as proposta
+                    from "propostasCorban".comissoes_concatenado cc 
+                    left join "propostasCorban".propostas_concatenado pc
+                        on cc.proposta_id = pc.proposta_id
+                    {condicao} 
+                    order by cc.data asc;"""
+        return query
+    
+    def qtd_comissoes_total(self, origem, data):
+        condicao = None
+        if origem == 'Selecionar':
+            condicao = f"""where cc.data {data}"""
+        elif origem != 'Selecionar':
+            condicao = f"""where pc.origem='{origem}'
+                            and cc.data {data}"""
+            
+        query = f"""select 
+                        sum(cc.valor) as total
+                    from "propostasCorban".comissoes_concatenado cc 
+                    left join "propostasCorban".propostas_concatenado pc
+                        on cc.proposta_id = pc.proposta_id 
+                    {condicao};"""
+        return query
+    
+    def qtd_comissoes_pagas(self, origem, data):
+        condicao = None
+        if origem == 'Selecionar':
+            condicao = f"""and TO_TIMESTAMP(ac.data_status_api, 'YYYY-MM-DD HH24:MI:SS')::date {data}"""
+        elif origem != 'Selecionar':
+            condicao = f"""and psc.origem='{origem}' 
+                            and TO_TIMESTAMP(ac.data_status_api, 'YYYY-MM-DD HH24:MI:SS')::date {data}"""
+        
+        query = f"""select 
+                        sum(cc.valor) as pago
+                    from "propostasCorban".api_concatenado ac 
+                    left join "propostasCorban".comissoes_concatenado cc 
+                        on ac.proposta_id = cc.proposta_id 
+                    left join "propostasCorban".datas_concatenado dc 
+                        on ac.proposta_id = dc.proposta_id 
+                    left join "propostasCorban".proposta_concatenado pc 
+                        on ac.proposta_id = pc.proposta_id 
+                    left join "propostasCorban".propostas_concatenado psc 
+                        on ac.proposta_id = psc.proposta_id
+                    where cc.valor is not null
+                        and dc.cancelado is null
+                        and dc.pagamento is not null
+                        {condicao}
+                        and ac.status_api = 'APROVADA'
+                        and pc.valor_total_comissionado <> '0'
+                        and psc.status_nome <> 'Cancelado';"""
         return query
     
     def qtd_comissoes_aguardando(self, origem, data):
@@ -322,7 +376,8 @@ class QuerysSQL:
                         and cc2.recebe_valor_base <> '0.0'
                         and cc2.recebe_valor_base <> 'NaN'
                         and ac.status_api = 'APROVADA'
-                        and pc.valor_total_comissionado = '0';"""
+                        and pc.valor_total_comissionado = '0'
+	                    and psc.status_nome <> 'Cancelado';"""
         return query
     
     ##### POSTGRESQL #####

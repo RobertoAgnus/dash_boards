@@ -66,6 +66,28 @@ def get_qtd_comissoes_aguardando(qtd_comissoes):
     return df
 
 @st.cache_data
+def get_qtd_comissoes_pagas(qtd_pagas):
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(qtd_pagas, conn)
+    
+    conectar.desconectar_postgres()
+
+    return df
+
+@st.cache_data
+def get_qtd_comissoes_total(qtd_total):
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(qtd_total, conn)
+    
+    conectar.desconectar_postgres()
+
+    return df
+
+@st.cache_data
 def get_corban(corban):
     conectar = Conexao()
     conectar.conectar_postgres()
@@ -144,6 +166,14 @@ def metric_card(label, value):
 qtd_comissoes = consulta_sql.qtd_comissoes_aguardando(selectbox_origem, i_qtd)
 df_qtd_comissao_aguardando = get_qtd_comissoes_aguardando(qtd_comissoes)
 
+##### OBTEM QTD COMISSOES PAGAS #####
+qtd_pagas = consulta_sql.qtd_comissoes_pagas(selectbox_origem, intervalo_data)
+df_qtd_comissao_pagas = get_qtd_comissoes_pagas(qtd_pagas)
+
+##### OBTEM QTD COMISSOES TOTAL #####
+qtd_total = consulta_sql.qtd_comissoes_total(selectbox_origem, intervalo_data)
+df_qtd_comissao_total = get_qtd_comissoes_total(qtd_total)
+
 ##### OBTEM TABELA DE COMISSOES #####
 corban = consulta_sql.tabela_corban(selectbox_origem, intervalo_data)
 df_comissao = get_corban(corban)
@@ -156,13 +186,16 @@ df_comissao_agrupado = df_comissao.groupby(['Data da Comissão', 'Origem', 'Stat
 
 total = pd.DataFrame({"Categoria": ["Total"], "Valor": [df_comissao_agrupado["Valor"].sum()]})
 
-total_metric = f'{df_comissao_agrupado['Valor'].sum():.2f}'
+total_metric = f'{df_qtd_comissao_total['total'].sum():.2f}'
 
 df_comissao_pago = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Pago']
 total_pago = f'{df_comissao_pago['Valor'].sum():.2f}'
 
+taxa_pagamento = (float(total_pago) / float(total_metric)) * 100
+
 df_comissao_aguardando = df_comissao_agrupado[(df_comissao_agrupado['Status'] == 'Aguardando Pagamento') | (df_comissao_agrupado['Status'] == '')]
-total_aguardando = f'{get_qtd_comissoes_aguardando(qtd_comissoes)['aguardando'].sum():.2f}'
+total_aguardando = f'{df_qtd_comissao_aguardando['aguardando'].sum():.2f}'
+# total_pago = f'{df_qtd_comissao_pagas['pago'].sum():.2f}'
 
 total_qtd = df_comissao_agrupado['Status'].count()
 
@@ -197,7 +230,7 @@ with st.container():
         metric_card("Valor Aguardando", f"{valor_aguardando}")
 
         # qtd_cancelado = f"{int(total_qtd_conversao)}"
-        metric_card("Conversão", f"{format(float(total_qtd_conversao), ',.2f').replace('.',',')} %")
+        metric_card("Taxa de Pagamento", f"{format(float(taxa_pagamento), ',.2f').replace('.',',')} %")
 
     # with col_2:
     #     st.markdown("### :blue[Valor Comissões]")
