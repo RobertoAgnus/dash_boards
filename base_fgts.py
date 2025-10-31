@@ -56,45 +56,51 @@ def get_connection():
 def carregar_dados():
     """Executa todas as consultas necessárias apenas uma vez."""
     conn = get_connection()
+    try:
+        conn.ping(reconnect=True)  # reabre se estiver desconectada
+        
+        telefones_corban = consulta_csv.obtem_telefones()
+        df_telefones_corban = dk.query(telefones_corban).to_df()
+        df_telefones_corban["telefoneAPICorban"] = df_telefones_corban["telefoneAPICorban"].map(tratar_numero)
 
-    telefones_corban = consulta_csv.obtem_telefones()
-    df_telefones_corban = dk.query(telefones_corban).to_df()
-    df_telefones_corban["telefoneAPICorban"] = df_telefones_corban["telefoneAPICorban"].map(tratar_numero)
+        # Dicionário de condições SQL
+        consultas = {
+            "Contratados": "numContrato IS NOT NULL",
+            "+3 Meses": "dataInclusao < '2025-08-01 00:00:00'",
+            "Sem Contrato": "numContrato IS NULL",
+            "Sem CPF": None
+        }
 
-    # Dicionário de condições SQL
-    consultas = {
-        "Contratados": "numContrato IS NOT NULL",
-        "+3 Meses": "dataInclusao < '2025-08-01 00:00:00'",
-        "Sem Contrato": "numContrato IS NULL",
-        "Sem CPF": None
-    }
+        dados = {}
+        for nome, cond in consultas.items():
+            if nome == "Sem CPF":
+                query = consulta_sql.clientes_sem_cpf()
+            else:
+                query = consulta_sql.consulta_base_fgts(cond)
+            df = pd.read_sql(query, conn)
 
-    dados = {}
-    for nome, cond in consultas.items():
-        if nome == "Sem CPF":
-            query = consulta_sql.clientes_sem_cpf()
-        else:
-            query = consulta_sql.consulta_base_fgts(cond)
-        df = pd.read_sql(query, conn)
+            # Tratamento de telefones em lote (mais rápido que apply em Python puro)
+            for col in ["telefone", "telefoneLeads"]:
+                if col in df.columns:
+                    df[col] = df[col].astype(str).map(tratar_numero)
 
-        # Tratamento de telefones em lote (mais rápido que apply em Python puro)
-        for col in ["telefone", "telefoneLeads"]:
-            if col in df.columns:
-                df[col] = df[col].astype(str).map(tratar_numero)
+            # Formatação numérica (vetorizada)
+            for col in ["valorFinanciado", "valorLiberado"]:
+                if col in df.columns:
+                    df[col] = df[col].apply(lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-        # Formatação numérica (vetorizada)
-        for col in ["valorFinanciado", "valorLiberado"]:
-            if col in df.columns:
-                df[col] = df[col].apply(lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            # Join com base de telefones
+            if nome != "Sem CPF":
+                df = df.merge(df_telefones_corban, on="CPF", how="left")
 
-        # Join com base de telefones
-        if nome != "Sem CPF":
-            df = df.merge(df_telefones_corban, on="CPF", how="left")
+            # Armazena resultado
+            dados[nome] = df
 
-        # Armazena resultado
-        dados[nome] = df
+        return dados
+        
+    except Exception as e:
+        st.error(f"Erro de conexão: {e}")
 
-    return dados
 
 ##### INTERFACE LATERAL #####
 with st.sidebar:
