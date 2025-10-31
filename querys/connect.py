@@ -32,7 +32,6 @@ class Conexao:
 
     def conectar_postgres(self):
         try:
-            print(self.config_postgres)
             self.conn_postgres = psycopg2.connect(**self.config_postgres)
             # self.conn_postgres.set_client_encoding('WIN1252')
             print("Conexão PostgreSQL bem-sucedida!")

@@ -363,6 +363,14 @@ class QuerysCSV:
                     RIGHT JOIN telefones t ON c.id = t.clienteId
                     WHERE c.CPF IS NULL limit 100;"""
         return query
+
+    def obtem_telefones_api_corban(self):
+        query = """select 
+                        concat(tc.ddd, tc.numero) as telefoneAPI, 
+                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF"
+                    from telefones_concatenado tc 
+                    left join clientes_concatenado cc on tc.cliente_id = cc.cliente_id;"""
+        return query
     
     ##### COMISSÕES CORBAN #####
     def data_proposta_corban(self):
@@ -405,12 +413,4 @@ class QuerysCSV:
     
     
 
-    #################### BASE FGTS ####################
-
-    def obtem_telefones_api_corban(self):
-        query = """select 
-                        concat(tc.ddd, tc.numero) as telefoneAPI, 
-                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF"
-                    from telefones_concatenado tc 
-                    left join clientes_concatenado cc on tc.cliente_id = cc.cliente_id;"""
-        return query
+    

@@ -2,59 +2,99 @@ import streamlit as st
 import pandas as pd
 import itertools
 import altair as alt
-from datetime import date, datetime
+from datetime import datetime
 
-# from querys.querys_sql import QuerysSQL
-# from querys.connect import Conexao
-
-## REMOVER QUANDO FOR PARA PRODUÇÃO ##
-from querys.querys_csv import QuerysCSV
-import duckdb as dk
+from querys.querys_sql import QuerysSQL
+from querys.connect import Conexao
 
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
     page_title="Disparos Realizados",
-    page_icon="🏂",
+    page_icon="image/logo_agnus.ico",
     layout="wide",
     initial_sidebar_state="expanded")
 
 alt.themes.enable("dark")
 
-##### CONEXÃO COM O BANCO DE DADOS #####
-# # Criar uma instância da classe Conexao
-# conectar = Conexao()
-# conectar.conectar()
+##### CRIAR INSTÂNCIA DAS QUERYS #####
+consulta_sql = QuerysSQL()
 
-# # Conectando ao banco de dados MySQL
-# conn = conectar.obter_conexao()
+##### FUNÇÃO PARA GERAR OS CARDS #####
+def metric_card(label, value):
+    st.markdown(
+        f"""
+        <div style="
+            background-color: #262730;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            height: auto;
+        ">
+            <p style="color: white; font-weight: bold;">{label}</p>
+            <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
+@st.cache_resource
+def get_connection():
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    return conn
 
-##### CRIAR INSTÂNCIA DO BANCO #####
-consulta = QuerysCSV()
+@st.cache_data
+def get_total_disparos(total):
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(total, conn)
+
+    conectar.desconectar_postgres()
+    return df
 
 @st.cache_data
 def get_status_atendimento(status_atendimento):
-    df = dk.query(status_atendimento).to_df()
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(status_atendimento, conn)
+
+    conectar.desconectar_postgres()
 
     return df
 
 @st.cache_data
 def get_qtd_disparos(qtd_disparos):
-    # df = pd.read_sql(qtd_disparos, conn)
-    df = dk.query(qtd_disparos).to_df()
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(qtd_disparos, conn)
 
+    conectar.desconectar_postgres()
     return df
 
 @st.cache_data
 def get_disparos(disparos):
-    df = dk.query(disparos).to_df()
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(disparos, conn)
+
+    conectar.desconectar_postgres()
 
     return df
 
 @st.cache_data
 def get_datas(datas):
-    df = dk.query(datas).to_df()
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(datas, conn)
+
+    conectar.desconectar_postgres()
 
     return df
 
@@ -63,19 +103,18 @@ with st.sidebar:
     st.title('Filtros')
 
     ##### FILTRO DE STATUS #####
-    status_atendimento = consulta.status_atendimentos()
+    status_atendimento = consulta_sql.status_disparos()
     status = get_status_atendimento(status_atendimento)
-    status = status[status['Status'].isin(['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO'])]
-
+    # status.loc[status['status'] == 'pendente', 'status'] = 'PENDING'
 
     # Adiciona selectbox status na sidebar:
     selectbox_status = st.selectbox(
         'Selecione o Status do Atendimento',
-        ["Selecionar"] + status['Status'].unique().tolist(),
+        ["Selecionar"] + status['status'].unique().tolist(),
         index=0
     )
 
-    datas = consulta.datas_atendimentos()
+    datas = consulta_sql.datas_disparos()
     df_datas = get_datas(datas)
     
     # Converting the 'data' column to datetime format (caso não esteja)
@@ -100,7 +139,7 @@ with st.sidebar:
         data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
         intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
 
-    qtd_disparos = consulta.contagem_de_disparos(selectbox_status, intervalo_data)
+    qtd_disparos = consulta_sql.contagem_de_disparos(selectbox_status, intervalo_data)
     total_disparos = get_qtd_disparos(qtd_disparos)
 
     selectbox_disparos = st.selectbox(
@@ -109,6 +148,37 @@ with st.sidebar:
         index=0
     )
 
+##### GERA O DATAFRAME #####
+disparos = consulta_sql.disparos_por_cliente(selectbox_status, intervalo_data, selectbox_disparos)
+df_disparados = get_disparos(disparos)
+
+# df_disparados.loc[df_disparados['status'] == 'PENDING', 'status'] = 'Sucesso'
+# df_disparados.loc[df_disparados['status'] == 'ERRO', 'status'] = 'Não Recebido'
+# df_disparados.loc[df_disparados['status'] == 'CLOSE', 'status'] = 'Vendedor Bloqueado'
+# df_disparados.loc[df_disparados['status'] == 'pendente', 'status'] = 'Na fila de disparos'
+# df_disparados.loc[df_disparados['status'] == 'DESCONHECIDO', 'status'] = 'Desconhecido'
+
+df_disparados_2 = df_disparados.groupby(['data','telefone','CPF']).size().reset_index(name="Qtd")
+df_disparados = pd.merge(df_disparados,df_disparados_2, on=['data','telefone','CPF'], how='left')
+
+if selectbox_disparos != 'Selecionar':
+    df_disparados = df_disparados[df_disparados['Qtd'] == selectbox_disparos]
+
+df_disparados = df_disparados[['data','telefone','CPF','status', 'vendedor']].sort_values(['data','CPF'], ascending=[False, True])
+
+df_disparos_agrupados = df_disparados.groupby(['data', 'status']).size().reset_index(name='Qtd')
+df_disparos_agrupados['data'] = pd.to_datetime(df_disparos_agrupados['data'],format="%d/%m/%Y")
+
+if df_disparos_agrupados.empty:
+    datas = pd.date_range(start=data_inicio, end=data_fim)
+    status = df_disparos_agrupados['status'].unique() if not df_disparos_agrupados.empty else ['CLOSE', 'DESCONHECIDO', 'ERRO', 'PENDING', 'pendente']
+    
+    combinacoes = list(itertools.product(datas, status))
+
+    # Cria o DataFrame com Qtd zerada
+    df_disparos_agrupados = pd.DataFrame(combinacoes, columns=['data', 'status'])
+    df_disparos_agrupados['Qtd'] = 0
+
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
     col_1, col_2 = st.columns((1, 8.5))
@@ -116,39 +186,37 @@ with st.container():
     with col_1:
         st.image("image/logo_agnus.jpg", width=200)
     with col_2:
-        st.title(":blue[Análise dos Clientes]")
+        st.title(":blue[Análise dos Disparos]")
+
+with st.container():
+    col_1, col_2, col_3, col_4 = st.columns((1.5,1.5,1.5,1.5))
+    with col_1:
+        total = consulta_sql.total_disparos(intervalo_data)
+        df_total_disparos = get_total_disparos(total)
+
+        metric_card("Total de Disparos", f"{format(int(df_total_disparos['total']), ',').replace(',', '.')}")
+
+    with col_2:
+        texto = ''
+        if selectbox_status == 'Selecionar':
+            df_disparos_status = df_disparados
+            texto = 'Todos'
+        else:    
+            df_disparos_status = df_disparados[df_disparados['status'] == selectbox_status]
+            texto = selectbox_status
+
+        metric_card(f'Disparos "{texto}"', f"{format(int(df_disparos_status['status'].shape[0]), ',').replace(',', '.')}")
+
+    with col_3:
+        valor = f"{(int(df_disparos_status['status'].shape[0]) / int(df_total_disparos['total']) * 100):.2f}".replace('.',',')
+        metric_card(f'% do Total', f'{valor} %')
+
+    with col_4:
+        st.markdown("### :blue[TESTE 4]")
 
 ##### CORPO DO DASHBOARD #####
 with st.container():
     col_1, col_2 = st.columns((5, 5), gap="medium")
-
-    ##### GERA O DATAFRAME #####
-    disparos = consulta.disparos_por_cliente(selectbox_status, intervalo_data, selectbox_disparos)
-    df_disparados = get_disparos(disparos)
-    
-    df_disparados = df_disparados[df_disparados['Status'].isin(['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO'])]
-
-    df_disparados_2 = df_disparados.groupby(['Data','Telefone']).size().reset_index(name="Qtd")
-    df_disparados = pd.merge(df_disparados,df_disparados_2, on=['Data','Telefone'], how='left')
-
-    if selectbox_disparos != 'Selecionar':
-        df_disparados = df_disparados[df_disparados['Qtd'] == selectbox_disparos]
-
-    df_disparados = df_disparados[['Data','Telefone','CPF','Nome','Status']]
-
-    df_disparos_agrupados = df_disparados.groupby(['Data', 'Status']).size().reset_index(name='Qtd')
-    df_disparos_agrupados['Data'] = pd.to_datetime(df_disparos_agrupados['Data'],format="%d/%m/%Y")
-
-    if df_disparos_agrupados.empty:
-        datas = pd.date_range(start=data_inicio, end=data_fim)
-        status = df_disparos_agrupados['Status'].unique() if not df_disparos_agrupados.empty else ['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO']
-        
-        combinacoes = list(itertools.product(datas, status))
-
-        # Cria o DataFrame com Qtd zerada
-        df_disparos_agrupados = pd.DataFrame(combinacoes, columns=['Data', 'Status'])
-        df_disparos_agrupados['Qtd'] = 0
-
 
     with col_1:
         st.markdown("### :blue[Status por Data]")
@@ -157,7 +225,7 @@ with st.container():
             .mark_line(point=True)
             .encode(
                 x=alt.X(
-                    'Data:T',
+                    'data:T',
                     title='Data',
                     axis=alt.Axis(format='%d/%m/%Y')
                 ),
@@ -166,8 +234,8 @@ with st.container():
                     title='Quantidade',
                     scale=alt.Scale(domain=[0, df_disparos_agrupados['Qtd'].max() * 1.02])
                 ),
-                color='Status:N',
-                tooltip=['Data', 'Status', 'Qtd']
+                color='status:N',
+                tooltip=['data', 'status', 'Qtd']
             )
             .properties(
                 height=500
@@ -180,7 +248,6 @@ with st.container():
         ##### TABELA DE CLIENTES #####
         st.markdown("### :blue[Disparos por Clientes]")
         st.dataframe(df_disparados, height=500, hide_index=True)
-        # df_disparados.columns
 
         ##### BOTÃO EXPORTAR TABELA #####
         csv = df_disparados.to_csv(index=False)
@@ -190,7 +257,3 @@ with st.container():
             file_name="dados.csv",
             mime="text/csv",
         )
-
-    # st.write(df_disparados['Status'].unique())
-##### FECHAR A CONEXÃO #####
-# conectar.desconectar()

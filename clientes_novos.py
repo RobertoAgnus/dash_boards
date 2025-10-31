@@ -2,35 +2,22 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-# from querys.querys_sql import QuerysSQL
-# from querys.connect import Conexao
-
-## REMOVER QUANDO FOR PARA PRODUÇÃO ##
-from querys.querys_csv import QuerysCSV
-import duckdb as dk
+from querys.querys_sql import QuerysSQL
+from querys.connect import Conexao
 
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
     page_title="Clientes Novos",
-    page_icon="🏂",
+    page_icon="image/logo_agnus.ico",
     layout="wide",
     initial_sidebar_state="expanded")
 
 alt.themes.enable("dark")
 
-##### CONEXÃO COM O BANCO DE DADOS #####
-# # Criar uma instância da classe Conexao
-# conectar = Conexao()
-# conectar.conectar()
 
-# # Conectando ao banco de dados MySQL
-# conn = conectar.obter_conexao()
-
-
-##### CRIAR INSTÂNCIA DO BANCO #####
-consulta = QuerysCSV()
-
+##### CRIAR INSTÂNCIA ÚNICA #####
+consulta = QuerysSQL()
 
 ##### BARRA LATERAL #####
 with st.sidebar:
@@ -55,7 +42,7 @@ def metric_card(label, value):
             height: auto;
         ">
             <p style="color: white; font-weight: bold;">{label}</p>
-            <h3 style="color: white; font-size: 40px">{value}</h3>
+            <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
         </div>
         """,
         unsafe_allow_html=True
@@ -63,30 +50,47 @@ def metric_card(label, value):
 
 @st.cache_data
 def get_qtd_clientes_novos(qtd_clientes_novos):
-    # df = pd.read_sql(qtd_clientes_novos, conn)
-    df = dk.query(qtd_clientes_novos).to_df()
+    conectar = Conexao()
+    conectar.conectar_mysql()
+    conn = conectar.obter_conexao_mysql()
+    df = pd.read_sql(qtd_clientes_novos, conn)
+    
+    conectar.desconectar_mysql()
 
     return df
 
 @st.cache_data
 def get_qtd_clientes(qtd_clientes):
-    # df  = pd.read_sql(qtd_clientes, conn)
-    df  = dk.query(qtd_clientes).to_df()
+    conectar = Conexao()
+    conectar.conectar_mysql()
+    conn = conectar.obter_conexao_mysql()
+    df  = pd.read_sql(qtd_clientes, conn)
+    
+    conectar.desconectar_mysql()
 
     return df
 
 @st.cache_data
 def get_clientes_novos(clientes_novos):
-    df = dk.query(clientes_novos).to_df()
+    conectar = Conexao()
+    conectar.conectar_mysql()
+    conn = conectar.obter_conexao_mysql()
+    df = pd.read_sql(clientes_novos, conn)
+
+    conectar.desconectar_mysql()
 
     return df
 
 @st.cache_data
 def get_clientes_recorrentes(clientes_recorrentes):
-    df = dk.query(clientes_recorrentes).to_df()
+    conectar = Conexao()
+    conectar.conectar_mysql()
+    conn = conectar.obter_conexao_mysql()
+    df = pd.read_sql(clientes_recorrentes, conn)
+
+    conectar.desconectar_mysql()
 
     return df
-
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
@@ -109,16 +113,16 @@ with st.container():
         qtd_clientes_novos = consulta.qtd_clientes_novos()
         cd_clientes_novos = get_qtd_clientes_novos(qtd_clientes_novos)
         
-        metric_card("Clientes Novos", f"{format(int(cd_clientes_novos.shape[0]), ",").replace(",", ".")}")
+        metric_card("Clientes Novos", f"{format(int(cd_clientes_novos['total']), ",").replace(",", ".")}")
 
         ##### CARD TOTAL DE CLIENTES #####
         qtd_clientes = consulta.qtd_clientes()
         cd_clientes  = get_qtd_clientes(qtd_clientes)
 
-        metric_card("Total de Clientes", f"{format(int(cd_clientes.shape[0]), ',').replace(',', '.')}")
+        metric_card("Total de Clientes", f"{format(int(cd_clientes['total']), ',').replace(',', '.')}")
 
         ##### CARD % CLIENTES NOVOS DO TOTAL #####
-        valor = f"{(cd_clientes_novos.shape[0] / cd_clientes.shape[0] * 100):.2f}".replace('.',',')
+        valor = f"{(int(cd_clientes_novos['total']) / int(cd_clientes['total']) * 100):.2f}".replace('.',',')
         metric_card("% de Clientes Novos do Total", f"{valor} %")
 
     ##### ÁREA DA TABELA #####
@@ -142,9 +146,9 @@ with st.container():
             clientes_recorrentes = consulta.clientes_novos(selectbox_tipo_cliente)
             tb_clientes_recorrentes = get_clientes_recorrentes(clientes_recorrentes)
 
-            tb_clientes_recorrentes = tb_clientes_recorrentes[['Inclusão','Inclusão Corban','CPF','Nome','Telefone']]
+            tb_clientes_recorrentes = tb_clientes_recorrentes[['Inclusão CRM','Inclusão Corban','CPF','Nome','Telefone']]
 
-            tb_clientes_recorrentes['Inclusão'] = pd.to_datetime(tb_clientes_recorrentes['Inclusão'], errors='coerce').dt.strftime("%d/%m/%Y")
+            tb_clientes_recorrentes['Inclusão CRM'] = pd.to_datetime(tb_clientes_recorrentes['Inclusão CRM'], errors='coerce').dt.strftime("%d/%m/%Y")
 
             tb_clientes_recorrentes['Inclusão Corban'] = pd.to_datetime(tb_clientes_recorrentes['Inclusão Corban'], errors='coerce').dt.strftime("%d/%m/%Y")
 
@@ -156,9 +160,9 @@ with st.container():
             clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
             tb_clientes_todos = get_clientes_novos(clientes_novos)
 
-            tb_clientes_todos = tb_clientes_todos[['Inclusão','Inclusão Corban','CPF','Nome','Telefone']]
+            tb_clientes_todos = tb_clientes_todos[['Inclusão CRM','Inclusão Corban','CPF','Nome','Telefone']]
 
-            tb_clientes_todos['Inclusão'] = pd.to_datetime(tb_clientes_todos['Inclusão'], errors='coerce').dt.strftime("%d/%m/%Y")
+            tb_clientes_todos['Inclusão CRM'] = pd.to_datetime(tb_clientes_todos['Inclusão CRM'], errors='coerce').dt.strftime("%d/%m/%Y")
 
             tb_clientes_todos['Inclusão Corban'] = pd.to_datetime(tb_clientes_todos['Inclusão Corban'], errors='coerce').dt.strftime("%d/%m/%Y")
 
@@ -174,6 +178,3 @@ with st.container():
             file_name="dados.csv",
             mime="text/csv",
         )
-
-##### FECHAR A CONEXÃO #####
-# conectar.desconectar()

@@ -1,7 +1,6 @@
 import streamlit as st
 import altair as alt
 import pandas as pd
-import itertools
 from datetime import datetime
 
 from querys.querys_sql import QuerysSQL
@@ -17,7 +16,7 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
-# ##### CRIAR INSTÂNCIA ÚNICA #####
+# ##### CRIAR INSTÂNCIA DO BANCO #####
 consulta = QuerysSQL()
 
 ##### FUNÇÃO PARA GERAR OS CARDS #####
@@ -32,7 +31,7 @@ def metric_card(label, value):
             height: auto;
         ">
             <p style="color: white; font-weight: bold;">{label}</p>
-            <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
+            <h3 style="color: white; font-size: 40px">{value}</h3>
         </div>
         """,
         unsafe_allow_html=True
@@ -86,7 +85,7 @@ def get_datas(datas):
 with st.sidebar:
     st.title('Filtros')
 
-    ##### FILTRO DE Etapa #####
+    ##### FILTRO DE STATUS #####
     etapa_atendimento = consulta.etapa_atendimentos()
     etapa = get_etapa_atendimento(etapa_atendimento)
     etapa = etapa[etapa['Etapa'].isin(['LEAD_NOVO', 'SEM_SALDO', 'NAO_AUTORIZADO', 'COM_SALDO'])]
@@ -151,19 +150,6 @@ with st.container():
         df_clientes_atendidos = get_qtd_clientes_atendidos(qtd_clientes_atendidos)
         df_clientes_atendidos_card = df_clientes_atendidos.drop_duplicates(subset='CPF')
         
-        df_clientes_atendidos_agrupados = df_clientes_atendidos.groupby(['Data', 'Etapa']).size().reset_index(name='Qtd')
-        df_clientes_atendidos_agrupados['Data'] = pd.to_datetime(df_clientes_atendidos_agrupados['Data'],format="%d/%m/%Y")
-
-        if df_clientes_atendidos_agrupados.empty:
-            datas = pd.date_range(start=data_inicio, end=data_fim)
-            etapa = df_clientes_atendidos_agrupados['Etapa'].unique() if not df_clientes_atendidos_agrupados.empty else ['COM_SALDO', 'SEM_SALDO', 'LEAD_NOVO', 'NAO_AUTORIZADO']
-            
-            combinacoes = list(itertools.product(datas, etapa))
-
-            # Cria o DataFrame com Qtd zerada
-            df_clientes_atendidos_agrupados = pd.DataFrame(combinacoes, columns=['Data', 'Etapa'])
-            df_clientes_atendidos_agrupados['Qtd'] = 0
-            
         metric_card(f'Contatos realizados "{"todos" if selectbox_etapa == "Selecionar" else selectbox_etapa}"', f"{format(int(df_clientes_atendidos.shape[0]), ',').replace(',', '.')}")
         
         ##### CARD % DE ATENDIMENTOS DO TOTAL #####
@@ -172,45 +158,15 @@ with st.container():
 
     ##### ÁREA DA TABELA #####
     with col_2:
-        subcol_1, subcol_2 = st.columns((5, 5), gap="medium")
+        ##### TABELA DE CLIENTES #####
+        st.markdown("### :blue[Detalhamento dos Clientes]")
+        st.dataframe(df_clientes_atendidos, width='stretch', height=500, hide_index=True)
 
-
-        with subcol_1:
-            st.markdown("### :blue[Etapa por Data]")
-            chart = (
-                alt.Chart(df_clientes_atendidos_agrupados)
-                .mark_line(point=True)
-                .encode(
-                    x=alt.X(
-                        'Data:T',
-                        title='Data',
-                        axis=alt.Axis(format='%d/%m/%Y')
-                    ),
-                    y=alt.Y(
-                        'Qtd:Q',
-                        title='Quantidade',
-                        scale=alt.Scale(domain=[0, df_clientes_atendidos_agrupados['Qtd'].max() * 1.02])
-                    ),
-                    color='Etapa:N',
-                    tooltip=['Data', 'Etapa', 'Qtd']
-                )
-                .properties(
-                    height=500
-                )
-            )
-
-            st.altair_chart(chart, use_container_width=True)
-
-        with subcol_2:
-            ##### TABELA DE CLIENTES #####
-            st.markdown("### :blue[Detalhamento dos Clientes]")
-            st.dataframe(df_clientes_atendidos, width='stretch', height=500, hide_index=True)
-
-            ##### BOTÃO EXPORTAR TABELA #####
-            csv = df_clientes_atendidos.to_csv(index=False)
-            st.download_button(
-                label="⬇️ Baixar planilha",
-                data=csv,
-                file_name="dados.csv",
-                mime="text/csv",
-            )
+        ##### BOTÃO EXPORTAR TABELA #####
+        csv = df_clientes_atendidos.to_csv(index=False)
+        st.download_button(
+            label="⬇️ Baixar planilha",
+            data=csv,
+            file_name="dados.csv",
+            mime="text/csv",
+        )

@@ -3,22 +3,22 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-# from querys.querys_sql import QuerysSQL
-# from querys.connect import Conexao
+from querys.querys_sql import QuerysSQL
+from querys.connect import Conexao
 
-from querys.querys_csv import QuerysCSV
-import duckdb as dk
+# from querys.querys_csv import QuerysCSV
+# import duckdb as dk
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
     page_title="Comissões Corban",
-    page_icon="🏂",
+    page_icon="image/logo_agnus.ico",
     layout="wide",
     initial_sidebar_state="expanded")
 
 alt.themes.enable("dark")
 
-dk.execute("PRAGMA memory_limit='8GB';")
+# dk.execute("PRAGMA memory_limit='8GB';")
 
 ##### CONEXÃO COM O BANCO DE DADOS #####
 # Criar uma instância da classe Conexao
@@ -29,33 +29,44 @@ dk.execute("PRAGMA memory_limit='8GB';")
 # conn = conectar.obter_conexao_postgres()
 
 ##### CRIAR INSTÂNCIA DO BANCO #####
-# consulta_sql = QuerysSQL()
-consulta_csv = QuerysCSV()
+consulta_sql = QuerysSQL()
+# consulta_csv = QuerysCSV()
 
 @st.cache_data
 def get_data_proposta(data_proposta):
-    # df = pd.read_sql_query(data_proposta, conn)
-    df = dk.query(data_proposta).to_df()
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(data_proposta, conn)
+    
+    conectar.desconectar_postgres()
 
     return df
 
 @st.cache_data
 def get_origem_proposta(origem_proposta):
-    # df = pd.read_sql_query(origem_proposta, conn)
-    df = dk.query(origem_proposta).to_df()
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(origem_proposta, conn)
+    
+    conectar.desconectar_postgres()
 
     return df
 
 @st.cache_data
 def get_corban(corban):
-    # df = pd.read_sql_query(corban, conn)
-    df = dk.query(corban).to_df()
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(corban, conn)
+    
+    conectar.desconectar_postgres()
 
     return df
 
-
 ##### INTERVALO DE DATA DO ARQUIVO #####
-data_proposta = consulta_csv.data_proposta_corban()
+data_proposta = consulta_sql.data_proposta_corban()
 data = get_data_proposta(data_proposta)
 
 # Converting the 'data' column to datetime format (caso não esteja)
@@ -66,7 +77,7 @@ menor_data = data['data'].min()
 maior_data = data['data'].max()
 
 ##### ORIGEM DAS PROPOSTAS CONTRATADAS #####
-origem_proposta = consulta_csv.origem_proposta_corban()
+origem_proposta = consulta_sql.origem_proposta_corban()
 origem = get_origem_proposta(origem_proposta)
 
 ##### BARRA LATERAL #####
@@ -107,21 +118,21 @@ def metric_card(label, value):
             height: auto;
         ">
             <p style="color: white; font-weight: bold;">{label}</p>
-            <h3 style="color: white; font-size: 40px">{value}</h3>
+            <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
         </div>
         """,
         unsafe_allow_html=True
     )
-
+    
 ##### OBTEM TABELA DE COMISSOES #####
-corban = consulta_csv.tabela_corban(selectbox_origem, intervalo_data)
+corban = consulta_sql.tabela_corban(selectbox_origem, intervalo_data)
 df_comissao = get_corban(corban)
 
-df_comissao['Data Status'] = pd.to_datetime(df_comissao['Data Status']).dt.strftime('%d/%m/%Y')
+df_comissao['Data da Comissão'] = pd.to_datetime(df_comissao['Data da Comissão']).dt.strftime('%d/%m/%Y')
 
 df_comissao['Valor'] = df_comissao['Valor'].astype(float)
 
-df_comissao_agrupado = df_comissao.groupby(['Data Status', 'Origem', 'Status'], as_index=False).agg({'Valor': 'sum'})
+df_comissao_agrupado = df_comissao.groupby(['Data da Comissão', 'Origem', 'Status'], as_index=False).agg({'Valor': 'sum'})
 
 total = pd.DataFrame({"Categoria": ["Total"], "Valor": [df_comissao_agrupado["Valor"].sum()]})
 
