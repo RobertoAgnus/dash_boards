@@ -2,7 +2,7 @@ import streamlit as st
 import altair as alt
 import pandas as pd
 import itertools
-from datetime import datetime
+from datetime import date, datetime
 
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
@@ -106,7 +106,7 @@ with st.sidebar:
 
     # Obtendo a menor e a maior data da coluna 'data'
     menor_data = df_datas['data'].min()
-    maior_data = df_datas['data'].max()
+    maior_data = date.today()
 
     ##### FILTRO DE INTERVALO DE DATA #####
     intervalo = st.date_input(
