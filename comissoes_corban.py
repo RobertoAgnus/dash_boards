@@ -55,6 +55,17 @@ def get_origem_proposta(origem_proposta):
     return df
 
 @st.cache_data
+def get_qtd_comissoes_aguardando(qtd_comissoes):
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+    df = pd.read_sql_query(qtd_comissoes, conn)
+    
+    conectar.desconectar_postgres()
+
+    return df
+
+@st.cache_data
 def get_corban(corban):
     conectar = Conexao()
     conectar.conectar_postgres()
@@ -101,10 +112,14 @@ with st.sidebar:
     if len(intervalo) == 2:
         data_inicio, data_fim = intervalo
         intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
+        i_qtd = f"BETWEEN GREATEST('{data_inicio}'::date, CURRENT_DATE - INTERVAL '7 days') AND '{data_fim}'::date"
     else:
+        data_atual = pd.Timestamp.today()
+        
         data_inicio = intervalo[0]
-        data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+        data_fim = data_atual.date()
         intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
+        i_qtd = f"BETWEEN GREATEST('{data_inicio}'::date, CURRENT_DATE - INTERVAL '7 days') AND '{data_fim}'::date"
 
 ##### FUNÇÃO PARA GERAR OS CARDS #####
 def metric_card(label, value):
@@ -124,6 +139,10 @@ def metric_card(label, value):
         unsafe_allow_html=True
     )
     
+##### OBTEM QTD COMISSOES AGUARDANDO #####
+qtd_comissoes = consulta_sql.qtd_comissoes_aguardando(selectbox_origem, i_qtd)
+df_qtd_comissao_aguardando = get_qtd_comissoes_aguardando(qtd_comissoes)
+
 ##### OBTEM TABELA DE COMISSOES #####
 corban = consulta_sql.tabela_corban(selectbox_origem, intervalo_data)
 df_comissao = get_corban(corban)
@@ -142,7 +161,7 @@ df_comissao_pago = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Pago'
 total_pago = f'{df_comissao_pago['Valor'].sum():.2f}'
 
 df_comissao_aguardando = df_comissao_agrupado[(df_comissao_agrupado['Status'] == 'Aguardando Pagamento') | (df_comissao_agrupado['Status'] == '')]
-total_aguardando = f'{df_comissao_aguardando['Valor'].sum():.2f}'
+total_aguardando = f'{get_qtd_comissoes_aguardando(qtd_comissoes)['aguardando'].sum():.2f}'
 
 total_qtd = df_comissao_agrupado['Status'].count()
 

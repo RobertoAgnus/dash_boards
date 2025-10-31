@@ -290,6 +290,41 @@ class QuerysSQL:
                     order by p.data_status;"""
         return query
     
+    def qtd_comissoes_aguardando(self, origem, data):
+        condicao = None
+        if origem == 'Selecionar':
+            condicao = f"""and TO_TIMESTAMP(ac.data_status_api, 'YYYY-MM-DD HH24:MI:SS')::date {data}"""
+        elif origem != 'Selecionar':
+            condicao = f"""and psc.origem='{origem}' 
+                            and TO_TIMESTAMP(ac.data_status_api, 'YYYY-MM-DD HH24:MI:SS')::date {data}"""
+        
+        query = f"""select 
+                        sum(CASE
+                                WHEN cc2.recebe_valor_base ~ '^[0-9,.]+$' THEN
+                                    REPLACE(cc2.recebe_valor_base, ',', '.')::NUMERIC
+                                ELSE 0
+                            end
+                        ) as aguardando
+                    from "propostasCorban".api_concatenado ac 
+                    left join "propostasCorban".comissoes_concatenado cc 
+                        on ac.proposta_id = cc.proposta_id 
+                    left join "propostasCorban".comissionamentos_concatenado cc2 
+                        on ac.proposta_id = cc2.proposta_id 
+                    left join "propostasCorban".datas_concatenado dc 
+                        on ac.proposta_id = dc.proposta_id 
+                    left join "propostasCorban".proposta_concatenado pc 
+                        on ac.proposta_id = pc.proposta_id 
+                    left join "propostasCorban".propostas_concatenado psc 
+                        on ac.proposta_id = psc.proposta_id
+                    where cc.valor is null
+                        and dc.cancelado is null
+                        {condicao}
+                        and cc2.recebe_valor_base <> '0.0'
+                        and cc2.recebe_valor_base <> 'NaN'
+                        and ac.status_api = 'APROVADA'
+                        and pc.valor_total_comissionado = '0';"""
+        return query
+    
     ##### POSTGRESQL #####
     # def data_proposta_corban(self):
     #     query = f"""select
