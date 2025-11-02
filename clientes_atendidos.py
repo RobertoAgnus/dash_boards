@@ -147,7 +147,7 @@ with st.container():
         total_clientes_unicos = consulta.total_clientes()
         df_total_clientes_unicos = get_total_clientes_unicos(total_clientes_unicos)
         
-        metric_card("Total de Clientes únicos", f"{format(int(df_total_clientes_unicos.shape[0]), ',').replace(',', '.')}")
+        metric_card("Total de Clientes únicos", f"{format(int(df_total_clientes_unicos['TOTAL_CPF']), ',').replace(',', '.')}")
 
     with col_3a:                    
         ##### CARD CONTATOS REALIZADOS #####
@@ -205,7 +205,7 @@ with st.container():
 
     with col_4a:
         ##### CARD % DE ATENDIMENTOS DO TOTAL #####
-        valor = f"{(df_clientes_atendidos_card.shape[0] / df_total_clientes_unicos.shape[0] * 100):.2f}".replace('.',',')
+        valor = f"{(df_clientes_atendidos_card.shape[0] / int(df_total_clientes_unicos['TOTAL_CPF']) * 100):.2f}".replace('.',',')
         metric_card("% de atendimentos do Total", f"{valor} %")
 
     ##### ÁREA DA TABELA #####

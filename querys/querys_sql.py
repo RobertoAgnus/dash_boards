@@ -20,8 +20,8 @@ class QuerysSQL:
         return query
     
     def total_clientes(self):
-        query = f"""select distinct 
-                        c.CPF as TOTAL_CPF
+        query = f"""select 
+                        count(distinct c.CPF) as TOTAL_CPF
                     from CRM.Clientes c;"""
         
         return query
@@ -50,6 +50,24 @@ class QuerysSQL:
                     right join CRM.Leads l on c.id = l.clientId
                     left join CRM.Enderecos e on c.id = e.clientId
                     {condicao}
+                    order by l.data desc;"""
+        
+        return query
+    
+    def clientes_atendidos_v1(self):
+        query = f"""select distinct
+                        date_format(l.data, '%d/%m/%Y') as "Data",
+                        c.CPF as "CPF", 
+                        c.nome as Nome, 
+                        l.telefone as telefoneLead,
+                        e.cidade as Cidade, 
+                        e.estado as UF, 
+                        l.etapa as Etapa
+                    from CRM.Clientes c 
+                    right join CRM.Leads l 
+                        on c.id = l.clientId
+                    left join CRM.Enderecos e 
+                        on c.id = e.clientId
                     order by l.data desc;"""
         
         return query
