@@ -183,7 +183,7 @@ if df_disparos_agrupados.empty:
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
-    col_1, col_2 = st.columns((1, 8.5))
+    col_1, col_2 = st.columns((2, 8))
 
     with col_1:
         st.image("image/logo_agnus.jpg", width=200)

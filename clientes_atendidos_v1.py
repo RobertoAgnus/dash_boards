@@ -133,18 +133,17 @@ with st.container():
 
 ##### CORPO DO DASHBOARD #####
 with st.container():
-    col_1, col_2 = st.columns((1.5, 8.5))
+    col_1a, col_1b, col_1c, col_1d = st.columns((2.5, 2.5, 2.5, 2.5))
     
     ##### ÁREA DOS CARDS #####
-    with col_1:
-        st.markdown("### :blue[Clientes Atendidos]")
-
+    with col_1a:
         ##### CARD TOTAL CLIENTES ÚNICOS #####
         total_clientes_unicos = consulta.total_clientes()
         df_total_clientes_unicos = get_total_clientes_unicos(total_clientes_unicos)
         
         metric_card("Total de Clientes únicos", f"{format(int(df_total_clientes_unicos.shape[0]), ',').replace(',', '.')}")
-                                    
+
+    with col_1b:                            
         ##### CARD CONTATOS REALIZADOS #####
         qtd_clientes_atendidos = consulta.clientes_atendidos(selectbox_etapa, intervalo_data)
         df_clientes_atendidos = get_qtd_clientes_atendidos(qtd_clientes_atendidos)
@@ -152,6 +151,7 @@ with st.container():
         
         metric_card(f'Contatos realizados "{"todos" if selectbox_etapa == "Selecionar" else selectbox_etapa}"', f"{format(int(df_clientes_atendidos.shape[0]), ',').replace(',', '.')}")
         
+    with col_1c:
         ##### CARD % DE ATENDIMENTOS DO TOTAL #####
         valor = f"{(df_clientes_atendidos_card.shape[0] / df_total_clientes_unicos.shape[0] * 100):.2f}".replace('.',',')
         metric_card("% de atendimentos do Total", f"{valor} %")

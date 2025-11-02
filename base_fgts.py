@@ -45,17 +45,21 @@ def metric_card(label, value):
     )
 
 ##### CACHE DE CONEXÃO #####
-@st.cache_resource
-def get_connection():
-    conn = Conexao()
-    conn.conectar_mysql()
-    return conn.obter_conexao_mysql()
+# @st.cache_resource
+# def get_connection():
+#     conn = Conexao()
+#     conn.conectar_mysql()
+#     return conn.obter_conexao_mysql()
 
 ##### CACHE DE CONSULTAS #####
 @st.cache_data(show_spinner=False)
 def carregar_dados():
     """Executa todas as consultas necessárias apenas uma vez."""
-    conn = get_connection()
+    conectar = Conexao()
+    conectar.conectar_mysql()
+    conn = conectar.obter_conexao_mysql()
+    # conn = get_connection()
+
     try:
         conn.ping(reconnect=True)  # reabre se estiver desconectada
         
@@ -101,6 +105,8 @@ def carregar_dados():
     except Exception as e:
         st.error(f"Erro de conexão: {e}")
 
+    conectar.desconectar_mysql()
+
 
 ##### INTERFACE LATERAL #####
 with st.sidebar:
@@ -129,7 +135,7 @@ contagens = {
             }
 
 ##### CABEÇALHO #####
-col_1, col_2 = st.columns((1, 8.5))
+col_1, col_2 = st.columns((2, 8.5))
 with col_1:
     st.image("image/logo_agnus.jpg", width=200)
 with col_2:

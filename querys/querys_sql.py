@@ -60,11 +60,11 @@ class QuerysSQL:
                         count(distinct c.CPF) as total
                     from CRM.Clientes c
                     left join CRM.Contratos ct
-                    on c.id = ct.clienteId
+                        on c.id = ct.clienteId
                     left join sistema.ContratosCorban ctb
-                    on c.id = ctb.clienteId
+                        on c.id = ctb.clienteId
                     where ct.prazo is null
-                    and ctb.prazo is null;"""
+                        and ctb.prazo is null;"""
         return query
     
     def qtd_clientes(self):

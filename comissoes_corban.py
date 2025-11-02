@@ -202,14 +202,14 @@ df_comissao_agrupado = df_comissao.groupby(['Data da Comissão', 'Proposta', 'Or
 
 total = pd.DataFrame({"Categoria": ["Total"], "Valor": [df_comissao_agrupado["Valor"].sum()]})
 
-total_metric = f'{df_qtd_comissao_total['total'].sum():.2f}'
+total_metric = f"{df_qtd_comissao_total['total'].sum():.2f}"
 
 # df_comissao_pago = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Pago']
 # total_pago = f'{df_comissao_pago['Valor'].sum():.2f}'
 
 # df_comissao_aguardando = df_comissao_agrupado[(df_comissao_agrupado['Status'] == 'Aguardando Pagamento') | (df_comissao_agrupado['Status'] == '')]
-total_aguardando = f'{df_qtd_comissao_aguardando['aguardando'].sum():.2f}'
-total_pago = f'{df_qtd_comissao_pagas['pago'].sum():.2f}'
+total_aguardando = f"{df_qtd_comissao_aguardando['aguardando'].sum():.2f}"
+total_pago = f"{df_qtd_comissao_pagas['pago'].sum():.2f}"
 print(total_metric)
 if total_metric == '0.00':
     taxa_pagamento = 0.0
@@ -225,7 +225,7 @@ else:
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
-    col_1, col_2 = st.columns((1, 8.5))
+    col_1, col_2 = st.columns((2, 8))
 
     with col_1:
         st.image("image/logo_agnus.jpg", width=200)
