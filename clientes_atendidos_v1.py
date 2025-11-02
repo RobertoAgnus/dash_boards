@@ -140,7 +140,7 @@ def get_contatos_realizados(dados, selectbox_etapa, intervalo):
     return df_clientes_atendidos
 
 ##### FUNÇÃO PARA PREPAR OS DADOS PARA O GRÁFICO #####
-def get_etapa_por_data(dados, intervalo):
+def get_etapa_por_data(dados, etapa, intervalo):
     if len(intervalo) == 2:
         data_inicio, data_fim = intervalo
     
@@ -156,6 +156,13 @@ def get_etapa_por_data(dados, intervalo):
 
     dados_agrupados = dados.groupby(['Data', 'etapa_padronizada']).size().reset_index(name='Qtd')
     dados_agrupados['Data'] = pd.to_datetime(dados_agrupados['Data'],format="%d/%m/%Y")
+
+    if etapa == 'Selecionar':
+        condicao = (dados_agrupados['Data'] >= data_inicio) & (dados_agrupados['Data'] <= data_fim)
+    else:
+        condicao = (dados_agrupados['etapa_padronizada'] == etapa) & ((dados_agrupados['Data'] >= data_inicio) & (dados_agrupados['Data'] <= data_fim))
+
+    dados_agrupados = dados_agrupados[condicao]
 
     if dados_agrupados.empty:
         datas = pd.date_range(start=data_inicio, end=data_fim)
@@ -233,7 +240,7 @@ with st.container():
         ##### GRÁFICO DE ETAPA POR DATA #####
         st.markdown("### :blue[Etapa por Data]")
 
-        df_clientes_atendidos_agrupados = get_etapa_por_data(dados, intervalo)
+        df_clientes_atendidos_agrupados = get_etapa_por_data(dados, selectbox_etapa, intervalo)
 
         chart = (
             alt.Chart(df_clientes_atendidos_agrupados)
