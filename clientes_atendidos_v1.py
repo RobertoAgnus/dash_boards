@@ -92,12 +92,14 @@ def metric_card(label, value):
         unsafe_allow_html=True
     )
 
+##### FUNÇÃO PARA OBTER AS ETAPAS #####
 def get_etapas(dados):
     etapas = dados['etapa_padronizada'].unique()
     etapas = [x for x in etapas if x is not None]
     
     return sorted(list(set(etapas)))
 
+##### FUNÇÃO PARA OBTER AS DATAS #####
 def get_datas(dados):
     df_datas = dados['Data']
     
@@ -110,7 +112,7 @@ def get_datas(dados):
 
     return menor_data, maior_data
 
-
+##### FUNÇÃO PARA OBTER OS CONTATOS REALZIADOS #####
 def get_contatos_realizados(dados, selectbox_etapa, intervalo):
     if len(intervalo) == 2:
         data_inicio, data_fim = intervalo
@@ -137,6 +139,7 @@ def get_contatos_realizados(dados, selectbox_etapa, intervalo):
     
     return df_clientes_atendidos
 
+##### FUNÇÃO PARA PREPAR OS DADOS PARA O GRÁFICO #####
 def get_etapa_por_data(dados, intervalo):
     if len(intervalo) == 2:
         data_inicio, data_fim = intervalo
@@ -166,7 +169,9 @@ def get_etapa_por_data(dados, intervalo):
         
     return dados_agrupados.rename(columns={'etapa_padronizada': 'Etapa'})
     
-    
+
+##### ÁREA DO DASHBOARD #####
+
 ##### BARRA LATERAL #####
 with st.sidebar:
     st.title('Filtros')
@@ -220,7 +225,7 @@ with st.container():
         valor = f"{(int(df_clientes_atendidos.shape[0]) / int(qtd_total_clientes['TOTAL_CPF']) * 100):.2f}".replace('.',',')
         metric_card("% de atendimentos do Total", f"{valor} %")
 
-##### ÁREA DA TABELA #####
+##### ÁREA DO GRÁFICO E DA TABELA #####
 with st.container():
     col_1c, col_2c = st.columns((5,5))
 
