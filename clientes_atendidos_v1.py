@@ -2,7 +2,7 @@ import streamlit as st
 import altair as alt
 import pandas as pd
 import itertools
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
@@ -186,22 +186,38 @@ with st.sidebar:
     ##### FILTRO DE Etapa #####
     etapa = get_etapas(dados)
     
+    if "filtro_etapa" not in st.session_state:
+        st.session_state.filtro_etapa = "Selecionar"
+
+    lista_etapa = ["Selecionar"] + etapa
+
     # Adiciona selectbox etapa na sidebar:
     selectbox_etapa = st.selectbox(
         'Selecione a Etapa do Atendimento',
-        ["Selecionar"] + etapa,
-        index=0
+        lista_etapa,
+        key="filtro_etapa"
     )
 
     # Obtendo a menor e a maior data da coluna 'data'
     menor_data, maior_data = get_datas(dados)
 
+    if "filtro_periodo" not in st.session_state:
+        hoje = date.today()
+        st.session_state.filtro_periodo = (menor_data, hoje) 
+
     ##### FILTRO DE INTERVALO DE DATA #####
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
-        value=(menor_data,maior_data)
+        value=st.session_state.filtro_periodo,
+        key="filtro_periodo"
     )
 
+    # Botão de limpeza
+    if st.button("🧹 Limpar filtros"):
+        st.session_state.clear()
+        st.rerun()
+
+        
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
