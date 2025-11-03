@@ -198,6 +198,7 @@ with st.sidebar:
         key="filtro_etapa"
     )
 
+    ##### FILTRO DE INTERVALO DE DATA #####
     # Obtendo a menor e a maior data da coluna 'data'
     menor_data, maior_data = get_datas(dados)
 
@@ -205,7 +206,6 @@ with st.sidebar:
         hoje = date.today()
         st.session_state.filtro_periodo = (menor_data, hoje) 
 
-    ##### FILTRO DE INTERVALO DE DATA #####
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
         value=(menor_data,maior_data),

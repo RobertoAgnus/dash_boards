@@ -97,86 +97,17 @@ class QuerysSQL:
         return query
     
     ##### DISPAROS REALIZADOS #####
-    def total_disparos(self, data):
-        condicao = None
-        if data != 'Selecionar':
-            condicao = f'where data {data}'
-        else:
-            'where 1 = 1'
-
-        query = f"""select 
-                        count(*) as total
-                    from "disparos".disparos
-                    {condicao};"""
-        return query
-    
-    def status_disparos(self):
-        query = """select distinct 
-                        status 
+    def disparos(self):
+        query = """select
+                        "CPF",
+                        telefone,
+                        valor,
+                        status,
+                        data,
+                        vendedor
                     from "disparos".disparos;"""
         return query
-    
-    def datas_disparos(self):
-        query = """select distinct 
-                        data 
-                    from "disparos".disparos 
-                    order by data asc;"""
-        return query
-    
-    def contagem_de_disparos(self, status=None, data=None):
-        condicao = None
-        if status == 'Selecionar' and data != 'Selecionar':
-            condicao = f"""where data {data}"""
-        elif data == 'Selecionar' and status != 'Selecionar':
-            condicao = f"""where status = '{status}'"""
-        elif data != 'Selecionar' and status != 'Selecionar':
-            condicao = f"""where status = '{status}'
-                            and data {data}"""
-        elif status == 'Selecionar' and data == 'Selecionar':
-            condicao = "where 1 = 1"
 
-        query = f"""with consulta as (
-                        select 
-                            "CPF", 
-                            telefone,
-                            data
-                        from "disparos".disparos 
-                        {condicao}
-                    )
-                    SELECT
-                        COUNT(*) AS "TOTAL"
-                    FROM
-                        consulta
-                    GROUP BY
-                        data,
-                        telefone,
-                        "CPF";"""
-        return query
-    
-    def disparos_por_cliente(self, status=None, data=None, disparos=None):
-        condicao = None
-        if status == 'Selecionar' and data != 'Selecionar':
-            condicao = f"""where data {data}"""
-        elif data == 'Selecionar' and status != 'Selecionar':
-            condicao = f"""where status = '{status}'"""
-        elif data != 'Selecionar' and status != 'Selecionar':
-            condicao = f"""where status = '{status}'
-                            and data {data}"""
-        elif status == 'Selecionar' and data == 'Selecionar':
-            condicao = "where 1 = 1"
-
-        query = f"""select 
-                        to_char(data, 'DD/MM/YYYY') as data,
-                        "CPF", 
-                        telefone, 
-                        valor, 
-                        status, 
-                        vendedor
-                    from "disparos".disparos 
-                    {condicao} 
-                    order by data desc;""" 
-        return query
-    
     #################### BASE FGTS ####################
     def obtem_telefones(self):
         query = """select distinct

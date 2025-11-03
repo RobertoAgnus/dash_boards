@@ -20,6 +20,130 @@ alt.themes.enable("dark")
 ##### CRIAR INSTÂNCIA DAS QUERYS #####
 consulta_sql = QuerysSQL()
 
+##### CACHE DE CONSULTAS #####
+@st.cache_data(show_spinner=False)
+def carregar_dados():
+    conectar = Conexao()
+    conectar.conectar_postgres()
+    conn = conectar.obter_conexao_postgres()
+
+    disparos = consulta_sql.disparos()
+    df = pd.read_sql_query(disparos, conn)
+
+    conectar.desconectar_postgres()
+
+    return df
+
+##### FUNÇÃO PARA OBTER AS DATAS #####
+def get_datas(dados):
+    df_datas = dados['data']
+    
+    # Converting the 'data' column to datetime format (caso não esteja)
+    df_datas['data'] = pd.to_datetime(df_datas, dayfirst=True)
+
+    # Obtendo a menor e a maior data da coluna 'data'
+    menor_data = df_datas['data'].min()
+    maior_data = date.today()
+
+    return menor_data, maior_data
+
+def get_qtd_disparos(dados, selectbox_status, intervalo):
+    if len(intervalo) == 2:
+        data_inicio, data_fim = intervalo
+    
+    elif len(intervalo) == 1:
+        data_inicio = intervalo[0]
+        data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+    
+    else:
+        data_inicio, data_fim = get_datas(dados)
+
+    data_inicio = pd.to_datetime(data_inicio)
+    data_fim = pd.to_datetime(data_fim)
+
+    # Converte a coluna Data para datetime
+    dados['data'] = pd.to_datetime(dados['data'], dayfirst=True)
+
+    if selectbox_status == 'Selecionar':
+        condicao = (dados['data'] >= data_inicio) & (dados['data'] <= data_fim)
+    else:
+        condicao = (dados['status'] == selectbox_status) & ((dados['data'] >= data_inicio) & (dados['data'] <= data_fim))
+
+    qtd_disparos = dados[condicao]
+    qtd_disparos = qtd_disparos.groupby(["data","telefone","CPF"]).count()
+
+    return qtd_disparos
+
+def get_total_disparos(dados, intervalo):
+    if len(intervalo) == 2:
+        data_inicio, data_fim = intervalo
+    
+    elif len(intervalo) == 1:
+        data_inicio = intervalo[0]
+        data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+    
+    else:
+        data_inicio, data_fim = get_datas(dados)
+
+    data_inicio = pd.to_datetime(data_inicio)
+    data_fim = pd.to_datetime(data_fim)
+
+    disparos_por_data = dados[(dados['data'] >= data_inicio) & (dados['data'] <= data_fim)]
+    qtd_disparos = len(disparos_por_data)
+    
+    return qtd_disparos
+
+def get_disparos(dados, selectbox_status, selectbox_disparos, intervalo):
+    def filtrar_data():
+        if len(intervalo) == 2:
+            data_inicio, data_fim = intervalo
+        
+        elif len(intervalo) == 1:
+            data_inicio = intervalo[0]
+            data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+        
+        else:
+            data_inicio, data_fim = get_datas(dados)
+
+        data_inicio = pd.to_datetime(data_inicio)
+        data_fim = pd.to_datetime(data_fim)
+
+        return data_inicio, data_fim
+
+    df_disparados_2 = dados.groupby(['data','telefone','CPF']).size().reset_index(name="Qtd")
+    df_disparados = pd.merge(dados,df_disparados_2, on=['data','telefone','CPF'], how='left')
+
+    if selectbox_disparos != 'Selecionar' and selectbox_status != 'Selecionar':
+        df_disparados = df_disparados[(df_disparados['Qtd'] == selectbox_disparos) & (df_disparados['status'] == selectbox_status)]
+    elif selectbox_disparos == 'Selecionar' and selectbox_status != 'Selecionar':
+        df_disparados = df_disparados[(df_disparados['status'] == selectbox_status)]
+    elif selectbox_disparos != 'Selecionar' and selectbox_status == 'Selecionar':
+        df_disparados = df_disparados[(df_disparados['Qtd'] == selectbox_disparos)]
+
+    data_inicio, data_fim = filtrar_data()
+
+    df_disparados = df_disparados[(df_disparados['data'] >= data_inicio) & (df_disparados['data'] <= data_fim)]
+
+    df_disparados = df_disparados[['data','telefone','CPF','status', 'vendedor']].sort_values(['data','CPF'], ascending=[False, True])
+
+    df_disparos_agrupados = df_disparados.groupby(['data', 'status']).size().reset_index(name='Qtd')
+    df_disparos_agrupados['data'] = pd.to_datetime(df_disparos_agrupados['data'],format="%d/%m/%Y")
+
+    if df_disparos_agrupados.empty:
+        data_inicio, data_fim = filtrar_data()
+
+        datas = pd.date_range(start=data_inicio, end=data_fim)
+
+        status = df_disparos_agrupados['status'].unique() if not df_disparos_agrupados.empty else ['CLOSE', 'DESCONHECIDO', 'ERRO', 'PENDING', 'pendente']
+        
+        combinacoes = list(itertools.product(datas, status))
+
+        # Cria o DataFrame com Qtd zerada
+        df_disparos_agrupados = pd.DataFrame(combinacoes, columns=['data', 'status'])
+        df_disparos_agrupados['Qtd'] = 0
+
+    return df_disparados, df_disparos_agrupados
+
 ##### FUNÇÃO PARA GERAR OS CARDS #####
 def metric_card(label, value):
     st.markdown(
@@ -38,149 +162,40 @@ def metric_card(label, value):
         unsafe_allow_html=True
     )
 
-@st.cache_resource
-def get_connection():
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    return conn
-
-@st.cache_data
-def get_total_disparos(total):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(total, conn)
-
-    conectar.desconectar_postgres()
-    return df
-
-@st.cache_data
-def get_status_atendimento(status_atendimento):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(status_atendimento, conn)
-
-    conectar.desconectar_postgres()
-
-    return df
-
-@st.cache_data
-def get_qtd_disparos(qtd_disparos):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(qtd_disparos, conn)
-
-    conectar.desconectar_postgres()
-    return df
-
-@st.cache_data
-def get_disparos(disparos):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(disparos, conn)
-
-    conectar.desconectar_postgres()
-
-    return df
-
-@st.cache_data
-def get_datas(datas):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(datas, conn)
-
-    conectar.desconectar_postgres()
-
-    return df
+dados = carregar_dados()
 
 ##### BARRA LATERAL #####
 with st.sidebar:
     st.title('Filtros')
 
     ##### FILTRO DE STATUS #####
-    status_atendimento = consulta_sql.status_disparos()
-    status = get_status_atendimento(status_atendimento)
-    # status.loc[status['status'] == 'pendente', 'status'] = 'PENDING'
+    status = dados['status']
 
     # Adiciona selectbox status na sidebar:
     selectbox_status = st.selectbox(
         'Selecione o Status do Atendimento',
-        ["Selecionar"] + status['status'].unique().tolist(),
+        ["Selecionar"] + status.unique().tolist(),
         index=0
     )
 
-    datas = consulta_sql.datas_disparos()
-    df_datas = get_datas(datas)
-
-    # Converting the 'data' column to datetime format (caso não esteja)
-    df_datas['data'] = pd.to_datetime(df_datas['data'])
-
-    menor_data = df_datas['data'].min()
-    maior_data = date.today()
-
     ##### FILTRO DE INTERVALO DE DATA #####
+    menor_data, maior_data = get_datas(dados)
+    datas = dados['data']
+
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
         value=(menor_data,maior_data)
     )
 
-    # Trata o intervalo de data para busca no banco de dados
-    if len(intervalo) == 2:
-        data_inicio, data_fim = intervalo
-        intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
-    else:
-        data_atual = pd.Timestamp.today()
-        
-        data_inicio = intervalo[0]
-        data_fim = data_atual.date()
-
-        intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
-
-    qtd_disparos = consulta_sql.contagem_de_disparos(selectbox_status, intervalo_data)
-    total_disparos = get_qtd_disparos(qtd_disparos)
+    ##### QUANTIDADE DE DISPAROS #####
+    qtd_disparos = get_qtd_disparos(dados, selectbox_status, intervalo)
 
     selectbox_disparos = st.selectbox(
         'Selecione a Quantidade de Disparos',
-        ["Selecionar"] + total_disparos['TOTAL'].unique().tolist(),
+        ["Selecionar"] + qtd_disparos['status'].unique().tolist(),
         index=0
     )
-
-##### GERA O DATAFRAME #####
-disparos = consulta_sql.disparos_por_cliente(selectbox_status, intervalo_data, selectbox_disparos)
-df_disparados = get_disparos(disparos)
-
-# df_disparados.loc[df_disparados['status'] == 'PENDING', 'status'] = 'Sucesso'
-# df_disparados.loc[df_disparados['status'] == 'ERRO', 'status'] = 'Não Recebido'
-# df_disparados.loc[df_disparados['status'] == 'CLOSE', 'status'] = 'Vendedor Bloqueado'
-# df_disparados.loc[df_disparados['status'] == 'pendente', 'status'] = 'Na fila de disparos'
-# df_disparados.loc[df_disparados['status'] == 'DESCONHECIDO', 'status'] = 'Desconhecido'
-
-df_disparados_2 = df_disparados.groupby(['data','telefone','CPF']).size().reset_index(name="Qtd")
-df_disparados = pd.merge(df_disparados,df_disparados_2, on=['data','telefone','CPF'], how='left')
-
-if selectbox_disparos != 'Selecionar':
-    df_disparados = df_disparados[df_disparados['Qtd'] == selectbox_disparos]
-
-df_disparados = df_disparados[['data','telefone','CPF','status', 'vendedor']].sort_values(['data','CPF'], ascending=[False, True])
-
-df_disparos_agrupados = df_disparados.groupby(['data', 'status']).size().reset_index(name='Qtd')
-df_disparos_agrupados['data'] = pd.to_datetime(df_disparos_agrupados['data'],format="%d/%m/%Y")
-
-if df_disparos_agrupados.empty:
-    datas = pd.date_range(start=data_inicio, end=data_fim)
-    status = df_disparos_agrupados['status'].unique() if not df_disparos_agrupados.empty else ['CLOSE', 'DESCONHECIDO', 'ERRO', 'PENDING', 'pendente']
     
-    combinacoes = list(itertools.product(datas, status))
-
-    # Cria o DataFrame com Qtd zerada
-    df_disparos_agrupados = pd.DataFrame(combinacoes, columns=['data', 'status'])
-    df_disparos_agrupados['Qtd'] = 0
-
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
     col_1, col_2 = st.columns((2, 8))
@@ -190,32 +205,37 @@ with st.container():
     with col_2:
         st.title(":blue[Análise dos Disparos]")
 
+df_disparos, df_disparos_agrupados = get_disparos(dados, selectbox_status, selectbox_disparos, intervalo)
+
+##### ÁREA DOS CARDS #####
 with st.container():
-    col_1, col_2, col_3, col_4 = st.columns((1.5,1.5,1.5,1.5))
+    col_1, col_2, col_3 = st.columns((2.5,2.5,2.5))
+
+    ##### TOTAL DE DISPAROS #####
     with col_1:
-        total = consulta_sql.total_disparos(intervalo_data)
-        df_total_disparos = get_total_disparos(total)
+        df_total_disparos = get_total_disparos(dados, intervalo)
 
-        metric_card("Total de Disparos", f"{format(int(df_total_disparos['total']), ',').replace(',', '.')}")
+        metric_card("Total de Disparos", f"{format(int(df_total_disparos), ',').replace(',', '.')}")
 
+    ##### DEISPAROS POR STATUS #####
     with col_2:
+        
         texto = ''
         if selectbox_status == 'Selecionar':
-            df_disparos_status = df_disparados
+            df_disparos_status = df_disparos
             texto = 'Todos'
         else:    
-            df_disparos_status = df_disparados[df_disparados['status'] == selectbox_status]
+            df_disparos_status = df_disparos[df_disparos['status'] == selectbox_status]
             texto = selectbox_status
 
         metric_card(f'Disparos "{texto}"', f"{format(int(df_disparos_status['status'].shape[0]), ',').replace(',', '.')}")
 
+    ##### % DE DISPAROS POR STATUS DO TOTAL #####
     with col_3:
-        valor = f"{(int(df_disparos_status['status'].shape[0]) / int(df_total_disparos['total']) * 100):.2f}".replace('.',',')
+        valor = f"{(int(df_disparos_status['status'].shape[0]) / int(df_total_disparos) * 100):.2f}".replace('.',',')
         metric_card(f'% do Total', f'{valor} %')
 
-    with col_4:
-        st.markdown("### :blue[TESTE 4]")
-
+    
 ##### CORPO DO DASHBOARD #####
 with st.container():
     col_1, col_2 = st.columns((5, 5), gap="medium")
@@ -249,10 +269,10 @@ with st.container():
     with col_2:
         ##### TABELA DE CLIENTES #####
         st.markdown("### :blue[Disparos por Clientes]")
-        st.dataframe(df_disparados, height=500, hide_index=True)
+        st.dataframe(df_disparos, height=500, hide_index=True)
 
         ##### BOTÃO EXPORTAR TABELA #####
-        csv = df_disparados.to_csv(index=False)
+        csv = df_disparos.to_csv(index=False)
         st.download_button(
             label="⬇️ Baixar planilha",
             data=csv,
