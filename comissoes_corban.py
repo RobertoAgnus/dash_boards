@@ -250,19 +250,32 @@ with st.sidebar:
     st.title('Filtros')
 
     ##### FILTRO DE ORIGEM #####
+    if "filtro_origem" not in st.session_state:
+        st.session_state.filtro_origem = "Selecionar"
+
     selectbox_origem = st.selectbox(
         'Selecione a origem',
         ['Selecionar'] + lista_origem.tolist(),
-        index=0
+        key="filtro_origem"
     )
     
     ##### FILTRO DE DATA #####
     menor_data, maior_data = get_datas_propostas(dados)
     
+    if "filtro_periodo" not in st.session_state:
+        hoje = date.today()
+        st.session_state.filtro_periodo = (menor_data, hoje) 
+
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
-        value=(menor_data,maior_data)
+        value=(menor_data,maior_data),
+        key="filtro_periodo"
     )
+
+    # Botão de limpeza
+    if st.button("🧹 Limpar filtros"):
+        st.session_state.clear()
+        st.rerun()
 
 
 ##### TÍTULO DO DASHBOARD #####

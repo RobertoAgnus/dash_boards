@@ -171,30 +171,46 @@ with st.sidebar:
     ##### FILTRO DE STATUS #####
     status = dados['status']
 
+    if "filtro_status" not in st.session_state:
+        st.session_state.filtro_status = "Selecionar"
+
     # Adiciona selectbox status na sidebar:
     selectbox_status = st.selectbox(
         'Selecione o Status do Atendimento',
         ["Selecionar"] + status.unique().tolist(),
-        index=0
+        key="filtro_status"
     )
 
     ##### FILTRO DE INTERVALO DE DATA #####
     menor_data, maior_data = get_datas(dados)
     datas = dados['data']
 
+    if "filtro_periodo" not in st.session_state:
+        hoje = date.today()
+        st.session_state.filtro_periodo = (menor_data, hoje)
+
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
-        value=(menor_data,maior_data)
+        value=(menor_data,maior_data),
+        key="filtro_periodo"
     )
 
     ##### QUANTIDADE DE DISPAROS #####
     qtd_disparos = get_qtd_disparos(dados, selectbox_status, intervalo)
 
+    if "filtro_disparos" not in st.session_state:
+        st.session_state.filtro_disparos = "Selecionar"
+
     selectbox_disparos = st.selectbox(
         'Selecione a Quantidade de Disparos',
         ["Selecionar"] + qtd_disparos['status'].unique().tolist(),
-        index=0
+        key="filtro_disparos"
     )
+
+    # Botão de limpeza
+    if st.button("🧹 Limpar filtros"):
+        st.session_state.clear()
+        st.rerun()
     
 ##### TÍTULO DO DASHBOARD #####
 with st.container():

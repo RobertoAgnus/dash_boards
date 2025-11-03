@@ -106,12 +106,20 @@ def carregar_dados():
 
 ##### INTERFACE LATERAL #####
 with st.sidebar:
+    if "filtro_perfil" not in st.session_state:
+        st.session_state.filtro_perfil = "Contratados"
+
     st.title("Filtros")
     selectbox_perfil = st.selectbox(
         "Selecione o Perfil do Cliente",
         ["Contratados", "+3 Meses", "Sem Contrato", "Sem CPF"],
-        index=0
+        key="filtro_perfil"
     )
+
+    # Botão de limpeza
+    if st.button("🧹 Limpar filtros"):
+        st.session_state.clear()
+        st.rerun()
 
 ##### CARREGAR OS DADOS (1x) #####
 dados = carregar_dados()

@@ -26,7 +26,7 @@ def carregar_dados():
     conectar.conectar_mysql()
     conn = conectar.obter_conexao_mysql()
     
-    clientes_atendidos = consulta.clientes_atendidos_v1()
+    clientes_atendidos = consulta.clientes_atendidos()
     df = pd.read_sql(clientes_atendidos, conn)
 
     qtd_total_clientes = consulta.total_clientes()

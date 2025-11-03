@@ -58,13 +58,23 @@ def carregar_dados():
 with st.sidebar:
     st.title('Filtros')
 
+    if "filtro_tipo" not in st.session_state:
+        st.session_state.filtro_tipo = "Todos"
+
     ##### FILTRO DE CONTRATO #####
     selectbox_tipo_cliente = st.selectbox(
         'Selecione o tipo de Cliente',
         ["Todos", 'Sem Contrato', 'Com Contrato'],
-        index=0
+        key="filtro_tipo"
     )
 
+    # Botão de limpeza
+    if st.button("🧹 Limpar filtros"):
+        st.session_state.clear()
+        st.rerun()
+
+
+##### CARREGAR OS DADOS (1x) #####
 dados = carregar_dados()
 
 ##### TÍTULO DO DASHBOARD #####
