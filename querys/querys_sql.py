@@ -73,32 +73,13 @@ class QuerysSQL:
         return query
     
     ##### CLIENTES NOVOS #####
-    def qtd_clientes_novos(self):
-        query = f"""select
-                        count(distinct c.CPF) as total
-                    from CRM.Clientes c
-                    left join CRM.Contratos ct
-                        on c.id = ct.clienteId
-                    left join sistema.ContratosCorban ctb
-                        on c.id = ctb.clienteId
-                    where ct.prazo is null
-                        and ctb.prazo is null;"""
-        return query
-    
-    def qtd_clientes(self):
+    def qtd_clientes_total(self):
         query = f"""select 
                         count(distinct c.CPF) as total
                     from CRM.Clientes c;"""
         return query
-
-    def clientes_novos(self, tipo):
-        if tipo == 'Todos':
-            condicao = 'where 1 = 1'
-        elif tipo == 'Sem Contrato':
-            condicao = 'where ct.prazo is null and ctb.prazo is null'
-        elif tipo == 'Com Contrato':
-            condicao = 'where ct.prazo is not null or ctb.prazo is not null'
-
+    
+    def clientes_novos(self):
         query = f"""select distinct
                         ct.dataInclusao as "Inclusão CRM",
                         ctb.inclusao as "Inclusão Corban",
@@ -111,8 +92,7 @@ class QuerysSQL:
                     left join CRM.Contratos ct
                     on c.id = ct.clienteId
                     left join sistema.ContratosCorban ctb
-                    on c.id = ctb.clienteId
-                    {condicao};"""
+                    on c.id = ctb.clienteId;"""
         
         return query
     

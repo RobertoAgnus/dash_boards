@@ -19,17 +19,6 @@ alt.themes.enable("dark")
 ##### CRIAR INSTÂNCIA ÚNICA #####
 consulta = QuerysSQL()
 
-##### BARRA LATERAL #####
-with st.sidebar:
-    st.title('Filtros')
-
-    ##### FILTRO DE CONTRATO #####
-    selectbox_tipo_cliente = st.selectbox(
-        'Selecione o tipo de Cliente',
-        ["Todos", 'Sem Contrato', 'Com Contrato'],
-        index=0
-    )
-
 ##### FUNÇÃO PARA GERAR OS CARDS #####
 def metric_card(label, value):
     st.markdown(
@@ -48,49 +37,35 @@ def metric_card(label, value):
         unsafe_allow_html=True
     )
 
-@st.cache_data
-def get_qtd_clientes_novos(qtd_clientes_novos):
+##### CACHE DE CONSULTAS #####
+@st.cache_data(show_spinner=False)
+def carregar_dados():
     conectar = Conexao()
     conectar.conectar_mysql()
     conn = conectar.obter_conexao_mysql()
-    df = pd.read_sql(qtd_clientes_novos, conn)
-    
-    conectar.desconectar_mysql()
 
-    return df
+    qtd_clientes_total = consulta.qtd_clientes_total()
+    df_clientes_total  = pd.read_sql(qtd_clientes_total, conn)
 
-@st.cache_data
-def get_qtd_clientes(qtd_clientes):
-    conectar = Conexao()
-    conectar.conectar_mysql()
-    conn = conectar.obter_conexao_mysql()
-    df  = pd.read_sql(qtd_clientes, conn)
-    
-    conectar.desconectar_mysql()
-
-    return df
-
-@st.cache_data
-def get_clientes_novos(clientes_novos):
-    conectar = Conexao()
-    conectar.conectar_mysql()
-    conn = conectar.obter_conexao_mysql()
-    df = pd.read_sql(clientes_novos, conn)
+    clientes_novos = consulta.clientes_novos()
+    df_clientes_novos = pd.read_sql(clientes_novos, conn)
 
     conectar.desconectar_mysql()
 
-    return df
+    return {"qtd_total": df_clientes_total, "clientes_novos": df_clientes_novos}
 
-@st.cache_data
-def get_clientes_recorrentes(clientes_recorrentes):
-    conectar = Conexao()
-    conectar.conectar_mysql()
-    conn = conectar.obter_conexao_mysql()
-    df = pd.read_sql(clientes_recorrentes, conn)
+##### BARRA LATERAL #####
+with st.sidebar:
+    st.title('Filtros')
 
-    conectar.desconectar_mysql()
+    ##### FILTRO DE CONTRATO #####
+    selectbox_tipo_cliente = st.selectbox(
+        'Selecione o tipo de Cliente',
+        ["Todos", 'Sem Contrato', 'Com Contrato'],
+        index=0
+    )
 
-    return df
+dados = carregar_dados()
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
@@ -109,59 +84,58 @@ with st.container():
     with col_1a:
         
         ##### CARD TOTAL DE CLIENTES #####
-        qtd_clientes = consulta.qtd_clientes()
-        cd_clientes  = get_qtd_clientes(qtd_clientes)
+        df_clientes = dados['qtd_total']
 
-        metric_card("Total de Clientes", f"{format(int(cd_clientes['total']), ',').replace(',', '.')}")
+        metric_card("Total de Clientes", f"{format(int(df_clientes['total']), ',').replace(',', '.')}")
 
     with col_1b:
         ##### CARD CLIENTES NOVOS #####
-        qtd_clientes_novos = consulta.qtd_clientes_novos()
-        cd_clientes_novos = get_qtd_clientes_novos(qtd_clientes_novos)
+        df_qtd_clientes_novos = dados['clientes_novos'].drop_duplicates(subset="CPF")
+
+        df_qtd_clientes_novos = df_qtd_clientes_novos[(df_qtd_clientes_novos["Inclusão CRM"].isnull()) & (df_qtd_clientes_novos["Inclusão Corban"].isnull())]
         
-        metric_card("Clientes Novos", f"{format(int(cd_clientes_novos['total']), ',').replace(',', '.')}")
+        metric_card("Clientes Novos", f"{format(int(df_qtd_clientes_novos.shape[0]), ',').replace(',', '.')}")
 
     with col_1c:
         ##### CARD % CLIENTES NOVOS DO TOTAL #####
-        valor = f"{(int(cd_clientes_novos['total']) / int(cd_clientes['total']) * 100):.2f}".replace('.',',')
+        valor = f"{(int(df_qtd_clientes_novos.shape[0]) / int(df_clientes['total']) * 100):.2f}".replace('.',',')
         metric_card("% de Clientes Novos do Total", f"{valor} %")
 
 ##### ÁREA DA TABELA #####
 with st.container():
+    
     ##### TABELA DE CLIENTES #####
+    df_clientes_novos = dados['clientes_novos']
+
     if selectbox_tipo_cliente == "Sem Contrato":
         st.markdown("#### :blue[Detalhamento dos Clientes Novos]")
         
-        clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
-        tb_clientes_novos = get_clientes_novos(clientes_novos)
 
+        tb_clientes_novos = df_clientes_novos.drop_duplicates(subset='CPF')
+
+        tb_clientes_novos = tb_clientes_novos[(tb_clientes_novos["Inclusão CRM"].isnull()) & (tb_clientes_novos["Inclusão Corban"].isnull())]
+        
         tb_clientes_novos = tb_clientes_novos[['CPF','Nome','Telefone']]
-
-        tb_clientes_novos = tb_clientes_novos.drop_duplicates(subset='CPF')
         
         st.session_state.df = tb_clientes_novos
         
     elif selectbox_tipo_cliente == "Com Contrato":
         st.markdown("#### :blue[Detalhamento dos Clientes Recorrentes]")
         
-        clientes_recorrentes = consulta.clientes_novos(selectbox_tipo_cliente)
-        tb_clientes_recorrentes = get_clientes_recorrentes(clientes_recorrentes)
-
-        tb_clientes_recorrentes = tb_clientes_recorrentes[['Inclusão CRM','Inclusão Corban','CPF','Nome','Telefone']]
+        tb_clientes_recorrentes = df_clientes_novos[['Inclusão CRM','Inclusão Corban','CPF','Nome','Telefone']]
 
         tb_clientes_recorrentes['Inclusão CRM'] = pd.to_datetime(tb_clientes_recorrentes['Inclusão CRM'], errors='coerce').dt.strftime("%d/%m/%Y")
 
         tb_clientes_recorrentes['Inclusão Corban'] = pd.to_datetime(tb_clientes_recorrentes['Inclusão Corban'], errors='coerce').dt.strftime("%d/%m/%Y")
+
+        tb_clientes_recorrentes = tb_clientes_recorrentes[(~tb_clientes_recorrentes["Inclusão CRM"].isnull()) | (~tb_clientes_recorrentes["Inclusão Corban"].isnull())]
 
         st.session_state.df = tb_clientes_recorrentes
         
     else:
         st.markdown("#### :blue[Detalhamento de todos os Clientes]")
         
-        clientes_novos = consulta.clientes_novos(selectbox_tipo_cliente)
-        tb_clientes_todos = get_clientes_novos(clientes_novos)
-
-        tb_clientes_todos = tb_clientes_todos[['Inclusão CRM','Inclusão Corban','CPF','Nome','Telefone']]
+        tb_clientes_todos = df_clientes_novos[['Inclusão CRM','Inclusão Corban','CPF','Nome','Telefone']]
 
         tb_clientes_todos['Inclusão CRM'] = pd.to_datetime(tb_clientes_todos['Inclusão CRM'], errors='coerce').dt.strftime("%d/%m/%Y")
 
