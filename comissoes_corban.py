@@ -3,11 +3,11 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
+pd.set_option('display.max_columns', None)
+
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
 
-# from querys.querys_csv import QuerysCSV
-# import duckdb as dk
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
@@ -18,147 +18,42 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
-# dk.execute("PRAGMA memory_limit='8GB';")
+##### CRIAR INSTÂNCIA ÚNICA #####
+consulta = QuerysSQL()
 
-##### CONEXÃO COM O BANCO DE DADOS #####
-# Criar uma instância da classe Conexao
-# conectar = Conexao()
-# conectar.conectar_postgres()
-
-# Conectando ao banco de dados PostgreSQL
-# conn = conectar.obter_conexao_postgres()
-
-##### CRIAR INSTÂNCIA DO BANCO #####
-consulta_sql = QuerysSQL()
-# consulta_csv = QuerysCSV()
-
-@st.cache_data
-def get_data_proposta(data_proposta):
+##### CACHE DE CONSULTAS #####
+@st.cache_data(show_spinner=False)
+def carregar_dados():
     conectar = Conexao()
     conectar.conectar_postgres()
     conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(data_proposta, conn)
-    
-    conectar.desconectar_postgres()
 
-    return df
+    api = consulta.api()
+    comissionamento = consulta.comissionamento()
+    comissao = consulta.comissoes()
+    data = consulta.datas()
+    proposta = consulta.proposta()
+    propostas = consulta.propostas()
 
-@st.cache_data
-def get_origem_proposta(origem_proposta):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(origem_proposta, conn)
-    
-    conectar.desconectar_postgres()
+    df_api = pd.read_sql_query(api, conn)
+    df_comissionamento = pd.read_sql_query(comissionamento, conn)
+    df_comissao = pd.read_sql_query(comissao, conn)
+    df_data = pd.read_sql_query(data, conn)
+    df_proposta = pd.read_sql_query(proposta, conn)
+    df_propostas = pd.read_sql_query(propostas, conn)
 
-    return df
-
-@st.cache_data
-def get_qtd_comissoes_aguardando(qtd_comissoes):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(qtd_comissoes, conn)
-    
-    conectar.desconectar_postgres()
-
-    return df
-
-@st.cache_data
-def get_qtd_comissoes_pagas(qtd_pagas):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(qtd_pagas, conn)
-    
-    conectar.desconectar_postgres()
-
-    return df
-
-@st.cache_data
-def get_qtd_comissoes_total(qtd_total):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(qtd_total, conn)
-    
-    conectar.desconectar_postgres()
-
-    return df
-
-@st.cache_data
-def get_corban(corban):
-    conectar = Conexao()
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
-    df = pd.read_sql_query(corban, conn)
-    
-    conectar.desconectar_postgres()
-
-    return df
-
-##### INTERVALO DE DATA DO ARQUIVO #####
-data_proposta = consulta_sql.data_proposta_corban()
-data = get_data_proposta(data_proposta)
-
-# Converting the 'data' column to datetime format (caso não esteja)
-data['data'] = pd.to_datetime(data['data'])
-
-# Obtendo a menor e a maior data da coluna 'data'
-menor_data = data['data'].min()
-maior_data = date.today()
-
-##### ORIGEM DAS PROPOSTAS CONTRATADAS #####
-origem_proposta = consulta_sql.origem_proposta_corban()
-origem = get_origem_proposta(origem_proposta)
-
-##### BARRA LATERAL #####
-with st.sidebar:
-    st.title('Filtros')
-
-    ##### FILTRO DE ORIGEM #####
-    selectbox_origem = st.selectbox(
-        'Selecione a origem',
-        ['Selecionar'] + origem['origem'].unique().tolist(),
-        index=0
-    )
-    
-    origem = {
-                "BioWpp": ["BioWpp"],
-                "Chat Bot": ["Chat Bot"],
-                "Disparo": ["Disparo"],
-                "Indicação": ["INDICAÇÃO"],
-                "Instagram": ["Instagram"],
-                "Não Identificado": ["NÃO IDENTIFICADO"],
-                "Planilha": ["Planilha"],
-                "Site": ["Site"],
-                "TINTIN": ["TINTIN"],
-                "Facebook": ["FA","Facebook","Facebook (M1)","FB","FC","FD","TA","TB","TC","TD","TE","Trafego","CMP [M1]","CMP [T01]","CMP [TP1]","CMP [TP2]","CP 01","CP 02","CLT trafego"],
-                "TikTok": ["TKT 4","TKT 5","TN1","TN2","TQ","Tráfego - Tiktok1","Tráfego - Tiktok2","Tráfego - Tiktok3"],
-                "SMS": ["SMS 01","SMS 02","SMS 03","SMS 04"],
-                "carteira": ["Cliente de Carteira","CLT carteira"]
+    dados = {
+                'api': df_api, 
+                'comissionamento': df_comissionamento,
+                'comissao': df_comissao,
+                'data': df_data,
+                'proposta': df_proposta,
+                'propostas': df_propostas
             }
 
-    ##### FILTRO DE DATA #####
-    intervalo = st.date_input(
-        "Selecione um intervalo de datas:",
-        value=(menor_data,maior_data)
-    )
+    conectar.desconectar_postgres()
 
-    # Trata o intervalo de data para busca no banco de dados
-    if len(intervalo) == 2:
-        data_inicio, data_fim = intervalo
-        intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
-        i_qtd = f"BETWEEN GREATEST('{data_inicio}'::date, CURRENT_DATE - INTERVAL '7 days') AND '{data_fim}'::date"
-    else:
-        data_atual = pd.Timestamp.today()
-        
-        data_inicio = intervalo[0]
-        data_fim = data_atual.date()
-        
-        intervalo_data = f"between '{data_inicio}' and '{data_fim}'"
-        i_qtd = f"BETWEEN GREATEST('{data_inicio}'::date, CURRENT_DATE - INTERVAL '7 days') AND '{data_fim}'::date"
+    return dados
 
 ##### FUNÇÃO PARA GERAR OS CARDS #####
 def metric_card(label, value):
@@ -178,50 +73,197 @@ def metric_card(label, value):
         unsafe_allow_html=True
     )
     
-##### OBTEM QTD COMISSOES AGUARDANDO #####
-qtd_comissoes = consulta_sql.qtd_comissoes_aguardando(selectbox_origem, i_qtd)
-df_qtd_comissao_aguardando = get_qtd_comissoes_aguardando(qtd_comissoes)
+def get_datas_propostas(dados):
+    df_datas = dados['propostas']
+    
+    # Converting the 'data' column to datetime format (caso não esteja)
+    df_datas['data'] = pd.to_datetime(df_datas['data_status'], dayfirst=True)
 
-##### OBTEM QTD COMISSOES PAGAS #####
-qtd_pagas = consulta_sql.qtd_comissoes_pagas(selectbox_origem, intervalo_data)
-df_qtd_comissao_pagas = get_qtd_comissoes_pagas(qtd_pagas)
+    # Obtendo a menor e a maior data da coluna 'data'
+    menor_data = df_datas['data'].min()
+    maior_data = date.today()
 
-##### OBTEM QTD COMISSOES TOTAL #####
-qtd_total = consulta_sql.qtd_comissoes_total(selectbox_origem, intervalo_data)
-df_qtd_comissao_total = get_qtd_comissoes_total(qtd_total)
+    return menor_data, maior_data
 
-##### OBTEM TABELA DE COMISSOES #####
-corban = consulta_sql.tabela_corban(selectbox_origem, intervalo_data)
-df_comissao = get_corban(corban)
+def get_origem_propostas(dados):
+    origem = dados['propostas']
 
-df_comissao['Data da Comissão'] = pd.to_datetime(df_comissao['Data da Comissão']).dt.strftime('%d/%m/%Y')
+    mapeamento = {
+                    "BioWpp": ["BioWpp"],
+                    "Chat Bot": ["Chat Bot"],
+                    "Disparo": ["Disparo"],
+                    "Indicação": ["INDICAÇÃO"],
+                    "Instagram": ["Instagram"],
+                    "Não Identificado": ["NÃO IDENTIFICADO"],
+                    "Planilha": ["Planilha"],
+                    "Site": ["Site"],
+                    "TINTIN": ["TINTIN"],
+                    "Facebook": ["FA","Facebook","Facebook (M1)","FB","FC","FD","TA","TB","TC","TD","TE","Trafego","CMP [M1]","CMP [T01]","CMP [TP1]","CMP [TP2]","CP 01","CP 02","CLT trafego"],
+                    "TikTok": ["TKT 4","TKT 5","TN1","TN2","TQ","Tráfego - Tiktok1","Tráfego - Tiktok2","Tráfego - Tiktok3"],
+                    "SMS": ["SMS 01","SMS 02","SMS 03","SMS 04"],
+                    "carteira": ["Cliente de Carteira","CLT carteira"]
+                }
+    
+    mapa_invertido = {
+        variante: chave
+        for chave, variantes in mapeamento.items()
+        for variante in variantes
+    }
 
-# df_comissao['Valor'] = df_comissao['Valor'].astype(float)
+    origem["origem"] = origem["origem"].map(mapa_invertido).fillna(origem["origem"])
 
-df_comissao_agrupado = df_comissao.groupby(['Data da Comissão', 'Proposta', 'Origem'], as_index=False).agg({'Valor': 'sum'})
+    origem = origem.drop_duplicates(subset='origem').sort_values('origem')
 
-total = pd.DataFrame({"Categoria": ["Total"], "Valor": [df_comissao_agrupado["Valor"].sum()]})
+    return origem['origem']
 
-total_metric = f"{df_qtd_comissao_total['total'].sum():.2f}"
+def trata_datas(intervalo):
+    # Trata o intervalo de data para busca no banco de dados
+    if len(intervalo) == 2:
+        data_inicio, data_fim = intervalo
+    
+    elif len(intervalo) == 1:
+        data_inicio = intervalo[0]
+        data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+    
+    else:
+        data_inicio, data_fim = get_datas_propostas(dados)
 
-# df_comissao_pago = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Pago']
-# total_pago = f'{df_comissao_pago['Valor'].sum():.2f}'
+    data_inicio = pd.to_datetime(data_inicio)
+    data_fim = pd.to_datetime(data_fim)
 
-# df_comissao_aguardando = df_comissao_agrupado[(df_comissao_agrupado['Status'] == 'Aguardando Pagamento') | (df_comissao_agrupado['Status'] == '')]
-total_aguardando = f"{df_qtd_comissao_aguardando['aguardando'].sum():.2f}"
-total_pago = f"{df_qtd_comissao_pagas['pago'].sum():.2f}"
-print(total_metric)
-if total_metric == '0.00':
-    taxa_pagamento = 0.0
-else:
-    taxa_pagamento = (float(total_pago) / float(total_metric)) * 100
+    return data_inicio, data_fim
 
-# total_qtd = df_comissao_agrupado['Status'].count()
+def get_qtd_comissoes_total(dados, origem, intervalo):
+    comissoes = dados['comissao']
+    propostas = dados['propostas']
 
-# df_comissao_cancelado = df_comissao_agrupado[df_comissao_agrupado['Status'] == 'Cancelado']
-# total_cancelado = df_comissao_cancelado['Status'].count()
+    df = pd.merge(comissoes, propostas, on='proposta_id', how='left')
+    
+    data_inicio, data_fim = trata_datas(intervalo)
 
-# total_qtd_conversao = f'{((total_qtd - total_cancelado) / total_qtd) * 100:.2f}'
+    df['data_x'] = pd.to_datetime(df['data_x'], errors='coerce')
+
+    if origem == 'Selecionar':
+        condicao = (df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim)
+    else:
+        condicao = (df['origem'] == origem) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
+
+    df = df[condicao]
+    
+    return df['valor'].sum()
+
+def get_qtd_comissoes_pagas(dados, origem, intervalo):
+    api = dados['api']
+    comissoes = dados['comissao']
+    datas = dados['data']
+    proposta = dados['proposta']
+    propostas = dados['propostas']
+
+    df1 = pd.merge(api, comissoes, on='proposta_id', how='left')
+    df2 = pd.merge(df1, datas, on='proposta_id', how='left')
+    df3 = pd.merge(df2, proposta, on='proposta_id', how='left')
+    df = pd.merge(df3, propostas, on='proposta_id', how='left')
+    
+    data_inicio, data_fim = trata_datas(intervalo)
+    
+    df['data_status_api'] = pd.to_datetime(df['data_status_api'], errors='coerce')
+
+    if origem == 'Selecionar':
+        condicao = (df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim)
+    else:
+        condicao = (df['origem'] == origem) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
+
+    df = df[(df['valor'] != 0)
+            & (df['cancelado'].isnull())
+            & (~df['pagamento'].isnull()) 
+            & condicao 
+            & (df['status_api'] == 'APROVADA')
+            & (df['valor_total_comissionado'] != 0)
+            & (df['status_nome'] != 'Cancelado')]
+
+    return df['valor'].sum(), len(df.drop_duplicates(subset='proposta_id'))
+
+def get_qtd_comissao_aguardando(dados, origem, intervalo):
+    api = dados['api']
+    comissionamento = dados['comissionamento']
+    comissoes = dados['comissao']
+    datas = dados['data']
+    proposta = dados['proposta']
+    propostas = dados['propostas']
+
+    df1 = pd.merge(api, comissoes, on='proposta_id', how='left')
+    df2 = pd.merge(df1, comissionamento, on='proposta_id', how='left')
+    df3 = pd.merge(df2, datas, on='proposta_id', how='left')
+    df4 = pd.merge(df3, proposta, on='proposta_id', how='left')
+    df = pd.merge(df4, propostas, on='proposta_id', how='left')
+    
+    data_inicio, data_fim = trata_datas(intervalo)
+    
+    df['data_status_api'] = pd.to_datetime(df['data_status_api'], errors='coerce')
+
+    if origem == 'Selecionar':
+        condicao = (df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim)
+    else:
+        condicao = (df['origem'] == origem) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
+
+    df = df[(df['valor'].isnull())
+            & (df['cancelado'].isnull())
+            & condicao 
+            & (df['status_api'] == 'APROVADA')
+            & (df['valor_total_comissionado'] == 0)
+            & (df['status_nome'] != 'Cancelado')]
+    
+    return df['recebe_valor_base'].sum()
+
+def get_detalhamento_operacoes(dados, origem, intervalo):
+    comissoes = dados['comissao']
+    propostas = dados['propostas']
+
+    df = pd.merge(comissoes, propostas, on='proposta_id', how='left')
+    
+    data_inicio, data_fim = trata_datas(intervalo)
+
+    df['data_x'] = pd.to_datetime(df['data_x'], errors='coerce')
+
+    if origem == 'Selecionar':
+        condicao = (df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim)
+    else:
+        condicao = (df['origem'] == origem) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
+
+    df = df[condicao]
+
+    df = df[['data_x', 'proposta_id', 'origem', 'valor']].sort_values('data_x')
+    df = df.rename(columns={'data_x': 'Data da Comissão', 'origem': 'Origem', 'valor': 'Valor', 'proposta_id': 'Proposta'})
+
+    df_agrupado = df.groupby(['Data da Comissão', 'Proposta', 'Origem'], as_index=False).agg({'Valor': 'sum'})
+
+    return df_agrupado
+
+
+dados = carregar_dados()
+
+##### ORIGEM DAS PROPOSTAS CONTRATADAS #####
+lista_origem = get_origem_propostas(dados)
+
+##### BARRA LATERAL #####
+with st.sidebar:
+    st.title('Filtros')
+
+    ##### FILTRO DE ORIGEM #####
+    selectbox_origem = st.selectbox(
+        'Selecione a origem',
+        ['Selecionar'] + lista_origem.tolist(),
+        index=0
+    )
+    
+    ##### FILTRO DE DATA #####
+    menor_data, maior_data = get_datas_propostas(dados)
+    
+    intervalo = st.date_input(
+        "Selecione um intervalo de datas:",
+        value=(menor_data,maior_data)
+    )
+
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
@@ -234,48 +276,72 @@ with st.container():
 
 ##### CORPO DO DASHBOARD #####
 with st.container():
-    col_1, col_2 = st.columns((2, 8.5), gap="medium")   #, col_3 = st.columns((2, 2, 8.5), gap="medium")
+    col_1, col_2, col_3 = st.columns((3.33, 3.33, 3.33), gap="medium")
 
     ##### ÁREA DOS CARDS #####
     with col_1:
-        st.markdown("### :blue[Valor Comissões]")
-        valor_total = f"R$ {format(float(total_metric), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+        ##### TOTAL DE COMISSÕES #####
+        total_comissao = get_qtd_comissoes_total(dados, selectbox_origem, intervalo)
+
+        valor_total = f"R$ {format(float(total_comissao), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+        
         metric_card("Valor Total", f"{valor_total}")
 
-        valor_pago = f"R$ {format(float(total_pago), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+    with col_2:
+        ##### TOTAL DECOMISSÕES PAGAS #####
+        comissoes_pagas, qtd_operacoes = get_qtd_comissoes_pagas(dados, selectbox_origem, intervalo)
+
+        valor_pago = f"R$ {format(float(comissoes_pagas), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+
         metric_card("Valor Pago", f"{valor_pago}")
 
-        valor_aguardando = f"R$ {format(float(total_aguardando), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+    with col_3:
+        comissoes_aguardando = get_qtd_comissao_aguardando(dados, selectbox_origem, intervalo)
+
+        valor_aguardando = f"R$ {format(float(comissoes_aguardando), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
+
         metric_card("Valor Aguardando", f"{valor_aguardando}")
 
-        # qtd_cancelado = f"{int(total_qtd_conversao)}"
+with st.container():
+    col_1, col_2, col_3 = st.columns((3.33, 3.33, 3.33), gap="medium")
+
+    with col_1:
+        if total_comissao == '0.00':
+            taxa_pagamento = 0.0
+        else:
+            taxa_pagamento = (float(comissoes_pagas) / float(total_comissao)) * 100
+
         metric_card("Taxa de Pagamento", f"{format(float(taxa_pagamento), ',.2f').replace('.',',')} %")
 
-    # with col_2:
-    #     st.markdown("### :blue[Valor Comissões]")
-    #     valor_total = f"R$ {format(float(total_metric), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
-    #     metric_card("Valor Total", f"{valor_total}")
-
-    #     valor_pago = f"R$ {format(float(total_pago), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
-    #     metric_card("Valor Pago", f"{valor_pago}")
-
-    #     valor_aguardando = f"R$ {format(float(total_aguardando), ',.2f').replace('.','|').replace(',','.').replace('|',',')}"
-    #     metric_card("Valor Aguardando", f"{valor_aguardando}")
-
-    #     # qtd_cancelado = f"{int(total_qtd_conversao)}"
-    #     metric_card("Conversão", f"{format(float(total_qtd_conversao), ',.2f').replace('.',',')} %")
-        
-##### ÁREA DA TABELA #####
     with col_2:
-        ##### TABELA DE CLIENTES #####
-        st.markdown("### :blue[Detalhamento das Comissões]")
-        st.dataframe(df_comissao_agrupado, height=500, hide_index=True)
+        if total_comissao == '0.00':
+            taxa_pendencia = 0.0
+        else:
+            taxa_pendencia = (float(comissoes_aguardando) / float(total_comissao)) * 100
 
-        ##### BOTÃO EXPORTAR TABELA #####
-        csv = df_comissao_agrupado.to_csv(index=False)
-        st.download_button(
-            label="⬇️ Baixar planilha",
-            data=csv,
-            file_name="dados.csv",
-            mime="text/csv",
-        )
+        metric_card("Taxa de Pendência", f"{format(float(taxa_pendencia), ',.2f').replace('.',',')} %")
+
+    with col_3: 
+        if qtd_operacoes == 0:
+            ticket_medio = 0.0
+        else:
+            ticket_medio = (float(comissoes_pagas) / float(qtd_operacoes))
+            
+        metric_card("Ticket Médio", f"R$ {format(float(ticket_medio), ',.2f').replace('.','|').replace(',','.').replace('|',',')}")
+
+##### ÁREA DA TABELA #####
+with st.container():
+    df_comissao_agrupado = get_detalhamento_operacoes(dados, selectbox_origem, intervalo)
+    
+    ##### TABELA DE CLIENTES #####
+    st.markdown("### :blue[Detalhamento das Comissões]")
+    st.dataframe(df_comissao_agrupado, height=500, hide_index=True)
+
+    ##### BOTÃO EXPORTAR TABELA #####
+    csv = df_comissao_agrupado.to_csv(index=False)
+    st.download_button(
+        label="⬇️ Baixar planilha",
+        data=csv,
+        file_name="dados.csv",
+        mime="text/csv",
+    )

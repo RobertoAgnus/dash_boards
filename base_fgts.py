@@ -5,7 +5,6 @@ import duckdb as dk
 
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
-# from querys.querys_csv import QuerysCSV
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
@@ -19,7 +18,6 @@ alt.themes.enable("dark")
 dk.execute("PRAGMA memory_limit='8GB';")
 
 ##### INSTÂNCIAS ÚNICAS #####
-# consulta_csv = QuerysCSV()
 consulta_sql = QuerysSQL()
 
 ##### FUNÇÕES AUXILIARES #####
@@ -44,13 +42,6 @@ def metric_card(label, value):
         """, unsafe_allow_html=True
     )
 
-##### CACHE DE CONEXÃO #####
-# @st.cache_resource
-# def get_connection():
-#     conn = Conexao()
-#     conn.conectar_mysql()
-#     return conn.obter_conexao_mysql()
-
 ##### CACHE DE CONSULTAS #####
 @st.cache_data(show_spinner=False)
 def carregar_dados():
@@ -62,14 +53,12 @@ def carregar_dados():
 
     conectar.conectar_postgres()
     conn_postgres = conectar.obter_conexao_postgres()
-    # conn = get_connection()
-
+    
     try:
         conn_mysql.ping(reconnect=True)  # reabre se estiver desconectada
-        # conn_postgres.ping(reconnect=True)
         
         telefones_corban = consulta_sql.obtem_telefones()
-        # df_telefones_corban = dk.query(telefones_corban).to_df()
+    
         df_telefones_corban = pd.read_sql_query(telefones_corban, conn_postgres)
         df_telefones_corban["telefoneAPICorban"] = df_telefones_corban["telefoneAPICorban"].map(tratar_numero)
 
@@ -149,13 +138,16 @@ with col_2:
     st.title(":blue[Análise dos Clientes]")
 
 ##### CARDS E TABELA #####
-col_1, col_2 = st.columns((1.5, 8.5))
-with col_1:
-    st.markdown("### :blue[Perfil dos Clientes]")
+with st.container():
+    col_1, col_2, col_3, col_4 = st.columns((2.5, 2.5, 2.5, 2.5))
+    colunas = [col_1, col_2, col_3, col_4]
+    count = 0
     for k, v in contagens.items():
-        metric_card(f"Clientes {k}", f"{v:,}".replace(",", "."))
+        with colunas[count]:
+            metric_card(f"Clientes {k}", f"{v:,}".replace(",", "."))
+        count += 1
 
-with col_2:
+with st.container():
     st.markdown(f"### :blue[Detalhamento dos Clientes {texto_tabela}]")
     st.dataframe(df_tabela, use_container_width=True, height=500, hide_index=True)
 
