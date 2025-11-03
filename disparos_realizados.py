@@ -258,6 +258,9 @@ with st.container():
 
     with col_1:
         st.markdown("### :blue[Status por Data]")
+
+        df_disparos_agrupados['data'] = pd.to_datetime(df_disparos_agrupados['data']).dt.date
+
         chart = (
             alt.Chart(df_disparos_agrupados)
             .mark_line(point=True)
@@ -284,6 +287,9 @@ with st.container():
 
     with col_2:
         ##### TABELA DE CLIENTES #####
+        df_disparos['data'] = pd.to_datetime(df_disparos['data'])
+        df_disparos['data'] = df_disparos['data'].dt.strftime('%d/%m/%Y')
+        
         st.markdown("### :blue[Disparos por Clientes]")
         st.dataframe(df_disparos, height=500, hide_index=True)
 

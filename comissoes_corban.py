@@ -348,6 +348,10 @@ with st.container():
     
     ##### TABELA DE CLIENTES #####
     st.markdown("### :blue[Detalhamento das Comissões]")
+
+    df_comissao_agrupado['Data da Comissão'] = pd.to_datetime(df_comissao_agrupado['Data da Comissão'])
+    df_comissao_agrupado['Data da Comissão'] = df_comissao_agrupado['Data da Comissão'].dt.strftime('%d/%m/%Y')
+    
     st.dataframe(df_comissao_agrupado, height=500, hide_index=True)
 
     ##### BOTÃO EXPORTAR TABELA #####

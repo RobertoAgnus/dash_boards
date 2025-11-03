@@ -258,6 +258,8 @@ with st.container():
 
         df_clientes_atendidos_agrupados = get_etapa_por_data(dados, selectbox_etapa, intervalo)
 
+        df_clientes_atendidos_agrupados['Data'] = pd.to_datetime(df_clientes_atendidos_agrupados['Data']).dt.date
+
         chart = (
             alt.Chart(df_clientes_atendidos_agrupados)
             .mark_line(point=True)
@@ -288,6 +290,10 @@ with st.container():
 
         df_clientes_atendidos = df_clientes_atendidos[['Data', 'CPF', 'Nome', 'telefoneLead', 'Cidade', 'UF', 'etapa_padronizada']]
         df_clientes_atendidos = df_clientes_atendidos.rename(columns={'telefoneLead': 'Telefone', 'etapa_padronizada': 'Etapa'})
+
+        df_clientes_atendidos['Data'] = pd.to_datetime(df_clientes_atendidos['Data'])
+        df_clientes_atendidos['Data'] = df_clientes_atendidos['Data'].dt.strftime('%d/%m/%Y')
+
         st.dataframe(df_clientes_atendidos, width='stretch', height=500, hide_index=True)
 
         ##### BOTÃO EXPORTAR TABELA #####

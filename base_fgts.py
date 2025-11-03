@@ -81,7 +81,7 @@ def carregar_dados():
             # Tratamento de telefones em lote (mais rápido que apply em Python puro)
             for col in ["telefone", "telefoneLeads"]:
                 if col in df.columns:
-                    df[col] = df[col].astype(str).map(tratar_numero)
+                    df[col] = df[col].map(tratar_numero)
 
             # Formatação numérica (vetorizada)
             for col in ["valorFinanciado", "valorLiberado"]:
@@ -157,6 +157,13 @@ with st.container():
 
 with st.container():
     st.markdown(f"### :blue[Detalhamento dos Clientes {texto_tabela}]")
+
+    df_tabela['dataInclusao'] = pd.to_datetime(df_tabela['dataInclusao'])
+    df_tabela['dataInclusao'] = df_tabela['dataInclusao'].dt.strftime('%d/%m/%Y')
+    
+    df_tabela['dataPagamento'] = pd.to_datetime(df_tabela['dataPagamento'])
+    df_tabela['dataPagamento'] = df_tabela['dataPagamento'].dt.strftime('%d/%m/%Y')
+    
     st.dataframe(df_tabela, use_container_width=True, height=500, hide_index=True)
 
     csv = df_tabela.to_csv(index=False).encode("utf-8")
