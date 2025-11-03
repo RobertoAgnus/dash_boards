@@ -5,7 +5,7 @@ import duckdb as dk
 
 from querys.querys_sql import QuerysSQL
 from querys.connect import Conexao
-from querys.querys_csv import QuerysCSV
+# from querys.querys_csv import QuerysCSV
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
@@ -19,7 +19,7 @@ alt.themes.enable("dark")
 dk.execute("PRAGMA memory_limit='8GB';")
 
 ##### INSTÂNCIAS ÚNICAS #####
-consulta_csv = QuerysCSV()
+# consulta_csv = QuerysCSV()
 consulta_sql = QuerysSQL()
 
 ##### FUNÇÕES AUXILIARES #####
@@ -56,15 +56,21 @@ def metric_card(label, value):
 def carregar_dados():
     """Executa todas as consultas necessárias apenas uma vez."""
     conectar = Conexao()
+    
     conectar.conectar_mysql()
-    conn = conectar.obter_conexao_mysql()
+    conn_mysql = conectar.obter_conexao_mysql()
+
+    conectar.conectar_postgres()
+    conn_postgres = conectar.obter_conexao_postgres()
     # conn = get_connection()
 
     try:
-        conn.ping(reconnect=True)  # reabre se estiver desconectada
+        conn_mysql.ping(reconnect=True)  # reabre se estiver desconectada
+        # conn_postgres.ping(reconnect=True)
         
-        telefones_corban = consulta_csv.obtem_telefones()
-        df_telefones_corban = dk.query(telefones_corban).to_df()
+        telefones_corban = consulta_sql.obtem_telefones()
+        # df_telefones_corban = dk.query(telefones_corban).to_df()
+        df_telefones_corban = pd.read_sql_query(telefones_corban, conn_postgres)
         df_telefones_corban["telefoneAPICorban"] = df_telefones_corban["telefoneAPICorban"].map(tratar_numero)
 
         # Dicionário de condições SQL
@@ -81,7 +87,7 @@ def carregar_dados():
                 query = consulta_sql.clientes_sem_cpf()
             else:
                 query = consulta_sql.consulta_base_fgts(cond)
-            df = pd.read_sql(query, conn)
+            df = pd.read_sql(query, conn_mysql)
 
             # Tratamento de telefones em lote (mais rápido que apply em Python puro)
             for col in ["telefone", "telefoneLeads"]:
@@ -106,6 +112,7 @@ def carregar_dados():
         st.error(f"Erro de conexão: {e}")
 
     conectar.desconectar_mysql()
+    conectar.desconectar_postgres()
 
 
 ##### INTERFACE LATERAL #####
