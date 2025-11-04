@@ -146,7 +146,7 @@ def get_qtd_comissoes_total(dados, origem, intervalo):
     if origem == 'Selecionar':
         condicao = (df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim)
     else:
-        condicao = (df['origem'] == origem) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
+        condicao = (df['origem'].isin(origem)) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
 
     df = df[condicao]
     
@@ -171,7 +171,7 @@ def get_qtd_comissoes_pagas(dados, origem, intervalo):
     if origem == 'Selecionar':
         condicao = (df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim)
     else:
-        condicao = (df['origem'] == origem) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
+        condicao = (df['origem'].isin(origem)) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
 
     df = df[(df['valor'] != 0)
             & (df['cancelado'].isnull())
@@ -204,7 +204,7 @@ def get_qtd_comissao_aguardando(dados, origem, intervalo):
     if origem == 'Selecionar':
         condicao = (df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim)
     else:
-        condicao = (df['origem'] == origem) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
+        condicao = (df['origem'].isin(origem)) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
 
     df = df[(df['valor'].isnull())
             & (df['cancelado'].isnull())
@@ -228,7 +228,7 @@ def get_detalhamento_operacoes(dados, origem, intervalo):
     if origem == 'Selecionar':
         condicao = (df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim)
     else:
-        condicao = (df['origem'] == origem) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
+        condicao = (df['origem'].isin(origem)) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
 
     df = df[condicao]
 
@@ -253,7 +253,7 @@ with st.sidebar:
     if "filtro_origem" not in st.session_state:
         st.session_state.filtro_origem = "Selecionar"
 
-    selectbox_origem = st.selectbox(
+    selectbox_origem = st.multiselect(
         'Selecione a origem',
         ['Selecionar'] + lista_origem.tolist(),
         key="filtro_origem"
@@ -319,7 +319,7 @@ with st.container():
     col_1, col_2, col_3 = st.columns((3.33, 3.33, 3.33), gap="medium")
 
     with col_1:
-        if total_comissao == '0.00':
+        if total_comissao == 0:
             taxa_pagamento = 0.0
         else:
             taxa_pagamento = (float(comissoes_pagas) / float(total_comissao)) * 100
@@ -327,7 +327,7 @@ with st.container():
         metric_card("Taxa de Pagamento", f"{format(float(taxa_pagamento), ',.2f').replace('.',',')} %")
 
     with col_2:
-        if total_comissao == '0.00':
+        if total_comissao == 0:
             taxa_pendencia = 0.0
         else:
             taxa_pendencia = (float(comissoes_aguardando) / float(total_comissao)) * 100

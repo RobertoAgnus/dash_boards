@@ -67,7 +67,7 @@ def get_qtd_disparos(dados, selectbox_status, intervalo):
     if selectbox_status == 'Selecionar':
         condicao = (dados['data'] >= data_inicio) & (dados['data'] <= data_fim)
     else:
-        condicao = (dados['status'] == selectbox_status) & ((dados['data'] >= data_inicio) & (dados['data'] <= data_fim))
+        condicao = (dados['status'].isin(selectbox_status)) & ((dados['data'] >= data_inicio) & (dados['data'] <= data_fim))
 
     qtd_disparos = dados[condicao]
     qtd_disparos = qtd_disparos.groupby(["data","telefone","CPF"]).count()
@@ -114,9 +114,9 @@ def get_disparos(dados, selectbox_status, selectbox_disparos, intervalo):
     df_disparados = pd.merge(dados,df_disparados_2, on=['data','telefone','CPF'], how='left')
 
     if selectbox_disparos != 'Selecionar' and selectbox_status != 'Selecionar':
-        df_disparados = df_disparados[(df_disparados['Qtd'] == selectbox_disparos) & (df_disparados['status'] == selectbox_status)]
+        df_disparados = df_disparados[(df_disparados['Qtd'] == selectbox_disparos) & (df_disparados['status'].isin(selectbox_status))]
     elif selectbox_disparos == 'Selecionar' and selectbox_status != 'Selecionar':
-        df_disparados = df_disparados[(df_disparados['status'] == selectbox_status)]
+        df_disparados = df_disparados[(df_disparados['status'].isin(selectbox_status))]
     elif selectbox_disparos != 'Selecionar' and selectbox_status == 'Selecionar':
         df_disparados = df_disparados[(df_disparados['Qtd'] == selectbox_disparos)]
 
@@ -175,7 +175,7 @@ with st.sidebar:
         st.session_state.filtro_status = "Selecionar"
 
     # Adiciona selectbox status na sidebar:
-    selectbox_status = st.selectbox(
+    selectbox_status = st.multiselect(
         'Selecione o Status do Atendimento',
         ["Selecionar"] + status.unique().tolist(),
         key="filtro_status"
@@ -183,11 +183,9 @@ with st.sidebar:
 
     ##### FILTRO DE INTERVALO DE DATA #####
     menor_data, maior_data = get_datas(dados)
-    datas = dados['data']
-
+    
     if "filtro_periodo" not in st.session_state:
-        hoje = date.today()
-        st.session_state.filtro_periodo = (menor_data, hoje)
+        st.session_state.filtro_periodo = (menor_data, maior_data)
 
     intervalo = st.date_input(
         "Selecione um intervalo de datas:",
@@ -241,7 +239,7 @@ with st.container():
             df_disparos_status = df_disparos
             texto = 'Todos'
         else:    
-            df_disparos_status = df_disparos[df_disparos['status'] == selectbox_status]
+            df_disparos_status = df_disparos[df_disparos['status'].isin(selectbox_status)]
             texto = selectbox_status
 
         metric_card(f'Disparos "{texto}"', f"{format(int(df_disparos_status['status'].shape[0]), ',').replace(',', '.')}")

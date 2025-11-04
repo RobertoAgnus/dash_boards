@@ -133,7 +133,7 @@ def get_contatos_realizados(dados, selectbox_etapa, intervalo):
     if selectbox_etapa == 'Selecionar':
         condicao = (dados['Data'] >= data_inicio) & (dados['Data'] <= data_fim)
     else:
-        condicao = (dados['etapa_padronizada'] == selectbox_etapa) & ((dados['Data'] >= data_inicio) & (dados['Data'] <= data_fim))
+        condicao = (dados['etapa_padronizada'].isin(selectbox_etapa)) & ((dados['Data'] >= data_inicio) & (dados['Data'] <= data_fim))
 
     df_clientes_atendidos = dados[condicao]
     
@@ -160,7 +160,7 @@ def get_etapa_por_data(dados, etapa, intervalo):
     if etapa == 'Selecionar':
         condicao = (dados_agrupados['Data'] >= data_inicio) & (dados_agrupados['Data'] <= data_fim)
     else:
-        condicao = (dados_agrupados['etapa_padronizada'] == etapa) & ((dados_agrupados['Data'] >= data_inicio) & (dados_agrupados['Data'] <= data_fim))
+        condicao = (dados_agrupados['etapa_padronizada'].isin(etapa)) & ((dados_agrupados['Data'] >= data_inicio) & (dados_agrupados['Data'] <= data_fim))
 
     dados_agrupados = dados_agrupados[condicao]
 
@@ -192,7 +192,7 @@ with st.sidebar:
     lista_etapa = ["Selecionar"] + etapa
 
     # Adiciona selectbox etapa na sidebar:
-    selectbox_etapa = st.selectbox(
+    selectbox_etapa = st.multiselect(
         'Selecione a Etapa do Atendimento',
         lista_etapa,
         key="filtro_etapa"
@@ -241,7 +241,7 @@ with st.container():
         ##### CARD CONTATOS REALIZADOS #####
         df_clientes_atendidos = get_contatos_realizados(dados, selectbox_etapa, intervalo)
             
-        metric_card(f'Contatos realizados "{"todos" if selectbox_etapa == "Selecionar" else selectbox_etapa}"', f"{format(int(df_clientes_atendidos.shape[0]), ',').replace(',', '.')}")
+        metric_card(f'Contatos realizados', f"{format(int(df_clientes_atendidos.shape[0]), ',').replace(',', '.')}")
         
     with col_3b:
         ##### CARD % DE ATENDIMENTOS DO TOTAL #####
