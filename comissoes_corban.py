@@ -123,14 +123,14 @@ def trata_datas(intervalo):
     
     elif len(intervalo) == 1:
         data_inicio = intervalo[0]
-        data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+        data_fim = datetime.strptime(date.today().strftime("%Y-%m-%d"), "%Y-%m-%d")
     
     else:
         data_inicio, data_fim = get_datas_propostas(dados)
 
     data_inicio = pd.to_datetime(data_inicio)
     data_fim = pd.to_datetime(data_fim)
-
+    
     return data_inicio, data_fim
 
 def get_qtd_comissoes_total(dados, origem, intervalo):
@@ -142,10 +142,12 @@ def get_qtd_comissoes_total(dados, origem, intervalo):
     data_inicio, data_fim = trata_datas(intervalo)
 
     df['data_x'] = pd.to_datetime(df['data_x'], errors='coerce')
-
-    if origem == 'Selecionar':
+    
+    if (len(origem) == 1 and origem[0] == 'Selecionar') \
+        or len(origem) == 0:
         condicao = (df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim)
-    else:
+    elif (len(origem) > 1 and origem[0] == 'Selecionar') \
+        or (len(origem) >= 1 and 'Selecionar' not in origem):
         condicao = (df['origem'].isin(origem)) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
 
     df = df[condicao]
@@ -153,26 +155,28 @@ def get_qtd_comissoes_total(dados, origem, intervalo):
     return df['valor'].sum()
 
 def get_qtd_comissoes_pagas(dados, origem, intervalo):
-    api = dados['api']
+    api       = dados['api']
     comissoes = dados['comissao']
-    datas = dados['data']
-    proposta = dados['proposta']
+    datas     = dados['data']
+    proposta  = dados['proposta']
     propostas = dados['propostas']
 
     df1 = pd.merge(api, comissoes, on='proposta_id', how='left')
-    df2 = pd.merge(df1, datas, on='proposta_id', how='left')
-    df3 = pd.merge(df2, proposta, on='proposta_id', how='left')
-    df = pd.merge(df3, propostas, on='proposta_id', how='left')
+    df2 = pd.merge(df1, datas    , on='proposta_id', how='left')
+    df3 = pd.merge(df2, proposta , on='proposta_id', how='left')
+    df  = pd.merge(df3, propostas, on='proposta_id', how='left')
     
     data_inicio, data_fim = trata_datas(intervalo)
     
     df['data_status_api'] = pd.to_datetime(df['data_status_api'], errors='coerce')
 
-    if origem == 'Selecionar':
+    if (len(origem) == 1 and origem[0] == 'Selecionar') \
+        or len(origem) == 0:
         condicao = (df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim)
-    else:
+    elif (len(origem) > 1 and origem[0] == 'Selecionar') \
+        or (len(origem) >= 1 and 'Selecionar' not in origem):
         condicao = (df['origem'].isin(origem)) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
-
+    
     df = df[(df['valor'] != 0)
             & (df['cancelado'].isnull())
             & (~df['pagamento'].isnull()) 
@@ -184,25 +188,27 @@ def get_qtd_comissoes_pagas(dados, origem, intervalo):
     return df['valor'].sum(), len(df.drop_duplicates(subset='proposta_id'))
 
 def get_qtd_comissao_aguardando(dados, origem, intervalo):
-    api = dados['api']
+    api             = dados['api']
     comissionamento = dados['comissionamento']
-    comissoes = dados['comissao']
-    datas = dados['data']
-    proposta = dados['proposta']
-    propostas = dados['propostas']
+    comissoes       = dados['comissao']
+    datas           = dados['data']
+    proposta        = dados['proposta']
+    propostas       = dados['propostas']
 
-    df1 = pd.merge(api, comissoes, on='proposta_id', how='left')
+    df1 = pd.merge(api, comissoes      , on='proposta_id', how='left')
     df2 = pd.merge(df1, comissionamento, on='proposta_id', how='left')
-    df3 = pd.merge(df2, datas, on='proposta_id', how='left')
-    df4 = pd.merge(df3, proposta, on='proposta_id', how='left')
-    df = pd.merge(df4, propostas, on='proposta_id', how='left')
+    df3 = pd.merge(df2, datas          , on='proposta_id', how='left')
+    df4 = pd.merge(df3, proposta       , on='proposta_id', how='left')
+    df  = pd.merge(df4, propostas      , on='proposta_id', how='left')
     
     data_inicio, data_fim = trata_datas(intervalo)
     
     df['data_status_api'] = pd.to_datetime(df['data_status_api'], errors='coerce')
-
-    if origem == 'Selecionar':
+    
+    if (len(origem) == 1 and origem[0] == 'Selecionar') or len(origem) == 0:
         condicao = (df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim)
+    elif len(origem) > 1 and origem[0] == 'Selecionar':
+        condicao = (df['origem'].isin(origem)) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
     else:
         condicao = (df['origem'].isin(origem)) & ((df['data_status_api'] >= data_inicio) & (df['data_status_api'] <= data_fim))
 
@@ -225,9 +231,11 @@ def get_detalhamento_operacoes(dados, origem, intervalo):
 
     df['data_x'] = pd.to_datetime(df['data_x'], errors='coerce')
 
-    if origem == 'Selecionar':
+    if (len(origem) == 1 and origem[0] == 'Selecionar') \
+        or len(origem) == 0:
         condicao = (df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim)
-    else:
+    elif (len(origem) > 1 and origem[0] == 'Selecionar') \
+        or (len(origem) >= 1 and 'Selecionar' not in origem):
         condicao = (df['origem'].isin(origem)) & ((df['data_x'] >= data_inicio) & (df['data_x'] <= data_fim))
 
     df = df[condicao]
@@ -251,7 +259,7 @@ with st.sidebar:
 
     ##### FILTRO DE ORIGEM #####
     if "filtro_origem" not in st.session_state:
-        st.session_state.filtro_origem = "Selecionar"
+        st.session_state.filtro_origem = ["Selecionar"]
 
     selectbox_origem = st.multiselect(
         'Selecione a origem',
