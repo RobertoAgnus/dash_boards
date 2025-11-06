@@ -242,7 +242,7 @@ with st.container():
             df_disparos_status = df_disparos[df_disparos['status'].isin(selectbox_status)]
             texto = selectbox_status
 
-        metric_card(f'Disparos "{texto}"', f"{format(int(df_disparos_status['status'].shape[0]), ',').replace(',', '.')}")
+        metric_card(f'Disparos por Status', f"{format(int(df_disparos_status['status'].shape[0]), ',').replace(',', '.')}")
 
     ##### % DE DISPAROS POR STATUS DO TOTAL #####
     with col_3:

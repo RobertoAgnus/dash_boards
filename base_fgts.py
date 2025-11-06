@@ -65,7 +65,7 @@ def carregar_dados():
         # Dicionário de condições SQL
         consultas = {
             "Contratados": "numContrato IS NOT NULL",
-            "+3 Meses": "dataInclusao < '2025-08-01 00:00:00'",
+            "+3 Meses": "dataInclusao < (NOW() - INTERVAL 3 MONTH)",
             "Sem Contrato": "numContrato IS NULL",
             "Sem CPF": None
         }
@@ -158,11 +158,12 @@ with st.container():
 with st.container():
     st.markdown(f"### :blue[Detalhamento dos Clientes {texto_tabela}]")
 
-    df_tabela['dataInclusao'] = pd.to_datetime(df_tabela['dataInclusao'])
-    df_tabela['dataInclusao'] = df_tabela['dataInclusao'].dt.strftime('%d/%m/%Y')
-    
-    df_tabela['dataPagamento'] = pd.to_datetime(df_tabela['dataPagamento'])
-    df_tabela['dataPagamento'] = df_tabela['dataPagamento'].dt.strftime('%d/%m/%Y')
+    if selectbox_perfil != 'Sem CPF':
+        df_tabela['dataInclusao'] = pd.to_datetime(df_tabela['dataInclusao'])
+        df_tabela['dataInclusao'] = df_tabela['dataInclusao'].dt.strftime('%d/%m/%Y')
+        
+        df_tabela['dataPagamento'] = pd.to_datetime(df_tabela['dataPagamento'])
+        df_tabela['dataPagamento'] = df_tabela['dataPagamento'].dt.strftime('%d/%m/%Y')
     
     st.dataframe(df_tabela, use_container_width=True, height=500, hide_index=True)
 

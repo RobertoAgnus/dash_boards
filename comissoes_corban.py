@@ -183,7 +183,8 @@ def get_qtd_comissoes_pagas(dados, origem, intervalo):
             & condicao 
             & (df['status_api'] == 'APROVADA')
             & (df['valor_total_comissionado'] != 0)
-            & (df['status_nome'] != 'Cancelado')]
+            & (df['status_nome'] != 'Cancelado')
+            & (~df['status_nome'].isnull())]
 
     return df['valor'].sum(), len(df.drop_duplicates(subset='proposta_id'))
 

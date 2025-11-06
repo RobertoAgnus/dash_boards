@@ -61,7 +61,7 @@ class QuerysSQL:
                         status,
                         data,
                         vendedor
-                    from "disparos".disparos;"""
+                    from "extracoes".disparos;"""
         return query
 
     #################### BASE FGTS ####################
@@ -188,3 +188,65 @@ class QuerysSQL:
                     from "propostasCorban".propostas_concatenado psc;"""
         return query
 
+
+    def get_digisac(self):
+        query = f"""select
+                        cpf,
+                        nome_interno,
+                        telefone,
+                        data,
+                        falha
+                    from "extracoes".digisac
+                    where data >= '2025-11-01'
+                    order by data desc;"""
+        return query
+    
+    def get_corban(self):
+        query = f"""select 
+                        ac.status_api,
+                        cc.cliente_cpf as cpf,
+                        tc.numero,
+                        ac.data_atualizacao_api 
+                    from "propostasCorban".api_concatenado ac
+                    left join "propostasCorban".proposta_concatenado pc on ac.proposta_id = pc.proposta_id 
+                    left join "propostasCorban".clientes_concatenado cc on pc.cliente_id = cc.cliente_id
+                    left join "propostasCorban".telefones_concatenado tc on cc.cliente_id = tc.cliente_id
+                    where ac.data_atualizacao_api >= '2025-11-01 00:00:00'
+                    order by data_atualizacao_api desc;"""
+        return query
+    
+    def get_crm(self):
+        query = f"""select distinct 
+                        cs.updatedAt as dataConsulta
+                        , cs.CPF as cpf
+                        , cl.nome
+                        , t.telefone
+                        , l.telefone as telefoneLead
+                        , cs.erros
+                        , tb.nome as tabela
+                        , max(pc.num) as parcelas
+                        , cs.valorLiberado
+                        , cs.valorContrato
+                    from CRM.Clientes cl
+                    right join CRM.Consultas cs on cl.id = cs.clienteId
+                    left join CRM.Parcelas pc on cs.id = pc.consultaId
+                    left join CRM.Telefones t  on cl.id = t.clienteId
+                    left join CRM.Tabelas tb on cs.tabela = tb.id
+                    left join CRM.Leads l on cs.id = l.consultaId
+                    where 1 = 1
+                     	and cs.CPF <> 12979230901
+                        and cs.CPF <> 10101201907
+                        and cs.CPF <> 04512025111
+                        and cs.CPF <> 10101215614
+                        and cs.updatedAt >= '2025-11-01 00:00:00'
+                    group by cs.updatedAt
+                        , cl.id
+                        , cl.nome
+                        , cs.CPF
+                        , t.telefone
+                        , cs.erros
+                        , cs.tabela
+                        , cs.valorLiberado
+                        , cs.valorContrato
+                    order by cs.updatedAt, t.telefone desc;"""
+        return query
