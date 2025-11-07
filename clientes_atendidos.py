@@ -43,12 +43,10 @@ def carregar_dados():
         .str.replace(r'\D', '', regex=True)  # remove tudo que não é dígito
         .str.strip()                         # remove espaços
     )
-    # df_crm_consulta1 = df_crm_consulta1[(~df_crm_consulta1['cpf'].isna()) & (~df_crm_consulta1['cpf'].isnull()) & (df_crm_consulta1['cpf'] != '')]
-
     df_crm_consulta1['cpf'] = df_crm_consulta1['cpf'].str.zfill(11)
     df_crm_consulta1.loc[~df_crm_consulta1['cpf'].str.fullmatch(r'\d{11}'), 'cpf'] = None
     df_crm_consulta = df_crm_consulta1.loc[df_crm_consulta1.groupby('cpf')['dataConsulta'].idxmax()]
-
+    
     consulta_crm_cliente = consulta.get_crm_cliente()
     df_crm_cliente = pd.read_sql(consulta_crm_cliente, conn_mysql)
     
@@ -60,8 +58,7 @@ def carregar_dados():
     )
     df_crm_cliente['cpf'] = df_crm_cliente['cpf'].str.zfill(11)
     df_crm_cliente.loc[~df_crm_cliente['cpf'].str.fullmatch(r'\d{11}'), 'cpf'] = None
-    # df_crm_cliente.to_csv('C:/Users/User/Downloads/teste_clientes.csv', index=False)
-
+    
     consulta_crm_telefone = consulta.get_crm_telefone()
     df_crm_telefone = pd.read_sql(consulta_crm_telefone, conn_mysql)
 
@@ -85,8 +82,7 @@ def carregar_dados():
     df_crm3['telefone'] = None
     df_crm3 = df_crm3[['consultaId', 'cpf', 'clienteId', 'telefoneLead', 'nome', 'telefone', 'dataConsulta', 'erros', 'tabelaId', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
     df_crm3['erros'] = df_crm3['erros'].fillna('Sucesso')
-    # df_crm3.to_csv('C:/Users/User/Downloads/teste_consulta.csv', index=False)
-
+    
     df_crm4 = pd.merge(df_crm_cliente, df_crm_telefone, on='clienteId', how='left')
     df_crm5 = pd.merge(df_crm4, df_crm_lead, on='clienteId', how='left')
     df_crm5['dataConsulta'] = None
@@ -99,19 +95,15 @@ def carregar_dados():
     df_crm5 = df_crm5[['consultaId', 'cpf', 'clienteId', 'telefoneLead', 'nome', 'telefone', 'dataConsulta', 'erros', 'tabelaId', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
     
     df_crm  = pd.concat([df_crm3, df_crm5], ignore_index=True)
-
-    # mantém só CPFs com 11 dígitos
     df_crm['dataConsulta'] = pd.to_datetime(df_crm['dataConsulta']).dt.date
 
     df_crm['col_aux1'] = np.where(df_crm['telefone'].notna() & df_crm['telefone'].notnull() & (df_crm['telefone'] != ''), df_crm['telefone'], df_crm['telefoneLead'])
-
-    df_crm['dataConsulta'] = pd.to_datetime(df_crm['dataConsulta'])
     #########################
 
     ########## DIGISAC ##########
     consulta_digisac = consulta.get_digisac()
     df_digisac = pd.read_sql_query(consulta_digisac, conn_postgres)
-    df_digisac['data_digisac'] = pd.to_datetime(df_digisac['data'])
+    df_digisac['data_digisac'] = pd.to_datetime(df_digisac['data']).dt.date
     #############################
     
     ########## TELEFONES CORBAN ##########
@@ -125,12 +117,11 @@ def carregar_dados():
     df_corban = pd.read_sql_query(consulta_corban, conn_postgres)
     df_corban['cpf'] = df_corban['cpf'].astype(str).str.zfill(11)
     df_corban['data_atualizacao_api'] = pd.to_datetime(df_corban['data_atualizacao_api']).dt.date
-    df_corban['data_api'] = pd.to_datetime(df_corban['data_atualizacao_api'])
     ############################
 
     ########## DF1 = CRM <- TELEFONES CORBAN ##########
     df1 = pd.merge(df_crm, df_telefones_corban, left_on=['cpf'], right_on=['cpf'], how='left')
-
+    
     df1['col_aux2'] = np.where(df1['col_aux1'].notna() & df1['col_aux1'].notnull() & (df1['col_aux1'] != ''), df1['col_aux1'], df1['telefoneCorban'])
     #############################################
     
@@ -171,7 +162,8 @@ def carregar_dados():
                 }
     
     df = df.rename(columns=renomear)
-        # Adiciona "9" depois do segundo dígito, se o número tiver apenas 10 dígitos (ex: DDD + 8 dígitos)
+    
+    # Adiciona "9" depois do segundo dígito, se o número tiver apenas 10 dígitos (ex: DDD + 8 dígitos)
     df['Telefone'] = df['Telefone'].astype(str).apply(
         lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
     )
@@ -187,26 +179,26 @@ dados = carregar_dados()
 
 ##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
 def get_datas_consulta(dados):
-    df_datas = dados['Data Consulta']
+    dados['Data Consulta'] = pd.to_datetime(dados['Data Consulta'], errors='coerce')
     
-    # Converting the 'data' column to datetime format (caso não esteja)
-    df_datas['Data Consulta'] = pd.to_datetime(df_datas, dayfirst=True)
+    # Remove linhas com Data Consulta vazia
+    dados = dados.dropna(subset=['Data Consulta'])
 
     # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = df_datas['Data Consulta'].min()
+    menor_data = dados['Data Consulta'].min()
     maior_data = date.today()
 
     return menor_data, maior_data
 
 ##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
 def get_datas_corban(dados):
-    df_datas = dados['Data Corban']
-    
-    # Converting the 'data' column to datetime format (caso não esteja)
-    df_datas['Data Corban'] = pd.to_datetime(df_datas, dayfirst=True)
+    dados['Data Corban'] = pd.to_datetime(dados['Data Corban'], errors='coerce')
+
+    # Remove linhas com Data Corban vazia
+    dados = dados.dropna(subset=['Data Corban'])
 
     # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = df_datas['Data Corban'].min()
+    menor_data = dados['Data Corban'].min()
     maior_data = date.today()
 
     if ~pd.isna(menor_data):
@@ -220,7 +212,7 @@ def filtrar_data(intervalo, dados, flag):
     
     elif len(intervalo) == 1:
         data_inicio = intervalo[0]
-        data_fim = datetime.strptime('2030-12-31', "%Y-%m-%d")
+        data_fim = date.today()
     
     else:
         if flag == 'consulta':
@@ -354,12 +346,20 @@ with st.sidebar:
         
         # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
         try:
+            dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')
+
             if (inicio_consulta, fim_consulta) != (menor_data_consulta, maior_data_consulta):
-                dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')
-                dados_filtrados = dados_filtrados[
+                # Filtra as linhas de consulta dentro do intervalo
+                consultas_no_periodo = dados_filtrados[
                     (dados_filtrados['Data Consulta'] >= pd.Timestamp(inicio_consulta)) &
                     (dados_filtrados['Data Consulta'] <= pd.Timestamp(fim_consulta))
                 ]
+                
+                # Pega os CPFs (ou IDs) das consultas filtradas
+                cpfs_filtrados = consultas_no_periodo['CPF'].dropna().unique()
+                
+                # Mantém todas as linhas (de consulta e corban) dos mesmos CPFs
+                dados_filtrados = dados_filtrados[dados_filtrados['CPF'].isin(cpfs_filtrados)]
         except:
             dados_filtrados = dados_filtrados[
                     dados_filtrados['Data Consulta'].isna()
@@ -400,6 +400,9 @@ with st.sidebar:
             
     ##### FILTRO DE INTERVALO DE DATA CORBAN #####
     menor_data_corban, maior_data_corban = get_datas_corban(dados_filtrados)
+    print('################################################')
+    print(menor_data_corban)
+    print('################################################')
     if "filtro_periodo_corban" not in st.session_state:
         st.session_state.filtro_periodo_corban = (menor_data_corban, maior_data_corban)
 
@@ -423,7 +426,8 @@ with st.sidebar:
                 dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
                 dados_filtrados = dados_filtrados[
                     (dados_filtrados['Data Corban'] >= pd.Timestamp(inicio_corban)) &
-                    (dados_filtrados['Data Corban'] <= pd.Timestamp(fim_corban))
+                    (dados_filtrados['Data Corban'] <= pd.Timestamp(fim_corban)) |
+                    (dados_filtrados['Data Corban'].isna())
                 ]
         except:
             dados_filtrados = dados_filtrados[
