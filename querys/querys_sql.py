@@ -197,56 +197,118 @@ class QuerysSQL:
                         data,
                         falha
                     from "extracoes".digisac
-                    where data >= '2025-11-01'
-                    order by data desc;"""
+                    where data >= '2025-11-01';"""
         return query
     
     def get_corban(self):
         query = f"""select 
                         ac.status_api,
                         cc.cliente_cpf as cpf,
-                        tc.numero,
+                        concat(tc.ddd,tc.numero) as "telefonePropostas",
                         ac.data_atualizacao_api 
                     from "propostasCorban".api_concatenado ac
                     left join "propostasCorban".proposta_concatenado pc on ac.proposta_id = pc.proposta_id 
                     left join "propostasCorban".clientes_concatenado cc on pc.cliente_id = cc.cliente_id
                     left join "propostasCorban".telefones_concatenado tc on cc.cliente_id = tc.cliente_id
-                    where ac.data_atualizacao_api >= '2025-11-01 00:00:00'
-                    order by data_atualizacao_api desc;"""
+                    where ac.data_atualizacao_api >= '2025-11-01 00:00:00';"""
         return query
     
-    def get_crm(self):
-        query = f"""select distinct 
-                        cs.updatedAt as dataConsulta
-                        , cs.CPF as cpf
-                        , cl.nome
-                        , t.telefone
-                        , l.telefone as telefoneLead
-                        , cs.erros
-                        , tb.nome as tabela
-                        , max(pc.num) as parcelas
-                        , cs.valorLiberado
-                        , cs.valorContrato
-                    from CRM.Clientes cl
-                    right join CRM.Consultas cs on cl.id = cs.clienteId
-                    left join CRM.Parcelas pc on cs.id = pc.consultaId
-                    left join CRM.Telefones t  on cl.id = t.clienteId
-                    left join CRM.Tabelas tb on cs.tabela = tb.id
-                    left join CRM.Leads l on cs.id = l.consultaId
-                    where 1 = 1
-                     	and cs.CPF <> 12979230901
-                        and cs.CPF <> 10101201907
-                        and cs.CPF <> 04512025111
-                        and cs.CPF <> 10101215614
-                        and cs.updatedAt >= '2025-11-01 00:00:00'
-                    group by cs.updatedAt
-                        , cl.id
-                        , cl.nome
-                        , cs.CPF
-                        , t.telefone
-                        , cs.erros
-                        , cs.tabela
-                        , cs.valorLiberado
-                        , cs.valorContrato
-                    order by cs.updatedAt, t.telefone desc;"""
+    def get_telefones_corban(self):
+        query = f"""select 
+                        cc.cliente_cpf as cpf, 
+                        concat(tc.ddd,tc.numero) as "telefoneCorban" 
+                    from "propostasCorban".telefones_concatenado tc
+                    right join "propostasCorban".clientes_concatenado cc on cc.cliente_id = tc.cliente_id;"""
         return query
+    
+    # def get_crm(self):
+    #     query = f"""SELECT 
+    #                     cs.updatedAt        AS dataConsulta,
+    #                     cl.CPF              AS cpf,
+    #                     cl.nome,
+    #                     t.telefone,
+    #                     l.telefone          AS telefoneLead,
+    #                     cs.erros,
+    #                     tb.nome             AS tabela,
+    #                     MAX(pc.num)         AS parcelas,
+    #                     cs.valorLiberado,
+    #                     cs.valorContrato
+    #                 FROM CRM.Consultas cs
+    #                 RIGHT JOIN CRM.Clientes cl 
+    #                     ON cl.CPF = cs.CPF
+    #                 LEFT JOIN CRM.Parcelas pc 
+    #                     ON cs.id = pc.consultaId
+    #                 LEFT JOIN CRM.Telefones t 
+    #                     ON cl.id = t.clienteId
+    #                 LEFT JOIN CRM.Tabelas tb 
+    #                     ON cs.tabela = tb.id
+    #                 LEFT JOIN CRM.Leads l 
+    #                     ON (l.consultaId = cs.id OR l.clientId = cl.id)
+    #                 WHERE cs.CPF NOT IN (12979230901, 10101201907, 04512025111, 10101215614)
+    #                 AND cl.CPF NOT IN (4348724075)
+    #                 AND cs.updatedAt >= '2025-11-01 00:00:00'
+    #                 GROUP BY 
+    #                     cs.updatedAt,
+    #                     cl.id,
+    #                     cl.nome,
+    #                     cl.CPF,
+    #                     t.telefone,
+    #                     cs.erros,
+    #                     cs.tabela,
+    #                     cs.valorLiberado,
+    #                     cs.valorContrato;"""
+    #     return query
+    
+    def get_crm_consulta(self):
+        query = f"""SELECT 
+                        CONVERT(cs.id, SIGNED)     AS consultaId,
+                        cs.updatedAt           AS dataConsulta,
+                        cs.CPF                 AS cpf,
+                        cs.erros,
+                        CONVERT(cs.tabela, SIGNED) AS tabelaId,
+                        cs.valorLiberado,
+                        cs.valorContrato
+                    FROM CRM.Consultas cs
+                    WHERE cs.CPF NOT IN ('12979230901', '10101201907', '04512025111', '10101215614', '4348724075')
+                    AND cs.updatedAt >= '2025-11-01 00:00:00'
+                    AND (cs.CPF is not null AND cs.CPF <> '');"""
+        return query
+    
+    def get_crm_cliente(self):
+        query = f"""SELECT 
+                        CAST(cl.id AS SIGNED) AS clienteId,
+                        cl.CPF             AS cpf,
+                        cl.nome
+                    FROM CRM.Clientes cl 
+                    WHERE cl.CPF NOT IN ('12979230901', '10101201907', '04512025111', '10101215614', '4348724075');"""
+        return query
+    
+    def get_crm_telefone(self):
+        query = f"""SELECT 
+                        CAST(t.clienteId AS SIGNED) AS clienteId,
+                        t.telefone
+                    FROM CRM.Telefones t;"""
+        return query
+    
+    def get_crm_lead(self):
+        query = f"""SELECT 
+                        CAST(l.consultaId AS SIGNED) AS consultaId,
+                        CAST(l.clientId AS SIGNED)   AS clienteId,
+                        l.telefone     AS telefoneLead
+                    FROM CRM.Leads l;"""
+        return query
+    
+    def get_crm_tabela(self):
+        query = f"""SELECT 
+                        CAST(tb.id AS SIGNED) AS tabelaId,
+                        tb.nome AS tabela
+                    FROM CRM.Tabelas tb;"""
+        return query
+    
+    def get_crm_parcela(self):
+        query = f"""SELECT 
+                        CAST(pc.consultaId AS SIGNED) AS consultaId,
+                        pc.num         AS parcelas
+                    FROM CRM.Parcelas pc;"""
+        return query
+    
