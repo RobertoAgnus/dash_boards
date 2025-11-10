@@ -179,7 +179,7 @@ dados = carregar_dados()
 
 ##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
 def get_datas_consulta(dados):
-    dados['Data Consulta'] = pd.to_datetime(dados['Data Consulta'], errors='coerce')
+    # dados['Data Consulta'] = pd.to_datetime(dados['Data Consulta'], errors='coerce')
     
     # Remove linhas com Data Consulta vazia
     dados = dados.dropna(subset=['Data Consulta'])
@@ -187,12 +187,28 @@ def get_datas_consulta(dados):
     # Obtendo a menor e a maior data da coluna 'data'
     menor_data = dados['Data Consulta'].min()
     maior_data = date.today()
+    
+    return menor_data, maior_data
 
+##### FUNÇÃO PARA OBTER AS DATAS DISPAROS #####
+def get_datas_disparos(dados):
+    # dados['Data disparos'] = pd.to_datetime(dados['Data disparos'], errors='coerce')
+
+    # Remove linhas com Data disparos vazia
+    dados = dados.dropna(subset=['Data Disparo'])
+
+    # Obtendo a menor e a maior data da coluna 'data'
+    menor_data = dados['Data Disparo'].min()
+    maior_data = date.today()
+
+    # if ~pd.isna(menor_data):
+    #     menor_data = menor_data.date()
+    
     return menor_data, maior_data
 
 ##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
 def get_datas_corban(dados):
-    dados['Data Corban'] = pd.to_datetime(dados['Data Corban'], errors='coerce')
+    # dados['Data Corban'] = pd.to_datetime(dados['Data Corban'], errors='coerce')
 
     # Remove linhas com Data Corban vazia
     dados = dados.dropna(subset=['Data Corban'])
@@ -201,29 +217,10 @@ def get_datas_corban(dados):
     menor_data = dados['Data Corban'].min()
     maior_data = date.today()
 
-    if ~pd.isna(menor_data):
-        menor_data = menor_data.date()
+    # if ~pd.isna(menor_data):
+    #     menor_data = menor_data.date()
     
     return menor_data, maior_data
-
-def filtrar_data(intervalo, dados, flag):
-    if len(intervalo) == 2:
-        data_inicio, data_fim = intervalo
-    
-    elif len(intervalo) == 1:
-        data_inicio = intervalo[0]
-        data_fim = date.today()
-    
-    else:
-        if flag == 'consulta':
-            data_inicio, data_fim = get_datas_consulta(dados)
-        else:
-            data_inicio, data_fim = get_datas_corban(dados)
-
-    data_inicio = pd.to_datetime(data_inicio)
-    data_fim = pd.to_datetime(data_fim)
-
-    return (data_inicio, data_fim)
 
 ##### ÁREA DO DASHBOARD #####
 
@@ -325,91 +322,98 @@ with st.sidebar:
         dados_filtrados = dados_filtrados[dados_filtrados['Status Corban'].isin(selectbox_status_corban)]
 
     ##### FILTRO DE INTERVALO DE DATA CONSULTA #####
-    menor_data_consulta, maior_data_consulta = get_datas_consulta(dados_filtrados)
+    menor_data_consulta, maior_data_consulta = get_datas_consulta(dados)
     if "filtro_periodo_consulta" not in st.session_state:
         st.session_state.filtro_periodo_consulta = (menor_data_consulta, date.today())
 
     if not pd.isnull(menor_data_consulta):
         intervalo_consulta = st.date_input(
             "Selecione a data da Consulta:",
-            value=(menor_data_consulta, maior_data_consulta),
+            value=(),
             key="filtro_periodo_consulta"
         )
         
         # Se o usuário selecionou apenas uma data, define fim como hoje
         if len(intervalo_consulta) == 2:
             inicio_consulta, fim_consulta = intervalo_consulta
+            
         elif len(intervalo_consulta) == 1:
             # Usuário selecionou apenas uma data
             inicio_consulta = intervalo_consulta[0]
             fim_consulta = date.today()
-        
+            
         # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
         try:
-            dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')
+            # dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')
 
             if (inicio_consulta, fim_consulta) != (menor_data_consulta, maior_data_consulta):
                 # Filtra as linhas de consulta dentro do intervalo
-                consultas_no_periodo = dados_filtrados[
-                    (dados_filtrados['Data Consulta'] >= pd.Timestamp(inicio_consulta)) &
-                    (dados_filtrados['Data Consulta'] <= pd.Timestamp(fim_consulta))
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Consulta'] >= inicio_consulta) &
+                    (dados_filtrados['Data Consulta'] <= fim_consulta)
                 ]
                 
-                # Pega os CPFs (ou IDs) das consultas filtradas
-                cpfs_filtrados = consultas_no_periodo['CPF'].dropna().unique()
+                # # Pega os CPFs (ou IDs) das consultas filtradas
+                # cpfs_filtrados = consultas_no_periodo['CPF'].dropna().unique()
                 
-                # Mantém todas as linhas (de consulta e corban) dos mesmos CPFs
-                dados_filtrados = dados_filtrados[dados_filtrados['CPF'].isin(cpfs_filtrados)]
+                # # Mantém todas as linhas (de consulta e corban) dos mesmos CPFs
+                # dados_filtrados = dados_filtrados[dados_filtrados['CPF'].isin(cpfs_filtrados)]
         except:
             dados_filtrados = dados_filtrados[
                     dados_filtrados['Data Consulta'].isna()
                 ]
+    
+    ##### FILTRO DE INTERVALO DE DATA DISPAROS #####
+    menor_data_disparos, maior_data_disparos = get_datas_disparos(dados)
+    
+    if "filtro_periodo_disparos" not in st.session_state:
+        st.session_state.filtro_periodo_disparos = (menor_data_disparos, maior_data_disparos)
 
-    # ##### FILTRO DE INTERVALO DE DATA DIGISAC #####
-    # menor_data_corban, maior_data_corban = get_datas_corban(dados_filtrados)
-    # if "filtro_periodo_corban" not in st.session_state:
-    #     st.session_state.filtro_periodo_corban = (menor_data_corban, maior_data_corban)
+    if not pd.isnull(menor_data_disparos):
+        intervalo_disparos = st.date_input(
+            "Selecione a data do disparos:",
+            value=(),
+            key="filtro_periodo_disparos"
+        )
+        
+        # Se o usuário selecionou apenas uma data, define fim como hoje
+        if len(intervalo_disparos) == 2:
+            inicio_disparos, fim_disparos = intervalo_disparos
+        elif len(intervalo_disparos) == 1:
+            # Usuário selecionou apenas uma data
+            inicio_disparos = intervalo_disparos[0]
+            fim_disparos = date.today()
+        
+        try:
+            if (inicio_disparos, fim_disparos) != (menor_data_disparos, maior_data_disparos):
+                # dados_filtrados['Data disparos'] = pd.to_datetime(dados_filtrados['Data disparos'], errors='coerce')
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Disparo'] >= inicio_disparos) &
+                    (dados_filtrados['Data Disparo'] <= fim_disparos)
+                ]
+            else:
+                # dados_filtrados['Data disparos'] = pd.to_datetime(dados_filtrados['Data disparos'], errors='coerce')
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Disparo'] >= inicio_disparos) &
+                    (dados_filtrados['Data Disparo'] <= fim_disparos) |
+                    (dados_filtrados['Data Disparo'].isna())
+                ]
+        except:
+            dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Disparo'].isna()) |
+                    (dados_filtrados['Data Disparo'].isnull())
+                ]
 
-    # if not pd.isnull(menor_data_corban):
-    #     intervalo_corban = st.date_input(
-    #         "Selecione a data do Corban:",
-    #         value=(menor_data_corban, maior_data_corban),
-    #         key="filtro_periodo_corban"
-    #     )
-        
-    #     # Se o usuário selecionou apenas uma data, define fim como hoje
-    #     if len(intervalo_corban) == 2:
-    #         inicio_corban, fim_corban = intervalo_corban
-    #     elif len(intervalo_corban) == 1:
-    #         # Usuário selecionou apenas uma data
-    #         inicio_corban = intervalo_corban[0]
-    #         fim_corban = date.today()
-        
-    #     try:
-    #         if (inicio_corban, fim_corban) != (menor_data_corban, maior_data_corban):
-    #             dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
-    #             dados_filtrados = dados_filtrados[
-    #                 (dados_filtrados['Data Corban'] >= pd.Timestamp(inicio_corban)) &
-    #                 (dados_filtrados['Data Corban'] <= pd.Timestamp(fim_corban))
-    #             ]
-    #     except:
-    #         dados_filtrados = dados_filtrados[
-    #                 (dados_filtrados['Data Corban'].isna()) |
-    #                 (dados_filtrados['Data Corban'].isnull())
-    #             ]
-            
     ##### FILTRO DE INTERVALO DE DATA CORBAN #####
-    menor_data_corban, maior_data_corban = get_datas_corban(dados_filtrados)
-    print('################################################')
-    print(menor_data_corban)
-    print('################################################')
+    menor_data_corban, maior_data_corban = get_datas_corban(dados)
+    
     if "filtro_periodo_corban" not in st.session_state:
         st.session_state.filtro_periodo_corban = (menor_data_corban, maior_data_corban)
 
     if not pd.isnull(menor_data_corban):
         intervalo_corban = st.date_input(
             "Selecione a data do Corban:",
-            value=(menor_data_corban, maior_data_corban),
+            value=(),
             key="filtro_periodo_corban"
         )
         
@@ -423,10 +427,16 @@ with st.sidebar:
         
         try:
             if (inicio_corban, fim_corban) != (menor_data_corban, maior_data_corban):
-                dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
+                # dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
                 dados_filtrados = dados_filtrados[
-                    (dados_filtrados['Data Corban'] >= pd.Timestamp(inicio_corban)) &
-                    (dados_filtrados['Data Corban'] <= pd.Timestamp(fim_corban)) |
+                    (dados_filtrados['Data Corban'] >= inicio_corban) &
+                    (dados_filtrados['Data Corban'] <= fim_corban)
+                ]
+            else:
+                # dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Corban'] >= inicio_corban) &
+                    (dados_filtrados['Data Corban'] <= fim_corban) |
                     (dados_filtrados['Data Corban'].isna())
                 ]
         except:
