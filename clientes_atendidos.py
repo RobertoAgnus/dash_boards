@@ -179,8 +179,6 @@ dados = carregar_dados()
 
 ##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
 def get_datas_consulta(dados):
-    # dados['Data Consulta'] = pd.to_datetime(dados['Data Consulta'], errors='coerce')
-    
     # Remove linhas com Data Consulta vazia
     dados = dados.dropna(subset=['Data Consulta'])
 
@@ -192,8 +190,6 @@ def get_datas_consulta(dados):
 
 ##### FUNÇÃO PARA OBTER AS DATAS DISPAROS #####
 def get_datas_disparos(dados):
-    # dados['Data disparos'] = pd.to_datetime(dados['Data disparos'], errors='coerce')
-
     # Remove linhas com Data disparos vazia
     dados = dados.dropna(subset=['Data Disparo'])
 
@@ -201,15 +197,10 @@ def get_datas_disparos(dados):
     menor_data = dados['Data Disparo'].min()
     maior_data = date.today()
 
-    # if ~pd.isna(menor_data):
-    #     menor_data = menor_data.date()
-    
     return menor_data, maior_data
 
 ##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
 def get_datas_corban(dados):
-    # dados['Data Corban'] = pd.to_datetime(dados['Data Corban'], errors='coerce')
-
     # Remove linhas com Data Corban vazia
     dados = dados.dropna(subset=['Data Corban'])
 
@@ -217,9 +208,6 @@ def get_datas_corban(dados):
     menor_data = dados['Data Corban'].min()
     maior_data = date.today()
 
-    # if ~pd.isna(menor_data):
-    #     menor_data = menor_data.date()
-    
     return menor_data, maior_data
 
 ##### ÁREA DO DASHBOARD #####
@@ -344,7 +332,6 @@ with st.sidebar:
             
         # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
         try:
-            # dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')
 
             if (inicio_consulta, fim_consulta) != (menor_data_consulta, maior_data_consulta):
                 # Filtra as linhas de consulta dentro do intervalo
@@ -353,16 +340,11 @@ with st.sidebar:
                     (dados_filtrados['Data Consulta'] <= fim_consulta)
                 ]
                 
-                # # Pega os CPFs (ou IDs) das consultas filtradas
-                # cpfs_filtrados = consultas_no_periodo['CPF'].dropna().unique()
-                
-                # # Mantém todas as linhas (de consulta e corban) dos mesmos CPFs
-                # dados_filtrados = dados_filtrados[dados_filtrados['CPF'].isin(cpfs_filtrados)]
         except:
             dados_filtrados = dados_filtrados[
                     dados_filtrados['Data Consulta'].isna()
                 ]
-    
+            
     ##### FILTRO DE INTERVALO DE DATA DISPAROS #####
     menor_data_disparos, maior_data_disparos = get_datas_disparos(dados)
     
@@ -386,13 +368,11 @@ with st.sidebar:
         
         try:
             if (inicio_disparos, fim_disparos) != (menor_data_disparos, maior_data_disparos):
-                # dados_filtrados['Data disparos'] = pd.to_datetime(dados_filtrados['Data disparos'], errors='coerce')
                 dados_filtrados = dados_filtrados[
                     (dados_filtrados['Data Disparo'] >= inicio_disparos) &
                     (dados_filtrados['Data Disparo'] <= fim_disparos)
                 ]
             else:
-                # dados_filtrados['Data disparos'] = pd.to_datetime(dados_filtrados['Data disparos'], errors='coerce')
                 dados_filtrados = dados_filtrados[
                     (dados_filtrados['Data Disparo'] >= inicio_disparos) &
                     (dados_filtrados['Data Disparo'] <= fim_disparos) |
@@ -427,13 +407,11 @@ with st.sidebar:
         
         try:
             if (inicio_corban, fim_corban) != (menor_data_corban, maior_data_corban):
-                # dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
                 dados_filtrados = dados_filtrados[
                     (dados_filtrados['Data Corban'] >= inicio_corban) &
                     (dados_filtrados['Data Corban'] <= fim_corban)
                 ]
             else:
-                # dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
                 dados_filtrados = dados_filtrados[
                     (dados_filtrados['Data Corban'] >= inicio_corban) &
                     (dados_filtrados['Data Corban'] <= fim_corban) |
@@ -463,30 +441,43 @@ with st.container():
 st.dataframe(dados_filtrados, width='stretch', height=500, hide_index=True)
 
 with st.container():
-    col_1, col_2, col_3 = st.columns((1,1,8))
+    col_1, col_2, col_3, col_4, col_5 = st.columns((1,1,1,1,6))
+    
+    dados_xlsx = dados_filtrados[['Nome','Telefone']]
+    dados_xlsx = dados_xlsx[~dados_xlsx['Telefone'].isnull()].drop_duplicates(subset='Telefone')
+
     with col_1:
+        st.markdown(f"##### <span style='color:white;'>Consultas: {format(int(len(dados_xlsx)), ',').replace(',', '.')}</span>", unsafe_allow_html=True)
+
+    with col_2:
         ##### BOTÃO EXPORTAR TABELA #####
-        dados_xlsx = dados_filtrados[['Nome','Telefone']]
-        dados_xlsx = dados_xlsx[~dados_xlsx['Telefone'].isnull()].drop_duplicates(subset='Telefone')
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            dados_xlsx.to_excel(writer, index=False, sheet_name='Planilha1')
+            dados_xlsx.to_excel(writer, index=False, sheet_name='Consultas')
         buffer.seek(0)  # volta o ponteiro para o início
 
         # --- Botão para download ---
         st.download_button(
-            label="⬇️ Baixar planilha Excel",
+            label="⬇️ Baixar Consultas",
             data=buffer,
-            file_name="dados.xlsx",
+            file_name="consultas.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-    with col_2:
-        texto_tabela = 'teste'
-        csv = dados_filtrados.to_csv(index=False).encode("utf-8")
+    with col_3:
+        st.markdown(f"##### <span style='color:white;'>Visualizações: {format(int(len(dados_filtrados)), ',').replace(',', '.')}</span>", unsafe_allow_html=True) 
+
+    with col_4:
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            dados_filtrados.to_excel(writer, index=False, sheet_name='Visualização')
+        buffer.seek(0)  # volta o ponteiro para o início
+
+        # --- Botão para download ---
         st.download_button(
-            label="⬇️ Baixar visualização",
-            data=csv,
-            file_name=f"clientes_{texto_tabela}.csv",
-            mime="text/csv"
+            label="⬇️ Baixar Visualização",
+            data=buffer,
+            file_name="visualizacoes.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        
