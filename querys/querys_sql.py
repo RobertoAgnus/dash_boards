@@ -55,12 +55,12 @@ class QuerysSQL:
     ##### DISPAROS REALIZADOS #####
     def disparos(self):
         query = """select
-                        "CPF",
-                        telefone,
+                        "CPF" as cpf_disparos,
+                        telefone as "telefone_disparos",
                         valor,
                         status,
-                        data,
-                        vendedor
+                        data as "dataDisparos",
+                        vendedor as "vendedorDisparos"
                     from "extracoes".disparos;"""
         return query
 
@@ -191,9 +191,9 @@ class QuerysSQL:
 
     def get_digisac(self):
         query = f"""select
-                        cpf,
+                        cpf as cpf_digisac,
                         nome_interno,
-                        telefone,
+                        telefone as telefone_digisac,
                         data,
                         falha
                     from "extracoes".digisac
@@ -203,20 +203,20 @@ class QuerysSQL:
     def get_corban(self):
         query = f"""select 
                         ac.status_api,
-                        cc.cliente_cpf as cpf,
-                        concat(tc.ddd,tc.numero) as "telefonePropostas",
+                        cc.cliente_cpf as cpf_corban,
+                        concat(tc.ddd,tc.numero) as telefone_propostas,
                         ac.data_atualizacao_api 
                     from "propostasCorban".api_concatenado ac
                     left join "propostasCorban".proposta_concatenado pc on ac.proposta_id = pc.proposta_id 
                     left join "propostasCorban".clientes_concatenado cc on pc.cliente_id = cc.cliente_id
                     left join "propostasCorban".telefones_concatenado tc on cc.cliente_id = tc.cliente_id
-                    where ac.data_atualizacao_api >= '2025-11-01 00:00:00';"""
+                    where pc.produto_id = 13;"""
         return query
     
     def get_telefones_corban(self):
         query = f"""select 
-                        cc.cliente_cpf as cpf, 
-                        concat(tc.ddd,tc.numero) as "telefoneCorban" 
+                        cc.cliente_cpf as cpf_telefone_corban, 
+                        concat(tc.ddd,tc.numero) as telefone_corban 
                     from "propostasCorban".telefones_concatenado tc
                     right join "propostasCorban".clientes_concatenado cc on cc.cliente_id = tc.cliente_id;"""
         return query
@@ -271,30 +271,63 @@ class QuerysSQL:
                     FROM CRM.Consultas cs
                     WHERE cs.CPF NOT IN ('12979230901', '10101201907', '04512025111', '10101215614', '4348724075')
                     AND cs.updatedAt >= '2025-11-01 00:00:00'
-                    AND (cs.CPF is not null AND cs.CPF <> '');"""
+                    AND (cs.CPF is not null OR cs.CPF <> '');"""
         return query
     
     def get_crm_cliente(self):
         query = f"""SELECT 
                         CAST(cl.id AS SIGNED) AS clienteId,
+                        cl.identificador,
                         cl.CPF             AS cpf,
                         cl.nome
                     FROM CRM.Clientes cl 
                     WHERE cl.CPF NOT IN ('12979230901', '10101201907', '04512025111', '10101215614', '4348724075');"""
         return query
     
+    # def get_sistema_telefone(self):
+    #     query = f"""SELECT distinct
+    #                     t.clienteId AS identificador,
+    #                     t.telefone as telefone_sistema
+    #                 FROM sistema.Telefones t;"""
+    #     return query
+    
+    # def get_crm_telefone(self):
+    #     query = f"""SELECT distinct
+    #                     CAST(t.clienteId AS SIGNED) AS clienteId,
+    #                     t.telefone as telefone_crm
+    #                 FROM CRM.Telefones t;"""
+    #     return query
+
     def get_crm_telefone(self):
-        query = f"""SELECT 
-                        CAST(t.clienteId AS SIGNED) AS clienteId,
-                        t.telefone
-                    FROM CRM.Telefones t;"""
+        query = f"""WITH fone_sistema AS (
+                        SELECT 
+                            cl.id, 
+                            ts.telefone 
+                        FROM CRM.Clientes cl 
+                        LEFT JOIN sistema.Telefones ts 
+                            ON cl.identificador = ts.clienteId
+                    )
+                    SELECT DISTINCT *
+                    FROM (
+                        SELECT 
+                            CAST(fs.id AS SIGNED) AS clienteId, 
+                            CASE
+                                WHEN fs.telefone IS NULL THEN tc.telefone
+                                WHEN fs.telefone <> tc.telefone THEN tc.telefone
+                                when tc.telefone is null then fs.telefone
+                            END AS telefone_crm
+                        FROM fone_sistema fs 
+                        LEFT JOIN CRM.Telefones tc 
+                            ON fs.id = tc.clienteId
+                    ) AS resultado
+                    WHERE telefone_crm IS not NULL;"""
         return query
     
     def get_crm_lead(self):
         query = f"""SELECT 
                         CAST(l.consultaId AS SIGNED) AS consultaId,
                         CAST(l.clientId AS SIGNED)   AS clienteId,
-                        l.telefone     AS telefoneLead
+                        l.telefone     AS telefone_lead
                     FROM CRM.Leads l;"""
         return query
     
@@ -310,5 +343,13 @@ class QuerysSQL:
                         CAST(pc.consultaId AS SIGNED) AS consultaId,
                         pc.num         AS parcelas
                     FROM CRM.Parcelas pc;"""
+        return query
+    
+    def get_base_consolidada(self):
+        query = f"""SELECT distinct
+                        cpf as cpf_consolidado,
+                        telefone as telefone_consolidado,
+                        nome as nome_consolidado
+                    FROM extracoes.base_consolidada;"""
         return query
     

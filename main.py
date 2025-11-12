@@ -9,7 +9,7 @@ page_5    = st.Page("comissoes_corban.py"   , title="Comissões Corban"   )
 # page_6    = st.Page("comissoes_corban_v2.py"  , title="TESTE")
 
 # Configurar a navegação
-pg = st.navigation([main_page, page_2, page_3, page_4, page_5])
+pg = st.navigation([main_page]) #, page_2, page_3, page_4, page_5])
 
 # Executar a página selecionada
 pg.run()
