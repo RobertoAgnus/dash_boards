@@ -221,83 +221,31 @@ class QuerysSQL:
                     right join corban.clientes cc on cc.cliente_id = tc.cliente_id;"""
         return query
     
-    # def get_crm(self):
-    #     query = f"""SELECT 
-    #                     cs.updatedAt        AS dataConsulta,
-    #                     cl.CPF              AS cpf,
-    #                     cl.nome,
-    #                     t.telefone,
-    #                     l.telefone          AS telefoneLead,
-    #                     cs.erros,
-    #                     tb.nome             AS tabela,
-    #                     MAX(pc.num)         AS parcelas,
-    #                     cs.valorLiberado,
-    #                     cs.valorContrato
-    #                 FROM CRM.Consultas cs
-    #                 RIGHT JOIN CRM.Clientes cl 
-    #                     ON cl.CPF = cs.CPF
-    #                 LEFT JOIN CRM.Parcelas pc 
-    #                     ON cs.id = pc.consultaId
-    #                 LEFT JOIN CRM.Telefones t 
-    #                     ON cl.id = t.clienteId
-    #                 LEFT JOIN CRM.Tabelas tb 
-    #                     ON cs.tabela = tb.id
-    #                 LEFT JOIN CRM.Leads l 
-    #                     ON (l.consultaId = cs.id OR l.clientId = cl.id)
-    #                 WHERE cs.CPF NOT IN (12979230901, 10101201907, 04512025111, 10101215614)
-    #                 AND cl.CPF NOT IN (4348724075)
-    #                 AND cs.updatedAt >= '2025-11-01 00:00:00'
-    #                 GROUP BY 
-    #                     cs.updatedAt,
-    #                     cl.id,
-    #                     cl.nome,
-    #                     cl.CPF,
-    #                     t.telefone,
-    #                     cs.erros,
-    #                     cs.tabela,
-    #                     cs.valorLiberado,
-    #                     cs.valorContrato;"""
-    #     return query
-    
     def get_crm_consulta(self):
         query = f"""SELECT 
-                        CONVERT(cs.id, SIGNED)     AS consultaId,
-                        cs.updatedAt           AS dataConsulta,
-                        cs.CPF                 AS cpf,
+                        cs.id AS consultaId,
+                        cs.clienteId,
+                        cs.updatedAt AS dataConsulta,
+                        cs.CPF AS cpf,
                         cs.erros,
-                        CONVERT(cs.tabela, SIGNED) AS tabelaId,
+                        cs.tabela AS tabelaId,
                         cs.valorLiberado,
                         cs.valorContrato
                     FROM CRM.Consultas cs
-                    WHERE cs.CPF NOT IN ('12979230901', '10101201907', '04512025111', '10101215614', '4348724075')
-                    AND cs.updatedAt >= '2025-11-01 00:00:00'
+                    WHERE cs.updatedAt >= '2025-11-01 00:00:00'
                     AND (cs.CPF is not null OR cs.CPF <> '');"""
         return query
     
     def get_crm_cliente(self):
         query = f"""SELECT 
-                        CAST(cl.id AS SIGNED) AS clienteId,
+                        cl.id AS clienteId,
                         cl.identificador,
-                        cl.CPF             AS cpf,
+                        cl.CPF AS cpf,
                         cl.nome
                     FROM CRM.Clientes cl 
                     WHERE cl.CPF NOT IN ('12979230901', '10101201907', '04512025111', '10101215614', '4348724075');"""
         return query
     
-    # def get_sistema_telefone(self):
-    #     query = f"""SELECT distinct
-    #                     t.clienteId AS identificador,
-    #                     t.telefone as telefone_sistema
-    #                 FROM sistema.Telefones t;"""
-    #     return query
-    
-    # def get_crm_telefone(self):
-    #     query = f"""SELECT distinct
-    #                     CAST(t.clienteId AS SIGNED) AS clienteId,
-    #                     t.telefone as telefone_crm
-    #                 FROM CRM.Telefones t;"""
-    #     return query
-
     def get_crm_telefone(self):
         query = f"""WITH fone_sistema AS (
                         SELECT 
@@ -310,7 +258,7 @@ class QuerysSQL:
                     SELECT DISTINCT *
                     FROM (
                         SELECT 
-                            CAST(fs.id AS SIGNED) AS clienteId, 
+                            fs.id AS clienteId, 
                             CASE
                                 WHEN fs.telefone IS NULL THEN tc.telefone
                                 WHEN fs.telefone <> tc.telefone THEN tc.telefone
@@ -325,10 +273,12 @@ class QuerysSQL:
     
     def get_crm_lead(self):
         query = f"""SELECT 
-                        CAST(l.consultaId AS SIGNED) AS consultaId,
-                        CAST(l.clientId AS SIGNED)   AS clienteId,
-                        l.telefone     AS telefone_lead
-                    FROM CRM.Leads l;"""
+                        l.consultaId AS consultaId,
+                        l.clientId AS clienteId,
+                        l.telefone AS telefone_lead
+                    FROM CRM.Leads l
+                    WHERE l.consultaId IS NOT NULL 
+                        OR l.clientId IS NOT NULL;"""
         return query
     
     def get_crm_tabela(self):
@@ -340,8 +290,8 @@ class QuerysSQL:
     
     def get_crm_parcela(self):
         query = f"""SELECT 
-                        CAST(pc.consultaId AS SIGNED) AS consultaId,
-                        pc.num         AS parcelas
+                        pc.consultaId AS consultaId,
+                        pc.num AS parcelas
                     FROM CRM.Parcelas pc;"""
         return query
     
@@ -353,3 +303,66 @@ class QuerysSQL:
                     FROM extracoes.base_consolidada;"""
         return query
     
+
+
+    #####################################################################
+    def get_teste(self):
+        return """SELECT 
+                        CONVERT(cs.id, SIGNED)     AS consultaId,
+                        CONVERT(cs.clienteId, SIGNED)   AS clienteId,
+                        '' as identificador,
+                        cs.updatedAt           AS dataConsulta,
+                        cs.CPF                 AS cpf,
+                        cs.erros,
+                        CONVERT(cs.tabela, SIGNED) AS tabelaId,
+                        cs.valorLiberado,
+                        cs.valorContrato,
+                        CONVERT(pc.consultaId, SIGNED) AS consultaIdParcela,
+                        pc.num         AS parcelas,
+                        CONVERT(tb.id, SIGNED) AS tabelaIdTabela,
+                        tb.nome AS tabela
+                    FROM CRM.Consultas cs
+                    left join CRM.Parcelas pc on cs.id = pc.consultaId
+                    left join CRM.Tabelas tb on cs.tabela = tb.id
+                    WHERE cs.updatedAt >= '2025-11-01 00:00:00'
+                    AND (cs.CPF is not null OR cs.CPF <> '');"""
+    
+    def get_parcelas(self):
+        return """SELECT 
+                        CONVERT(cs.id, SIGNED)     AS consultaId,
+                        CONVERT(cs.clienteId, SIGNED)   AS clienteId,
+                        '' as identificador,
+                        cs.updatedAt           AS dataConsulta,
+                        cs.CPF                 AS cpf,
+                        cs.erros,
+                        CONVERT(cs.tabela, SIGNED) AS tabelaId,
+                        cs.valorLiberado,
+                        cs.valorContrato,
+                        CAST(pc.consultaId AS SIGNED) AS consultaId,
+                        pc.num         AS parcelas
+                    FROM CRM.Consultas cs
+                    left join CRM.Parcelas pc on cs.id = pc.consultaId
+                    WHERE cs.updatedAt >= '2025-11-01 00:00:00'
+                    AND (cs.CPF is not null OR cs.CPF <> '')
+                    and cs.clienteId is not null
+                    order by cs.CPF asc, cs.updatedAt desc;"""
+    
+    def get_tabelas(self):
+        return """SELECT 
+                        CONVERT(cs.id, SIGNED)     AS consultaId,
+                        CONVERT(cs.clienteId, SIGNED)   AS clienteId,
+                        cs.updatedAt           AS dataConsulta,
+                        cs.CPF                 AS cpf,
+                        cs.erros,
+                        CONVERT(cs.tabela, SIGNED) AS tabelaId,
+                        cs.valorLiberado,
+                        cs.valorContrato,
+                        CAST(tb.id AS SIGNED) AS tabelaId,
+                        tb.nome AS tabela
+                    FROM CRM.Consultas cs
+                    left join CRM.Tabelas tb on cs.tabela = tb.id
+                    WHERE cs.updatedAt >= '2025-11-01 00:00:00'
+                    AND (cs.CPF is not null OR cs.CPF <> '');"""
+    
+    def get_telefone(self):
+        return ""

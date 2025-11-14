@@ -2,6 +2,7 @@ import streamlit as st
 import altair as alt
 import pandas as pd
 import numpy as np
+import duckdb as dk
 from datetime import date, datetime
 from io import BytesIO
 import io
@@ -37,18 +38,44 @@ def carregar_dados():
     conn_postgres = conectar.obter_conexao_postgres()
     
     ########## CRM ##########
+    ## Consulta CRM_Consulta
     consulta_crm_consulta = consulta.get_crm_consulta()
     df_crm_consulta1 = pd.read_sql(consulta_crm_consulta, conn_mysql)
+    
     df_crm_consulta1['cpf'] = (
         df_crm_consulta1['cpf']
         .astype(str)
         .str.replace(r'\D', '', regex=True)  # remove tudo que não é dígito
         .str.strip()                         # remove espaços
     )
-    df_crm_consulta1['cpf'] = df_crm_consulta1['cpf'].str.zfill(11)
-    # df_crm_consulta1.loc[~df_crm_consulta1['cpf'].str.fullmatch(r'\d{11}'), 'cpf'] = None
-    df_crm_consulta = df_crm_consulta1.sort_values(['cpf', 'dataConsulta'], ascending=[True, False]).drop_duplicates('cpf', keep='first')
     
+    df_crm_consulta1['cpf'] = df_crm_consulta1['cpf'].str.zfill(11)
+    
+    pega_clienteId = df_crm_consulta1.groupby('cpf')['clienteId'].first().reset_index()
+    
+    df_crm_consulta = pd.merge(df_crm_consulta1, pega_clienteId, on='cpf', how='left')
+    
+    df_crm_consulta = df_crm_consulta.loc[
+        df_crm_consulta.groupby('cpf')['dataConsulta'].idxmax()
+    ]
+    
+    ## Consulta CRM_Tabela
+    consulta_crm_tabela = consulta.get_crm_tabela()
+    df_crm_tabela = pd.read_sql(consulta_crm_tabela, conn_mysql)
+    
+    ## Consulta CRM_Parcela
+    consulta_crm_parcela = consulta.get_crm_parcela()
+    df_crm_parcela = pd.read_sql(consulta_crm_parcela, conn_mysql)
+
+    ## Ajuste de tipos e realiza os JOIN's
+    df_crm_consulta['tabelaId'] = df_crm_consulta['tabelaId'].astype('Int64')
+    df_crm_tabela['tabelaId'] = df_crm_tabela['tabelaId'].astype(int)
+
+    df_crm1 = pd.merge(df_crm_consulta, df_crm_parcela, on='consultaId', how='left')
+    
+    df_crm2 = pd.merge(df_crm1, df_crm_tabela, on='tabelaId', how='left')
+    
+    ## Consulta CRM_Cliente
     consulta_crm_cliente = consulta.get_crm_cliente()
     df_crm_cliente = pd.read_sql(consulta_crm_cliente, conn_mysql)
     
@@ -59,34 +86,24 @@ def carregar_dados():
         .str.strip()                         # remove espaços
     )
     df_crm_cliente['cpf'] = df_crm_cliente['cpf'].str.zfill(11)
-    # df_crm_cliente.loc[~df_crm_cliente['cpf'].str.fullmatch(r'\d{11}'), 'cpf'] = None
     
+    ## Consulta CRM_Telefone
     consulta_crm_telefone = consulta.get_crm_telefone()
     df_crm_telefone = pd.read_sql(consulta_crm_telefone, conn_mysql)
-
+    
+    ## Consulta CRM_Lead
     consulta_crm_lead = consulta.get_crm_lead()
     df_crm_lead = pd.read_sql(consulta_crm_lead, conn_mysql)
-
-    consulta_crm_tabela = consulta.get_crm_tabela()
-    df_crm_tabela = pd.read_sql(consulta_crm_tabela, conn_mysql)
-
-    consulta_crm_parcela = consulta.get_crm_parcela()
-    df_crm_parcela = pd.read_sql(consulta_crm_parcela, conn_mysql)
-
-    df_crm1 = pd.merge(df_crm_consulta, df_crm_parcela, on='consultaId', how='left')
-
-    df_crm1['tabelaId'] = pd.to_numeric(df_crm1['tabelaId'], errors='coerce')
-    df_crm_tabela['tabelaId'] = pd.to_numeric(df_crm_tabela['tabelaId'], errors='coerce')
-
-    df_crm2 = pd.merge(df_crm1, df_crm_tabela, on='tabelaId', how='left')
-    df_crm3 = pd.merge(df_crm2, df_crm_lead, on='consultaId', how='left')
+    
+    df_crm3 = pd.merge(df_crm2, df_crm_lead, on='consultaId', how='outer')
     df_crm3['nome'] = None
     df_crm3['telefone_crm'] = None
-    df_crm3 = df_crm3[['consultaId', 'cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'tabelaId', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
     df_crm3['erros'] = df_crm3['erros'].fillna('Sucesso')
+    df_crm3 = df_crm3[['cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
     
-    df_crm4 = pd.merge(df_crm_cliente, df_crm_telefone, on='clienteId', how='left')
-    df_crm5 = pd.merge(df_crm4, df_crm_lead, on='clienteId', how='left')
+    df_crm4 = pd.merge(df_crm_cliente, df_crm_telefone, on='clienteId', how='outer')
+    
+    df_crm5 = pd.merge(df_crm4, df_crm_lead, on='clienteId', how='outer')
     df_crm5['dataConsulta'] = None
     df_crm5['erros'] = None
     df_crm5['tabelaId'] = None
@@ -94,12 +111,14 @@ def carregar_dados():
     df_crm5['valorContrato'] = None
     df_crm5['parcelas'] = None
     df_crm5['tabela'] = None
-    df_crm5 = df_crm5[['consultaId', 'cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'tabelaId', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
+    df_crm5 = df_crm5[['cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
     
     df_crm  = pd.concat([df_crm3, df_crm5], ignore_index=True)
     df_crm['dataConsulta'] = pd.to_datetime(df_crm['dataConsulta']).dt.date
 
     df_crm['col_aux1'] = np.where(df_crm['telefone_crm'].notna() & df_crm['telefone_crm'].notnull() & (df_crm['telefone_crm'] != ''), df_crm['telefone_crm'], df_crm['telefone_lead'])
+    
+    df_crm = df_crm[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'col_aux1']]
     #########################
 
     ########## DIGISAC ##########
@@ -140,7 +159,7 @@ def carregar_dados():
     ########################################
 
     ########## DF1 = CRM <- TELEFONES CORBAN ##########
-    df1 = pd.merge(df_crm, df_telefones_corban, left_on=['cpf'], right_on=['cpf_telefone_corban'], how='left')
+    df1 = pd.merge(df_crm, df_telefones_corban, left_on=['cpf'], right_on=['cpf_telefone_corban'], how='outer')
     
     df1['col_aux2'] = np.where(df1['col_aux1'].notna() & df1['col_aux1'].notnull() & (df1['col_aux1'] != ''), df1['col_aux1'], df1['telefone_corban'])
 
@@ -148,38 +167,45 @@ def carregar_dados():
     df1['col_aux2'] = df1['col_aux2'].astype(str).apply(
         lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
     )
+
+    df1 = df1[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'col_aux2']]
     #############################################
     
     ########## DF2 = DF1 <- CORBAN ##########
-    df2 = pd.merge(df1, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='left')
+    df2 = pd.merge(df1, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer')
     
     df2['col_aux3'] = np.where(df2['col_aux2'].notna() & df2['col_aux2'].notnull() & (df2['col_aux2'] != ''), df2['col_aux2'], df2['telefone_propostas'])
+
+    df2 = df2[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'col_aux3', 'data_atualizacao_api', 'status_api']]
     ########################################
     
     ########## DF3 = DF2 <- DISPAROS ##########
-    df3 = pd.merge(df2, df_disparos, left_on=['cpf'], right_on=['cpf_disparos'], how='left')
+    df3 = pd.merge(df2, df_disparos, left_on=['cpf'], right_on=['cpf_disparos'], how='outer')
    
     df3['col_aux4'] = np.where(df3['col_aux3'].notna() & df3['col_aux3'].notnull() & (df3['col_aux3'] != ''), df3['col_aux3'], df3['telefone_disparos'])
+    
+    df3 = df3[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'col_aux4', 'data_atualizacao_api', 'status_api']]
     ########################################
 
     ########## DF4 = DF3 <- CONSOLIDADOS ##########
-    df4 = pd.merge(df3, df_base_consolidada, left_on=['cpf'], right_on=['cpf_consolidado'], how='left')
+    df4 = pd.merge(df3, df_base_consolidada, left_on=['cpf'], right_on=['cpf_consolidado'], how='outer')
    
     df4['col_aux5'] = np.where(df4['col_aux4'].notna() & df4['col_aux4'].notnull() & (df4['col_aux4'] != ''), df4['col_aux4'], df4['telefone_consolidado'])
 
     df4['nome_aux1'] = np.where(df4['nome'].notna() & df4['nome'].notnull() & (df4['nome'] != ''), df4['nome'], df4['nome_consolidado'])
+
+    df4 = df4[['dataConsulta', 'cpf', 'nome_aux1', 'erros', 'tabela', 'parcelas', 'valorLiberado', 'valorContrato', 'col_aux5', 'data_atualizacao_api', 'status_api']]
     ########################################
     
     ########## DF = DF4 <- DIGISAC ##########
-    # parte1 = pd.merge(df4, df_digisac[(df_digisac['cpf_digisac'].notna()) | (df_digisac['cpf_digisac'].notnull())], left_on='cpf', right_on='cpf_digisac', how='left')
-    # parte2 = pd.merge(df4, df_digisac[(df_digisac['cpf_digisac'].isna()) | (df_digisac['cpf_digisac'].isnull())], left_on='col_aux5', right_on='telefone_digisac', how='left')
+    # parte1 = pd.merge(df4, df_digisac[(df_digisac['cpf_digisac'].notna()) | (df_digisac['cpf_digisac'].notnull())], left_on='cpf', right_on='cpf_digisac', how='outer')
+    # parte2 = pd.merge(df4, df_digisac[(df_digisac['cpf_digisac'].isna()) | (df_digisac['cpf_digisac'].isnull())], left_on='col_aux5', right_on='telefone_digisac', how='outer')
     
     # df = pd.concat([parte1, parte2], ignore_index=True)
 
-    # df = pd.merge(df4, df_digisac, left_on=['col_aux5'], right_on=['telefone_digisac'], how='left')
-    df = pd.merge(df4, df_digisac, left_on=['cpf'], right_on=['cpf_digisac'], how='left')
-    
-    # df = df.rename(columns={'cpf_x': 'cpf', 'cpf_y': 'cpf_digisac'})
+    df = pd.merge(df4, df_digisac, left_on=['col_aux5'], right_on=['telefone_digisac'], how='outer')
+    # df = pd.merge(df4, df_digisac, left_on=['cpf'], right_on=['cpf_digisac'], how='outer')
+
     df['telefone'] = np.where(df['col_aux5'].notna() & df['col_aux5'].notnull() & (df['col_aux5'] != ''), df['col_aux5'], df['telefone_digisac'])
     ##########################################
     
