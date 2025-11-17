@@ -204,6 +204,7 @@ class QuerysSQL:
         query = f"""select 
                         ac.status_api,
                         cc.cliente_cpf as cpf_corban,
+                        cc.cliente_nome as nome_corban,
                         concat(tc.ddd,tc.numero) as telefone_propostas,
                         ac.data_atualizacao_api 
                     from corban.api ac
