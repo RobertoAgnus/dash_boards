@@ -243,8 +243,7 @@ class QuerysSQL:
                         cl.identificador,
                         cl.CPF AS cpf,
                         cl.nome
-                    FROM CRM.Clientes cl 
-                    WHERE cl.CPF NOT IN ('12979230901', '10101201907', '04512025111', '10101215614', '4348724075');"""
+                    FROM CRM.Clientes cl;"""
         return query
     
     def get_crm_telefone(self):

@@ -37,20 +37,56 @@ def carregar_dados():
     conn_mysql = conectar.obter_conexao_mysql()
     conn_postgres = conectar.obter_conexao_postgres()
     
+    def formatar_telefone(df, coluna_telefone):
+        # Remove 55 dos telefones
+        df[coluna_telefone] = df[coluna_telefone].astype(str).str.replace(
+            r'^(55)(?=\d{11,})', 
+            '', 
+            regex=True
+        )
+
+        # Adiciona "9" depois do segundo dígito, se o número tiver apenas 10 dígitos
+        df[coluna_telefone] = df[coluna_telefone].apply(
+            lambda x: x[:2] + '9' + x[2:] if len(x) == 10 and x.isdigit() else x
+        )
+
+        # Substitui 'nan' e strings vazias por None
+        df[coluna_telefone] = df[coluna_telefone].replace(['nan', ''], None)
+
+        df[coluna_telefone] = df[coluna_telefone].astype(str).apply(
+            lambda x: x[:2] + x[3:] if len(x) > 11 and x.isdigit() else x
+        )
+
+        return df
+
+    def formatar_cpf(df, coluna_cpf):
+        df[coluna_cpf] = (
+            df[coluna_cpf]
+            .astype(str)
+            .str.replace(r'\D', '', regex=True)  # remove tudo que não é dígito
+            .str.strip()                         # remove espaços
+        )
+        
+        df[coluna_cpf] = df[coluna_cpf].astype(str).str.strip()
+
+        df.loc[df[coluna_cpf].str.contains('opt|\[\]|None', case=False, na=False) |
+        (df[coluna_cpf] == ''), coluna_cpf] = None
+        
+        df.loc[df[coluna_cpf].str.contains('Sem CPF', case=False, na=False), coluna_cpf] = None
+
+        df[coluna_cpf] = df[coluna_cpf].str.zfill(11)
+
+        return df
+
     ########## CRM ##########
     ## Consulta CRM_Consulta
     consulta_crm_consulta = consulta.get_crm_consulta()
     df_crm_consulta1 = pd.read_sql(consulta_crm_consulta, conn_mysql)
+
+    df_crm_consulta1['dataConsulta'] = pd.to_datetime(df_crm_consulta1['dataConsulta'])
     
-    df_crm_consulta1['cpf'] = (
-        df_crm_consulta1['cpf']
-        .astype(str)
-        .str.replace(r'\D', '', regex=True)  # remove tudo que não é dígito
-        .str.strip()                         # remove espaços
-    )
-    
-    df_crm_consulta1['cpf'] = df_crm_consulta1['cpf'].str.zfill(11)
-    
+    df_crm_consulta1 = formatar_cpf(df_crm_consulta1, 'cpf')
+
     pega_clienteId = df_crm_consulta1.groupby('cpf')['clienteId'].first().reset_index()
     
     df_crm_consulta = pd.merge(df_crm_consulta1, pega_clienteId, on='cpf', how='left')
@@ -79,21 +115,33 @@ def carregar_dados():
     consulta_crm_cliente = consulta.get_crm_cliente()
     df_crm_cliente = pd.read_sql(consulta_crm_cliente, conn_mysql)
     
-    df_crm_cliente['cpf'] = (
-        df_crm_cliente['cpf']
-        .astype(str)
-        .str.replace(r'\D', '', regex=True)  # remove tudo que não é dígito
-        .str.strip()                         # remove espaços
-    )
-    df_crm_cliente['cpf'] = df_crm_cliente['cpf'].str.zfill(11)
+    df_crm_cliente = formatar_cpf(df_crm_cliente, 'cpf')
     
     ## Consulta CRM_Telefone
     consulta_crm_telefone = consulta.get_crm_telefone()
     df_crm_telefone = pd.read_sql(consulta_crm_telefone, conn_mysql)
+
+    df_crm_telefone = formatar_telefone(df_crm_telefone, 'telefone_crm')
+
+    df_crm_telefone['telefone_crm'] = df_crm_telefone['telefone_crm'].astype(str).str.replace(
+            r'^(11)(?=\d{11,})', 
+            '', 
+            regex=True
+        )
+    
+    df_crm_telefone['telefone_crm'] = df_crm_telefone['telefone_crm'].astype(str).str.replace(
+            r'^(1)(?=\d{11,})', 
+            '', 
+            regex=True
+        )
     
     ## Consulta CRM_Lead
     consulta_crm_lead = consulta.get_crm_lead()
     df_crm_lead = pd.read_sql(consulta_crm_lead, conn_mysql)
+
+    df_crm_lead = formatar_telefone(df_crm_lead, 'telefone_lead')
+
+    #######################################################################################
     
     df_crm3 = pd.merge(df_crm2, df_crm_lead, on='consultaId', how='outer')
     df_crm3['nome'] = None
@@ -114,13 +162,15 @@ def carregar_dados():
     df_crm5 = df_crm5[['cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
     
     df_crm  = pd.concat([df_crm3, df_crm5], ignore_index=True)
-    df_crm['dataConsulta'] = pd.to_datetime(df_crm['dataConsulta']).dt.date
+    df_crm['dataConsulta'] = df_crm['dataConsulta'].dt.date
 
     df_crm['telefone_aux1'] = df_crm['telefone_crm'].replace('', np.nan).fillna(df_crm['telefone_lead'])
     
     df_crm = df_crm[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux1']]
+    
+    df_crm = df_crm.drop_duplicates(subset=['cpf','telefone_aux1'])
     #########################
-
+    
     ########## DIGISAC ##########
     consulta_digisac = consulta.get_digisac()
     df_digisac = pd.read_sql_query(consulta_digisac, conn_postgres)
@@ -131,31 +181,64 @@ def carregar_dados():
         lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
     )
 
+    df_digisac = formatar_cpf(df_digisac, 'cpf_digisac')
+    
+    df_digisac.loc[df_digisac['nome_interno'].str.contains('CPF', case=False, na=False), 'cpf_digisac'] = df_digisac['nome_interno'].str.split('CPF:').str[1].str.strip()
+
+    df_digisac['prioridade'] = (
+        df_digisac['cpf_digisac'].notna().astype(int)
+        + df_digisac['nome_interno'].notna().astype(int)
+    )
+
+    df_digisac = df_digisac.sort_values(
+        by=['data_digisac', 'telefone_digisac', 'prioridade'],
+        ascending=[True, True, False]
+    )
+
+    df_digisac = df_digisac.drop_duplicates(
+        subset=['data_digisac', 'telefone_digisac'],
+        keep='first'
+    )
+
     df_digisac = df_digisac[['cpf_digisac', 'nome_interno', 'telefone_digisac', 'falha', 'data_digisac']]
     #############################
     
     ########## DF1 = CRM <- DIGISAC ##########
-    # parte1 = pd.merge(df4, df_digisac[(df_digisac['cpf_digisac'].notna()) | (df_digisac['cpf_digisac'].notnull())], left_on='cpf', right_on='cpf_digisac', how='outer')
-    # parte2 = pd.merge(df4, df_digisac[(df_digisac['cpf_digisac'].isna()) | (df_digisac['cpf_digisac'].isnull())], left_on='col_aux5', right_on='telefone_digisac', how='outer')
+    # parte1 = pd.merge(df_crm, df_digisac[(df_digisac['cpf_digisac'].notna()) | (df_digisac['cpf_digisac'].notnull())], left_on='cpf', right_on='cpf_digisac', how='outer')
+    # parte2 = pd.merge(df_crm, df_digisac[(df_digisac['cpf_digisac'].isna()) | (df_digisac['cpf_digisac'].isnull())], left_on='telefone_aux1', right_on='telefone_digisac', how='outer')
     
-    # df = pd.concat([parte1, parte2], ignore_index=True)
+    # df1 = pd.concat([parte1, parte2], ignore_index=True)
 
-    # df = pd.merge(df1, df_digisac, left_on=['col_aux5'], right_on=['telefone_digisac'], how='outer')
+    # df1 = pd.merge(df_crm, df_digisac, left_on=['telefone_aux1'], right_on=['telefone_digisac'], how='outer')
     df1 = pd.merge(df_crm, df_digisac, left_on=['cpf'], right_on=['cpf_digisac'], how='outer')
 
     df1['cpf_aux1'] = df1['cpf'].replace('', np.nan).fillna(df1['cpf_digisac'])
-    df1.loc[df1['cpf_aux1'].str.contains('opt|\[\]', case=False, na=False), 'cpf_aux1'] = None
     df1['nome_aux1'] = df1['nome'].replace('', np.nan).fillna(df1['nome_interno'])
     df1['telefone_aux2'] = df1['telefone_aux1'].replace('', np.nan).fillna(df1['telefone_digisac'])
     
-    df1 = df1[['cpf_aux1', 'nome_aux1', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux2', 'falha', 'data_digisac']]
+    cols = df1.columns.drop('cpf_aux1')
+
+    df1 = df1.sort_values(['cpf_aux1', 'data_digisac'], ascending=[True, False])
+
+    df_result = (
+        df1.groupby('cpf_aux1', as_index=False)
+        .agg({col: 'first' for col in cols})
+    )
+
+    df1 = df_result[['cpf_aux1', 'nome_aux1', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux2', 'falha', 'data_digisac']]
     ##########################################
     
     ########## CORBAN ##########
     consulta_corban = consulta.get_corban()
     df_corban = pd.read_sql_query(consulta_corban, conn_postgres)
-    df_corban['cpf_corban'] = df_corban['cpf_corban'].astype(str).str.zfill(11)
-    df_corban['data_atualizacao_api'] = pd.to_datetime(df_corban['data_atualizacao_api']).dt.date
+
+    df_corban = formatar_cpf(df_corban, 'cpf_corban')
+
+    df_corban['data_atualizacao_api'] = pd.to_datetime(df_corban['data_atualizacao_api'])
+    
+    df_corban = df_corban.sort_values('data_atualizacao_api', ascending=False).drop_duplicates(subset=['cpf_corban','telefone_propostas'], keep='first')
+    
+    df_corban['data_atualizacao_api'] = df_corban['data_atualizacao_api'].dt.date
 
     df_corban = df_corban[['cpf_corban', 'nome_corban', 'telefone_propostas', 'status_api', 'data_atualizacao_api']]
     ############################
@@ -173,7 +256,12 @@ def carregar_dados():
     ########## TELEFONES CORBAN ##########
     consulta_telefone_corban = consulta.get_telefones_corban()
     df_telefones_corban = pd.read_sql_query(consulta_telefone_corban, conn_postgres)
-    df_telefones_corban['cpf_telefone_corban'] = df_telefones_corban['cpf_telefone_corban'].astype(str).str.zfill(11)
+
+    df_telefones_corban = formatar_cpf(df_telefones_corban, 'cpf_telefone_corban')
+
+    df_telefones_corban = formatar_telefone(df_telefones_corban, 'telefone_corban')
+
+    df_telefones_corban = df_telefones_corban.drop_duplicates(subset=['cpf_telefone_corban','telefone_corban'])
     ######################################
     
     ########## DF3 = DF2 <- TELEFONES CORBAN ##########
@@ -182,13 +270,24 @@ def carregar_dados():
     df3['cpf_aux3'] = df3['cpf_aux2'].replace('', np.nan).fillna(df3['cpf_telefone_corban'])
     df3['telefone_aux4'] = df3['telefone_aux3'].replace('', np.nan).fillna(df3['telefone_corban'])
 
+    df3 = df3.drop_duplicates(subset=['cpf_aux3', 'dataConsulta', 'telefone_aux4'])
+
     df3 = df3[['cpf_aux3', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux4', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
     ########################################
     
     ########## DISPAROS ##########
     consulta_disparos = consulta.disparos()
     df_disparos = pd.read_sql_query(consulta_disparos, conn_postgres)
-    df_disparos['cpf_disparos'] = df_disparos['cpf_disparos'].astype(str).str.zfill(11)
+
+    df_disparos = formatar_cpf(df_disparos, 'cpf_disparos')
+
+    df_disparos = formatar_telefone(df_disparos, 'telefone_disparos')
+
+    df_disparos['telefone_disparos'] = df_disparos['telefone_disparos'].astype(str).apply(
+        lambda x: x[:2] + x[3:] if len(x) > 11 and x.isdigit() else x
+    )
+
+    df_disparos = df_disparos.drop_duplicates(subset=['cpf_disparos', 'telefone_disparos'])
     ##############################
 
     ########## DF4 = DF3 <- DISPAROS ##########
@@ -197,16 +296,34 @@ def carregar_dados():
     df4['cpf_aux4'] = df4['cpf_aux3'].replace('', np.nan).fillna(df4['cpf_disparos'])
     df4['telefone_aux5'] = df4['telefone_aux4'].replace('', np.nan).fillna(df4['telefone_disparos'])
 
-    df4 = df4[['cpf_aux4', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux5', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
+    df4 = df4.drop_duplicates(subset=['cpf_aux4', 'dataConsulta', 'telefone_aux5'])
+
+    cols = df4.columns.drop('telefone_aux5')
+
+    df4 = df4.sort_values(['telefone_aux5', 'dataConsulta'], ascending=[True, False])
+
+    df_result = (
+        df4.groupby('telefone_aux5', as_index=False)
+        .agg({col: 'first' for col in cols})
+    )
+
+    df4 = df_result[['cpf_aux4', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux5', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
     ########################################
     
     ########## BASES CONSOLIDADAS ##########
     consulta_base_consolidada = consulta.get_base_consolidada()
     df_base_consolidada = pd.read_sql_query(consulta_base_consolidada, conn_postgres)
-    df_base_consolidada['cpf_consolidado'] = df_base_consolidada['cpf_consolidado'].astype(str).str.zfill(11)
-    df_base_consolidada['telefone_consolidado'] = df_base_consolidada['telefone_consolidado'].astype(str).str.replace(r'\.0', '', regex=True)
-    ########################################
 
+    df_base_consolidada = formatar_cpf(df_base_consolidada, 'cpf_consolidado')
+
+    df_base_consolidada = formatar_telefone(df_base_consolidada, 'telefone_consolidado')
+
+    df_base_consolidada['telefone_consolidado'] = df_base_consolidada['telefone_consolidado'].astype(str).apply(
+        lambda x: x[:2] + x[3:] if len(x) > 11 and x.isdigit() else x
+    )
+    
+    ########################################
+    
     ########## DF5 = DF4 <- BASES CONSOLIDADAS ##########
     df = pd.merge(df4, df_base_consolidada, left_on=['cpf_aux4'], right_on=['cpf_consolidado'], how='outer')
     
@@ -216,39 +333,6 @@ def carregar_dados():
 
     df = df[['dataConsulta', 'cpf_aux5', 'nome_aux3', 'telefone_aux6', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'data_digisac', 'falha', 'data_atualizacao_api', 'status_api']]
     ########################################
-    
-    # ########## DF1 = CRM <- TELEFONES CORBAN ##########
-    # df1 = pd.merge(df_crm, df_telefones_corban, left_on=['cpf'], right_on=['cpf_telefone_corban'], how='outer')
-    
-    # df1['col_aux2'] = np.where(df1['col_aux1'].notna() & df1['col_aux1'].notnull() & (df1['col_aux1'] != ''), df1['col_aux1'], df1['telefone_corban'])
-
-    # df1['col_aux2'] = df1['col_aux2'].astype(str).str.replace(r'^(55)(?=\d{11,})', '', regex=True)
-    # df1['col_aux2'] = df1['col_aux2'].astype(str).apply(
-    #     lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
-    # )
-
-    # df1 = df1[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'col_aux2']]
-    # #############################################
-    
-    # ########## DF3 = DF2 <- DISPAROS ##########
-    # df3 = pd.merge(df2, df_disparos, left_on=['cpf'], right_on=['cpf_disparos'], how='outer')
-   
-    # df3['col_aux4'] = np.where(df3['col_aux3'].notna() & df3['col_aux3'].notnull() & (df3['col_aux3'] != ''), df3['col_aux3'], df3['telefone_disparos'])
-    
-    # df3 = df3[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'col_aux4', 'data_atualizacao_api', 'status_api']]
-    # ########################################
-
-    # ########## DF4 = DF3 <- CONSOLIDADOS ##########
-    # df4 = pd.merge(df3, df_base_consolidada, left_on=['cpf'], right_on=['cpf_consolidado'], how='outer')
-   
-    # df4['col_aux5'] = np.where(df4['col_aux4'].notna() & df4['col_aux4'].notnull() & (df4['col_aux4'] != ''), df4['col_aux4'], df4['telefone_consolidado'])
-
-    # df4['nome_aux1'] = np.where(df4['nome'].notna() & df4['nome'].notnull() & (df4['nome'] != ''), df4['nome'], df4['nome_consolidado'])
-
-    # df4 = df4[['dataConsulta', 'cpf', 'nome_aux1', 'erros', 'tabela', 'parcelas', 'valorLiberado', 'valorContrato', 'col_aux5', 'data_atualizacao_api', 'status_api']]
-    # ########################################
-    
-    # df = df[['dataConsulta', 'cpf', 'nome_aux1', 'telefone', 'erros', 'tabela', 'parcelas', 'valorLiberado', 'valorContrato', 'data', 'falha', 'data_atualizacao_api', 'status_api']]
     
     # Condição: data_inicio <= data_fim
     cond = df['dataConsulta'] <= df['data_atualizacao_api']
@@ -274,22 +358,26 @@ def carregar_dados():
     
     df = df.rename(columns=renomear)
     
-    # Remove 55 dos telefones
-    df['Telefone'] = df['Telefone'].astype(str).str.replace(r'^(55)(?=\d{11,})', '', regex=True)
+    # # Remove 55 dos telefones
+    # df['Telefone'] = df['Telefone'].astype(str).str.replace(r'^(55)(?=\d{11,})', '', regex=True)
 
-    # Adiciona "9" depois do segundo dígito, se o número tiver apenas 10 dígitos (ex: DDD + 8 dígitos)
-    df['Telefone'] = df['Telefone'].astype(str).apply(
-        lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
-    )
+    # # Adiciona "9" depois do segundo dígito, se o número tiver apenas 10 dígitos (ex: DDD + 8 dígitos)
+    # df['Telefone'] = df['Telefone'].astype(str).apply(
+    #     lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
+    # )
     
     df['Telefone'] = df['Telefone'].replace('nan', None)
     
-    df = (
-        df[~((df['Data Consulta'].isna() & df['Retorno Consulta'].isna()) & df.duplicated(subset='CPF', keep=False))]
-        .drop_duplicates(subset='CPF', keep='first')
-    )
+    # df = (
+    #     df[~((df['Data Consulta'].isna() & df['Retorno Consulta'].isna()) & df.duplicated(subset='CPF', keep=False))]
+    #     .drop_duplicates(subset='CPF', keep='first')
+    # )
     
-    return df.drop_duplicates()
+    df.loc[df['Nome'].str.contains('CPF', case=False, na=False), 'CPF'] = df['Nome'].str.split('CPF:').str[1].str.strip()
+    df.loc[df['CPF'].str.contains('Sem CPF', case=False, na=False), 'CPF'] = None
+    df.loc[df['Nome'].str.contains('Sem nome', case=False, na=False), 'Nome'] = None
+
+    return df.drop_duplicates(subset=['CPF', 'Telefone', 'Data Consulta', 'Data Disparo', 'Data Corban'])
     
 
 ##### CARREGAR OS DADOS (1x) #####
@@ -438,7 +526,7 @@ with st.sidebar:
 
     # Retorno Consulta
     if len(selectbox_erros_consulta) != 0:
-        dados['Retorno Consulta'] = dados['Retorno Consulta'].astype(str).str.strip()
+        dados_filtrados['Retorno Consulta'] = dados_filtrados['Retorno Consulta'].astype(str).str.strip()
         filtros = [str(x).strip() for x in selectbox_erros_consulta]
         dados_filtrados = dados_filtrados[dados_filtrados['Retorno Consulta'].isin(filtros)]
 
@@ -570,16 +658,16 @@ with st.sidebar:
         st.rerun()
 
 dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')
-dados_filtrados['Data Disparo'] = pd.to_datetime(dados_filtrados['Data Disparo'], errors='coerce')
-dados_filtrados['Data Corban'] = pd.to_datetime(dados_filtrados['Data Corban'], errors='coerce')
+dados_filtrados['Data Disparo' ] = pd.to_datetime(dados_filtrados['Data Disparo' ], errors='coerce')
+dados_filtrados['Data Corban'  ] = pd.to_datetime(dados_filtrados['Data Corban'  ], errors='coerce')
 
 dados_filtrados['Data Consulta'] = dados_filtrados['Data Consulta'].dt.strftime('%d/%m/%Y')
-dados_filtrados['Data Disparo'] = dados_filtrados['Data Disparo'].dt.strftime('%d/%m/%Y')
-dados_filtrados['Data Corban'] = dados_filtrados['Data Corban'].dt.strftime('%d/%m/%Y')
+dados_filtrados['Data Disparo' ] = dados_filtrados['Data Disparo' ].dt.strftime('%d/%m/%Y')
+dados_filtrados['Data Corban'  ] = dados_filtrados['Data Corban'  ].dt.strftime('%d/%m/%Y')
 
-dados_filtrados['Telefone'] = dados_filtrados['Telefone'].astype(str).apply(
-        lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
-    )
+# dados_filtrados['Telefone'] = dados_filtrados['Telefone'].astype(str).apply(
+#         lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
+#     )
 
 dados_csv = dados_filtrados[['Nome','Telefone']]
 dados_csv = dados_csv[~dados_csv['Telefone'].isnull()].drop_duplicates(subset='Telefone')
@@ -690,5 +778,5 @@ with st.container():
             disabled=visibilidade_total
         )
 
-    st.write(f'Sem Nome: {len(dados_filtrados[dados_filtrados["Nome"].isnull()])}')
+    # st.write(f'Sem Nome: {len(dados_filtrados[dados_filtrados["Nome"].isna()])}')
         
