@@ -8,12 +8,8 @@ from io import BytesIO
 import io
 import zipfile
 
-from querys.connect import Conexao
-from fontes import telefones_corban, disparos, base_consolidada, crm, digisac, corban
-from regras.tratar_df_final import trata_df_final
-from regras.merges import merge_crm_telefones_corban, merge_crm_disparos, merge_crm_base_consolidada, merge_digisac_telefones_corban, merge_digisac_disparos, merge_digisac_base_consolidada, merge_crm_digisac, merge_df1_corban, merge_df2_telefones_corban, merge_df3_disparos, merge_df4_base_consolidada
-
-pd.set_option('display.max_columns', None)
+from regras.obter_dados import carregar_dados
+from regras.tratamentos import get_datas_consulta, get_datas_disparos, get_datas_corban, metric_card
 
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
@@ -25,144 +21,61 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
-##### CACHE DE CONSULTAS #####
-@st.cache_data(show_spinner=False)
-def carregar_dados():
-    conectar = Conexao()
-
-    conectar.conectar_mysql()
-    conectar.conectar_postgres()
-
-    conn_mysql = conectar.obter_conexao_mysql()
-    conn_postgres = conectar.obter_conexao_postgres()
-    
-    ########## TELEFONES CORBAN ##########
-    df_telefones_corban = telefones_corban.get_telefones_corban(conn_postgres)
-    ######################################
-    
-    ########## DISPAROS ##########
-    df_disparos = disparos.get_disparos(conn_postgres)
-    ##############################
-
-    ########## BASES CONSOLIDADAS ##########
-    df_base_consolidada = base_consolidada.get_base_consolidada(conn_postgres)
-    ########################################
-    
-    ########## CRM ##########
-    df_crm = crm.get_crm(conn_mysql)
-    #########################
-    
-    ########## DIGISAC ##########
-    df_digisac = digisac.get_digisac(conn_postgres)
-    #############################
-    
-    ########## CORBAN ##########
-    df_corban = corban.get_corban(conn_postgres)
-    ############################
-
-    # ########## DF0 = CRM <- TELEFONES CORBAN ##########
-    # df_crm = merge_crm_telefones_corban(df_crm, df_telefones_corban)
-    # ##########################################
-    
-    # ########## DF0 = CRM <- DISPAROS ##########
-    # df_crm = merge_crm_disparos(df_crm, df_disparos)
-    # ##########################################
-
-    # ########## DF0 = CRM <- BASES CONSOLIDADAS ##########
-    # df_crm = merge_crm_base_consolidada(df_crm, df_base_consolidada)
-    # ##########################################
-
-    # ########## DF0 = DIGISAC <- TELEFONES CORBAN ##########
-    # df_digisac = merge_digisac_telefones_corban(df_digisac, df_telefones_corban)
-    # ##########################################
-    
-    # ########## DF0 = DIGISAC <- DISPAROS ##########
-    # df_digisac = merge_digisac_disparos(df_digisac, df_disparos)
-    # ##########################################
-
-    # ########## DF0 = DIGISAC <- BASES CONSOLIDADAS ##########
-    # df_digisac = merge_digisac_base_consolidada(df_digisac, df_base_consolidada)
-    # ##########################################
-
-    ########## DF1 = CRM <- DIGISAC ##########
-    df1 = merge_crm_digisac(df_crm, df_digisac)
-    ##########################################
-    
-    ########## DF2 = DF1 <- CORBAN ##########
-    df2 = merge_df1_corban(df1, df_corban)
-    ########################################
-    
-    ########## DF3 = DF2 <- TELEFONES CORBAN ##########
-    df3 = merge_df2_telefones_corban(df2, df_telefones_corban)
-    ########################################
-    
-    ########## DF4 = DF3 <- DISPAROS ##########
-    df4 = merge_df3_disparos(df3, df_disparos)
-    ########################################
-    
-    ########## DF = DF4 <- BASES CONSOLIDADAS ##########
-    df = merge_df4_base_consolidada(df4, df_base_consolidada)
-    ########################################
-    
-    df = trata_df_final(df)
-
-    return df.drop_duplicates(subset=['CPF', 'Telefone', 'Data Consulta', 'Data Disparo', 'Data Corban'])
-    
 
 ##### CARREGAR OS DADOS (1x) #####
 dados = carregar_dados()
 
 
-##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
-def get_datas_consulta(dados):
-    # Remove linhas com Data Consulta vazia
-    dados = dados.dropna(subset=['Data Consulta'])
+# ##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
+# def get_datas_consulta(dados):
+#     # Remove linhas com Data Consulta vazia
+#     dados = dados.dropna(subset=['Data Consulta'])
 
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Consulta'].min()
-    maior_data = date.today()
+#     # Obtendo a menor e a maior data da coluna 'data'
+#     menor_data = dados['Data Consulta'].min()
+#     maior_data = date.today()
     
-    return menor_data, maior_data
+#     return menor_data, maior_data
 
-##### FUNÇÃO PARA OBTER AS DATAS DISPAROS #####
-def get_datas_disparos(dados):
-    # Remove linhas com Data disparos vazia
-    dados = dados.dropna(subset=['Data Disparo'])
+# ##### FUNÇÃO PARA OBTER AS DATAS DISPAROS #####
+# def get_datas_disparos(dados):
+#     # Remove linhas com Data disparos vazia
+#     dados = dados.dropna(subset=['Data Disparo'])
 
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Disparo'].min()
-    maior_data = date.today()
+#     # Obtendo a menor e a maior data da coluna 'data'
+#     menor_data = dados['Data Disparo'].min()
+#     maior_data = date.today()
 
-    return menor_data, maior_data
+#     return menor_data, maior_data
 
-##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
-def get_datas_corban(dados):
-    # Remove linhas com Data Corban vazia
-    dados = dados.dropna(subset=['Data Corban'])
+# ##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
+# def get_datas_corban(dados):
+#     # Remove linhas com Data Corban vazia
+#     dados = dados.dropna(subset=['Data Corban'])
 
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Corban'].min()
-    maior_data = date.today()
+#     # Obtendo a menor e a maior data da coluna 'data'
+#     menor_data = dados['Data Corban'].min()
+#     maior_data = date.today()
 
-    return menor_data, maior_data
+#     return menor_data, maior_data
 
-##### FUNÇÃO PARA GERAR OS CARDS #####
-def metric_card(label, value):
-    st.markdown(
-        f"""
-        <div style="
-            background-color: #262730;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 15px;
-            height: auto;
-        ">
-            <p style="color: white; font-weight: bold;">{label}</p>
-            <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+# ##### FUNÇÃO PARA GERAR OS CARDS #####
+# def metric_card(label, value):
+#     st.markdown(
+#         f"""
+#         <div style="
+#             background-color: #262730;
+#             border-radius: 10px;
+#             text-align: center;
+#             margin-bottom: 15px;
+#             height: auto;
+#         ">
+#             <p style="color: white; font-weight: bold;">{label}</p>
+#             <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
+#         </div>
+#         """,
+#         unsafe_allow_html=True
+#     )
 
 
 ##### ÁREA DO DASHBOARD #####
@@ -398,9 +311,12 @@ dados_filtrados['Data Corban'  ] = dados_filtrados['Data Corban'  ].dt.strftime(
 #         lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
 #     )
 
-dados_csv = dados_filtrados[['Nome','Telefone']]
-dados_csv = dados_csv[~dados_csv['Telefone'].isnull()].drop_duplicates(subset='Telefone')
+dados_csv = dados_filtrados[
+                    (dados_filtrados['Telefone'].notnull()) & 
+                    (dados_filtrados['Data Consulta'].notnull())
+                ].drop_duplicates(subset='Telefone')
 dados_csv['Telefone'] = '55' + dados_csv['Telefone'].astype(str)
+dados_csv = dados_csv[['Nome','Telefone']]
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
