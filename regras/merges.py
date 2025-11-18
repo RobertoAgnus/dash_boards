@@ -25,7 +25,7 @@ def merge_crm_telefones_corban(df1, df2):
     df0['cpf_aux0'] = df0['cpf'].replace('', np.nan).fillna(df0['cpf_telefone_corban'])
     df0['telefone_aux0'] = df0['telefone_aux1'].replace('', np.nan).fillna(df0['telefone_corban'])
     
-    df1 = df0[['cpf_aux0', 'nome', 'telefone_aux0', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
+    df1 = df0[['cpf_aux0', 'nome', 'telefone_aux0', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco']]
 
     df1 = df1.rename(columns={'cpf_aux0': 'cpf', 'telefone_aux0': 'telefone_aux1'})
 
@@ -55,7 +55,7 @@ def merge_crm_disparos(df1, df2):
     df0['cpf_aux0'] = df0['cpf'].replace('', np.nan).fillna(df0['cpf_disparos'])
     df0['telefone_aux0'] = df0['telefone_aux1'].replace('', np.nan).fillna(df0['telefone_disparos'])
     
-    df1 = df0[['cpf_aux0', 'nome', 'telefone_aux0', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
+    df1 = df0[['cpf_aux0', 'nome', 'telefone_aux0', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco']]
 
     df1 = df1.rename(columns={'cpf_aux0': 'cpf', 'telefone_aux0': 'telefone_aux1'})
 
@@ -86,7 +86,7 @@ def merge_crm_base_consolidada(df1, df2):
     df0['telefone_aux0'] = df0['telefone_aux1'].replace('', np.nan).fillna(df0['telefone_consolidado'])
     df0['nome_aux0'] = df0['nome'].replace('', np.nan).fillna(df0['nome_consolidado'])
     
-    df1 = df0[['cpf_aux0', 'nome_aux0', 'telefone_aux0', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
+    df1 = df0[['cpf_aux0', 'nome_aux0', 'telefone_aux0', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco']]
 
     df1 = df1.rename(columns={'cpf_aux0': 'cpf', 'nome_aux0': 'nome', 'telefone_aux0': 'telefone_aux1'})
 
@@ -235,7 +235,7 @@ def merge_crm_digisac(df1, df2):
         .agg({col: 'first' for col in cols})
     )
 
-    df = df_result[['cpf_aux1', 'nome_aux1', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux2', 'falha', 'data_digisac']]
+    df = df_result[['cpf_aux1', 'nome_aux1', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco', 'telefone_aux2', 'falha', 'data_digisac']]
 
     return df
 
@@ -266,7 +266,7 @@ def merge_df1_corban(df1, df2):
 
     df = df.sort_values(['cpf_aux2', 'data_atualizacao_api'], ascending=[True, False])
 
-    df = df[['cpf_aux2', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux3', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
+    df = df[['cpf_aux2', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco', 'telefone_aux3', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
 
     return df
 
@@ -279,7 +279,7 @@ def merge_df2_telefones_corban(df1, df2):
 
     df = df.drop_duplicates(subset=['cpf_aux3', 'dataConsulta', 'telefone_aux4'])
 
-    df = df[['cpf_aux3', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux4', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
+    df = df[['cpf_aux3', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco', 'telefone_aux4', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
 
     return df
 
@@ -301,7 +301,7 @@ def merge_df3_disparos(df1, df2):
         .agg({col: 'first' for col in cols})
     )
 
-    df = df_result[['cpf_aux4', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux5', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
+    df = df_result[['cpf_aux4', 'nome_aux2', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco', 'telefone_aux5', 'falha', 'data_digisac', 'status_api', 'data_atualizacao_api']]
 
     return df
 
@@ -313,6 +313,6 @@ def merge_df4_base_consolidada(df1, df2):
     df['nome_aux3'] = df['nome_aux2'].replace('', np.nan).fillna(df['nome_consolidado'])
     df['telefone_aux6'] = df['telefone_aux5'].replace('', np.nan).fillna(df['telefone_consolidado'])
 
-    df = df[['dataConsulta', 'cpf_aux5', 'nome_aux3', 'telefone_aux6', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'data_digisac', 'falha', 'data_atualizacao_api', 'status_api']]
+    df = df[['dataConsulta', 'cpf_aux5', 'nome_aux3', 'telefone_aux6', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco', 'data_digisac', 'falha', 'data_atualizacao_api', 'status_api']]
 
     return df

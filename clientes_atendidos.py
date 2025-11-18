@@ -1,9 +1,7 @@
 import streamlit as st
 import altair as alt
 import pandas as pd
-import numpy as np
-import duckdb as dk
-from datetime import date, datetime
+from datetime import date
 from io import BytesIO
 import io
 import zipfile
@@ -23,59 +21,7 @@ alt.themes.enable("dark")
 
 
 ##### CARREGAR OS DADOS (1x) #####
-dados = carregar_dados()
-
-
-# ##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
-# def get_datas_consulta(dados):
-#     # Remove linhas com Data Consulta vazia
-#     dados = dados.dropna(subset=['Data Consulta'])
-
-#     # Obtendo a menor e a maior data da coluna 'data'
-#     menor_data = dados['Data Consulta'].min()
-#     maior_data = date.today()
-    
-#     return menor_data, maior_data
-
-# ##### FUNÇÃO PARA OBTER AS DATAS DISPAROS #####
-# def get_datas_disparos(dados):
-#     # Remove linhas com Data disparos vazia
-#     dados = dados.dropna(subset=['Data Disparo'])
-
-#     # Obtendo a menor e a maior data da coluna 'data'
-#     menor_data = dados['Data Disparo'].min()
-#     maior_data = date.today()
-
-#     return menor_data, maior_data
-
-# ##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
-# def get_datas_corban(dados):
-#     # Remove linhas com Data Corban vazia
-#     dados = dados.dropna(subset=['Data Corban'])
-
-#     # Obtendo a menor e a maior data da coluna 'data'
-#     menor_data = dados['Data Corban'].min()
-#     maior_data = date.today()
-
-#     return menor_data, maior_data
-
-# ##### FUNÇÃO PARA GERAR OS CARDS #####
-# def metric_card(label, value):
-#     st.markdown(
-#         f"""
-#         <div style="
-#             background-color: #262730;
-#             border-radius: 10px;
-#             text-align: center;
-#             margin-bottom: 15px;
-#             height: auto;
-#         ">
-#             <p style="color: white; font-weight: bold;">{label}</p>
-#             <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
-#         </div>
-#         """,
-#         unsafe_allow_html=True
-#     )
+dados, df_crm, df_digisac, df_corban = carregar_dados()
 
 
 ##### ÁREA DO DASHBOARD #####
@@ -96,16 +42,18 @@ with st.sidebar:
         key="filtro_cpf"
     )
 
-    ##### FILTRO DE TELEFONES #####
-    if "filtro_telefone" not in st.session_state:
-        st.session_state.filtro_telefone = 'Todos'
+    ##### FILTRO DE BANCOS #####
+    banco_consulta = dados['Banco'].dropna().unique().tolist()
+    banco_consulta = [str(x).strip() for x in banco_consulta if x is not None]
+    banco_consulta = sorted(banco_consulta)
 
-    lista_telefone = ["Todos", "Sem Telefone", "Com Telefone"]
+    if "filtro_banco" not in st.session_state:
+        st.session_state.filtro_banco = []
 
-    selectbox_telefone = st.selectbox(
-        'Selecione COM ou SEM Telefone',
-        lista_telefone,
-        key="filtro_telefone",
+    selectbox_banco = st.multiselect(
+        'Selecione o Banco',
+        banco_consulta,
+        key="filtro_banco",
         placeholder='Selecionar'
     )
 
@@ -160,11 +108,11 @@ with st.sidebar:
     elif selectbox_cpf == 'Com CPF':
         dados_filtrados = dados_filtrados[dados_filtrados['CPF'].notna()]
 
-    # Telefone
-    if selectbox_telefone == 'Sem Telefone':
-        dados_filtrados = dados_filtrados[dados_filtrados['Telefone'].isna()]
-    elif selectbox_telefone == 'Com Telefone':
-        dados_filtrados = dados_filtrados[dados_filtrados['Telefone'].notna()]
+    # Banco
+    if len(selectbox_banco) != 0:
+        dados_filtrados['Banco'] = dados_filtrados['Banco'].astype(str).str.strip()
+        filtros = [str(x).strip() for x in selectbox_banco]
+        dados_filtrados = dados_filtrados[dados_filtrados['Banco'].isin(filtros)]
 
     # Retorno Consulta
     if len(selectbox_erros_consulta) != 0:
@@ -307,10 +255,6 @@ dados_filtrados['Data Consulta'] = dados_filtrados['Data Consulta'].dt.strftime(
 dados_filtrados['Data Disparo' ] = dados_filtrados['Data Disparo' ].dt.strftime('%d/%m/%Y')
 dados_filtrados['Data Corban'  ] = dados_filtrados['Data Corban'  ].dt.strftime('%d/%m/%Y')
 
-# dados_filtrados['Telefone'] = dados_filtrados['Telefone'].astype(str).apply(
-#         lambda x: x[:2] + '9' + x[2:] if len(x) <= 10 and x.isdigit() else x
-#     )
-
 dados_csv = dados_filtrados[
                     (dados_filtrados['Telefone'].notnull()) & 
                     (dados_filtrados['Data Consulta'].notnull())
@@ -356,11 +300,9 @@ with st.container():
             visibilidade = True   
             valor_minimo = 0 
         qtd = st.number_input("Linhas por arquivo", min_value=valor_minimo, value=len(dados_csv), step=100, disabled=visibilidade)
-        # st.text_input(label='', value=format(int(len(dados_csv)), ',').replace(',', '.'), disabled=False)
     
     with col_2:
         ##### BOTÃO EXPORTAR TABELA #####
-        
         buffer_zip = io.BytesIO()
         try:
             partes = [dados_csv[i:i + qtd] for i in range(0, len(dados_csv), qtd)]
@@ -387,17 +329,6 @@ with st.container():
             mime="application/zip",
             disabled=visibilidade
         )
-        # csv = dados_csv.to_csv(index=False).encode("utf-8")
-       
-        # # --- Botão para download ---
-        # st.write('')
-        # st.write('')
-        # st.download_button(
-        #     label="⬇️ Baixar Digisac",
-        #     data=csv,
-        #     file_name="consultas.csv",
-        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        # )
 
     with col_3:
         qtd_total = len(dados_filtrados)
@@ -422,6 +353,3 @@ with st.container():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             disabled=visibilidade_total
         )
-
-    # st.write(f'Sem Nome: {len(dados_filtrados[dados_filtrados["Nome"].isna()])}')
-        

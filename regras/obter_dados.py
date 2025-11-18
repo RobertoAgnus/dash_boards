@@ -87,4 +87,4 @@ def carregar_dados():
     
     df = trata_df_final(df)
 
-    return df.drop_duplicates(subset=['CPF', 'Telefone', 'Data Consulta', 'Data Disparo', 'Data Corban'])
+    return df, df_crm, df_digisac, df_corban

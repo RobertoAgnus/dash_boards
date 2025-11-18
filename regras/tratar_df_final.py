@@ -14,6 +14,7 @@ def trata_df_final(df):
                     'telefone_aux6': 'Telefone',
                     'erros': 'Retorno Consulta',
                     'tabela': 'Tabelas',
+                    'banco': 'Banco',
                     'data_digisac': 'Data Disparo',
                     'parcelas': 'Parcelas',
                     'valorLiberado': 'Valor Liberado',
@@ -31,4 +32,4 @@ def trata_df_final(df):
     df.loc[df['CPF'].str.contains('Sem CPF', case=False, na=False), 'CPF'] = None
     df.loc[df['Nome'].str.contains('Sem nome', case=False, na=False), 'Nome'] = None
 
-    return df
+    return df.drop_duplicates(subset=['CPF', 'Telefone', 'Data Consulta', 'Data Disparo', 'Data Corban'])

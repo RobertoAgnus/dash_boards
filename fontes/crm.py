@@ -77,7 +77,7 @@ def get_crm(conn):
     df3['nome'] = None
     df3['telefone_crm'] = None
     df3['erros'] = df3['erros'].fillna('Sucesso')
-    df3 = df3[['cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
+    df3 = df3[['cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco']]
     
     df4 = pd.merge(df_cliente, df_telefone, on='clienteId', how='outer')
     
@@ -89,7 +89,8 @@ def get_crm(conn):
     df5['valorContrato'] = None
     df5['parcelas'] = None
     df5['tabela'] = None
-    df5 = df5[['cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela']]
+    df5['banco'] = None
+    df5 = df5[['cpf', 'clienteId', 'telefone_lead', 'nome', 'telefone_crm', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco']]
     
     df  = pd.concat([df3, df5], ignore_index=True)
 
@@ -97,7 +98,7 @@ def get_crm(conn):
 
     df['telefone_aux1'] = df['telefone_crm'].replace('', np.nan).fillna(df['telefone_lead'])
     
-    df = df[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'telefone_aux1']]
+    df = df[['cpf', 'nome', 'dataConsulta', 'erros', 'valorLiberado', 'valorContrato', 'parcelas', 'tabela', 'banco', 'telefone_aux1']]
     
     df = df.drop_duplicates(subset=['cpf','telefone_aux1'])
 

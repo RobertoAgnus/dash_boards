@@ -231,8 +231,11 @@ class QuerysSQL:
                         cs.erros,
                         cs.tabela AS tabelaId,
                         cs.valorLiberado,
-                        cs.valorContrato
+                        cs.valorContrato,
+                        b.nome as banco,
+                        b.logo
                     FROM CRM.Consultas cs
+                    left join CRM.Bancos b on cs.bancoId = b.id
                     WHERE cs.updatedAt >= '2025-11-01 00:00:00'
                     AND (cs.CPF is not null OR cs.CPF <> '');"""
         return query
