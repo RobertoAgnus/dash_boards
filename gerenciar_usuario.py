@@ -37,27 +37,35 @@ if "alt_check" not in st.session_state:
 if "exc_user" not in st.session_state:
     st.session_state.exc_user = ""
 
-def executa_crud(flag, df):
-    conectar = Conexao()
+class ExecutaCrud:
+    def __init__(self):
+        self.conectar = Conexao()
 
-    conectar.conectar_postgres()
-    conn = conectar.obter_conexao_postgres()
+        self.conectar.conectar_postgres()
+        self.conn = self.conectar.obter_conexao_postgres()
 
-    cur = conn.cursor()
+        self.cur = self.conn.cursor()
 
-    if flag == 'inserir':
+    def desconectar(self):
+        self.conectar.desconectar_postgres()
+
+    # if flag == 'inserir':
+    def inserir(self, df):
         query = 'INSERT INTO controle.usuarios (usuario, senha, master) values %s;'
         
         valores = [tuple(x) for x in df.to_numpy()]
 
-        execute_values(cur, query, valores)
+        execute_values(self.cur, query, valores)
         
-        conn.commit()
-        cur.close()
+        self.conn.commit()
+        self.cur.close()
 
-        retorno = 'Usuário cadastrado com sucesso.'
+        self.desconectar()
 
-    elif flag == 'alterar':
+        return 'Usuário cadastrado com sucesso.'
+
+    # elif flag == 'alterar':
+    def alterar(self, df):
         dados = (df['senha'].iloc[0], bool(df['master'].iloc[0]), df['usuario'].iloc[0])
         
         query = '''UPDATE controle.usuarios
@@ -66,35 +74,52 @@ def executa_crud(flag, df):
                         master = %s
                     WHERE usuario = %s;'''
         
-        cur.execute(query, dados)
+        self.cur.execute(query, dados)
         
-        conn.commit()
-        cur.close()
+        self.conn.commit()
+        self.cur.close()
 
-        retorno = 'Senha alterada com sucesso.'
+        self.desconectar()
 
-    elif flag == 'excluir':
+        return 'Senha alterada com sucesso.'
+
+    # elif flag == 'excluir':
+    def excluir(self, df):
         usuario = df['usuario']
 
         query = '''DELETE FROM controle.usuarios
                     WHERE usuario = %s;'''
         
-        cur.execute(query, usuario)
+        self.cur.execute(query, usuario)
         
-        conn.commit()
-        cur.close()
+        self.conn.commit()
+        self.cur.close()
 
-        retorno = 'Usuário excluído com sucesso.'
+        self.desconectar()
 
-    conectar.desconectar_postgres()
+        return 'Usuário excluído com sucesso.'
+
+    # elif flag == 'consultar':
+    def consultar(self):
+        query = 'select usuario, master from controle.usuarios;'
+
+        df = pd.read_sql_query(query, self.conn)
+
+        self.desconectar()
+
+        return df
+
     
-    return retorno
+    # return retorno
+
+
+executa_crud = ExecutaCrud()
 
 def cadastrar_usuario():
     hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
     df = pd.DataFrame({'usuario': [new_user], 'senha': [hashed], 'master': [check]})
 
-    retorno = executa_crud('inserir', df)
+    retorno = executa_crud.inserir(df)
 
     st.session_state.cad_user = ""
     st.session_state.cad_pwd = ""
@@ -107,7 +132,7 @@ def alterar_senha():
     hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
     df = pd.DataFrame({'usuario': [user], 'senha': [hashed], 'master': [check]})
 
-    retorno = executa_crud('alterar', df)
+    retorno = executa_crud.alterar(df)
 
     st.session_state.alt_user = ""
     st.session_state.alt_pwd = ""
@@ -119,11 +144,16 @@ def alterar_senha():
 def excluir_usuario():
     df = pd.DataFrame({'usuario': [user]})
 
-    retorno = executa_crud('excluir', df)
+    retorno = executa_crud.excluir(df)
 
     st.session_state.exc_user = ""
 
     st.code(retorno)
+
+def consultar_usuarios():
+    df = executa_crud.consultar()
+
+    st.dataframe(df)
     
 
 st.title("👑 Gerenciamento de Usuários")
@@ -136,7 +166,7 @@ with st.sidebar:
     if "selecao_cadastro" not in st.session_state:
         st.session_state.selecao_cadastro = "Cadastrar novo Usuário"
 
-    lista_opcao = ["Cadastrar novo Usuário", "Alterar Senha", "Excluir Usuário"]
+    lista_opcao = ["Cadastrar novo Usuário", "Alterar Senha", "Excluir Usuário", "Visualizar Usuários"]
 
     seleciona_crud = st.radio(
         'Selecione Opção',
@@ -178,3 +208,6 @@ elif seleciona_crud == 'Excluir Usuário':
     user = st.text_input("Usuário a ser excluído", key='exc_user')
     
     st.button("Excluir Usuário", on_click=excluir_usuario)
+
+elif seleciona_crud == 'Visualizar Usuários':
+    consultar_usuarios()
