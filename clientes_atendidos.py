@@ -19,6 +19,9 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
+if "authenticated" not in st.session_state:
+    st.error("Acesso negado. Faça login.")
+    st.stop()
 
 ##### CARREGAR OS DADOS (1x) #####
 dados, df_crm, df_digisac, df_corban = carregar_dados()
