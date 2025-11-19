@@ -247,7 +247,9 @@ with st.sidebar:
 
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):
-        st.session_state.clear()
+        for key in list(st.session_state.keys()):
+            if key.startswith("filtro_"):
+                del st.session_state[key]
         st.rerun()
 
 dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')

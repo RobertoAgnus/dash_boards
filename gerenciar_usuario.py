@@ -51,7 +51,7 @@ class ExecutaCrud:
 
     # if flag == 'inserir':
     def inserir(self, df):
-        query = 'INSERT INTO controle.usuarios (usuario, senha, master) values %s;'
+        query = 'INSERT INTO controle.usuarios (usuario, senha, master, responsavel) values %s;'
         
         valores = [tuple(x) for x in df.to_numpy()]
 
@@ -66,12 +66,13 @@ class ExecutaCrud:
 
     # elif flag == 'alterar':
     def alterar(self, df):
-        dados = (df['senha'].iloc[0], bool(df['master'].iloc[0]), df['usuario'].iloc[0])
+        dados = (df['senha'].iloc[0], bool(df['master'].iloc[0]), df['responsavel'].iloc[0], df['usuario'].iloc[0])
         
         query = '''UPDATE controle.usuarios
                     SET 
                         senha = %s,
-                        master = %s
+                        master = %s,
+                        responsavel = %s
                     WHERE usuario = %s;'''
         
         self.cur.execute(query, dados)
@@ -101,7 +102,7 @@ class ExecutaCrud:
 
     # elif flag == 'consultar':
     def consultar(self):
-        query = 'select usuario, master from controle.usuarios;'
+        query = 'select usuario, master, responsavel from controle.usuarios;'
 
         df = pd.read_sql_query(query, self.conn)
 
@@ -116,8 +117,9 @@ class ExecutaCrud:
 executa_crud = ExecutaCrud()
 
 def cadastrar_usuario():
+    responsavel = st.session_state.username
     hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
-    df = pd.DataFrame({'usuario': [new_user], 'senha': [hashed], 'master': [check]})
+    df = pd.DataFrame({'usuario': [new_user], 'senha': [hashed], 'master': [check], 'responsavel': [responsavel]})
 
     retorno = executa_crud.inserir(df)
 
@@ -129,8 +131,9 @@ def cadastrar_usuario():
     st.code(retorno)
 
 def alterar_senha():
+    responsavel = st.session_state.username
     hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
-    df = pd.DataFrame({'usuario': [user], 'senha': [hashed], 'master': [check]})
+    df = pd.DataFrame({'usuario': [user], 'senha': [hashed], 'master': [check], 'responsavel': responsavel})
 
     retorno = executa_crud.alterar(df)
 
