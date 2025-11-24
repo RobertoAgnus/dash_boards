@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import bcrypt
 
+from datetime import datetime
 from querys.connect import Conexao
 
 
@@ -22,12 +23,13 @@ def executa_crud(df):
 
     cur = conn.cursor()
 
-    dados = (df['senha'].iloc[0], bool(df['master'].iloc[0]), df['usuario'].iloc[0])
+    dados = (df['senha'].iloc[0], bool(df['master'].iloc[0]), df['alterado_em'].iloc[0], df['usuario'].iloc[0])
     
     query = '''UPDATE controle.usuarios
                 SET 
                     senha = %s,
-                    master = %s
+                    master = %s,
+                    alterado_em = %s
                 WHERE usuario = %s;'''
     
     cur.execute(query, dados)
@@ -56,7 +58,7 @@ elif new_pass != repete_pass:
 if st.button("Alterar Senha", disabled=habilita):
     hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
     
-    df = pd.DataFrame({'usuario': [user], 'senha': [hashed], 'master': [False]})
+    df = pd.DataFrame({'usuario': [user], 'senha': [hashed], 'master': [False], 'alterado_em': datetime.now()})
 
     retorno = executa_crud(df)
 

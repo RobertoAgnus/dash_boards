@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import bcrypt
 
+from datetime import datetime
 from querys.connect import Conexao
 from psycopg2.extras import execute_values
 
@@ -51,7 +52,7 @@ class ExecutaCrud:
 
     # if flag == 'inserir':
     def inserir(self, df):
-        query = 'INSERT INTO controle.usuarios (usuario, senha, master, responsavel) values %s;'
+        query = 'INSERT INTO controle.usuarios (usuario, senha, master, responsavel, criado_em) values %s;'
         
         valores = [tuple(x) for x in df.to_numpy()]
 
@@ -66,13 +67,15 @@ class ExecutaCrud:
 
     # elif flag == 'alterar':
     def alterar(self, df):
-        dados = (df['senha'].iloc[0], bool(df['master'].iloc[0]), df['responsavel'].iloc[0], df['usuario'].iloc[0])
+        data = datetime.now()
+        dados = (df['senha'].iloc[0], bool(df['master'].iloc[0]), df['responsavel'].iloc[0], data, df['usuario'].iloc[0])
         
         query = '''UPDATE controle.usuarios
                     SET 
                         senha = %s,
                         master = %s,
-                        responsavel = %s
+                        responsavel = %s,
+                        atualizado_em = %s
                     WHERE usuario = %s;'''
         
         self.cur.execute(query, dados)
@@ -86,7 +89,17 @@ class ExecutaCrud:
 
     # elif flag == 'excluir':
     def excluir(self, df):
-        usuario = df['usuario']
+        usuario = (df['usuario'].iloc[0],)
+        dados = (df['responsavel'].iloc[0], datetime.now(), df['usuario'].iloc[0])
+        
+        query = '''INSERT INTO controle.excluidos (usuario, senha, master, responsavel_criacao, responsavel_exclusao, criado_em, atualizado_em)
+                    SELECT usuario, senha, master, responsavel, %s, criado_em, %s
+                    FROM controle.usuarios
+                    WHERE usuario = %s;'''
+
+        self.cur.execute(query, dados)
+
+        self.conn.commit()
 
         query = '''DELETE FROM controle.usuarios
                     WHERE usuario = %s;'''
@@ -102,7 +115,16 @@ class ExecutaCrud:
 
     # elif flag == 'consultar':
     def consultar(self):
-        query = 'select usuario, master, responsavel from controle.usuarios;'
+        query = 'select usuario, master, responsavel, criado_em, atualizado_em from controle.usuarios;'
+
+        df = pd.read_sql_query(query, self.conn)
+
+        self.desconectar()
+
+        return df
+    
+    def consultar_excluidos(self):
+        query = 'select usuario, master, responsavel_criacao, responsavel_exclusao, criado_em, atualizado_em from controle.excluidos;'
 
         df = pd.read_sql_query(query, self.conn)
 
@@ -119,7 +141,7 @@ executa_crud = ExecutaCrud()
 def cadastrar_usuario():
     responsavel = st.session_state.username
     hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
-    df = pd.DataFrame({'usuario': [new_user], 'senha': [hashed], 'master': [check], 'responsavel': [responsavel]})
+    df = pd.DataFrame({'usuario': [new_user], 'senha': [hashed], 'master': [check], 'responsavel': [responsavel], 'criado_em': datetime.now()})
 
     retorno = executa_crud.inserir(df)
 
@@ -133,7 +155,7 @@ def cadastrar_usuario():
 def alterar_senha():
     responsavel = st.session_state.username
     hashed = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
-    df = pd.DataFrame({'usuario': [user], 'senha': [hashed], 'master': [check], 'responsavel': responsavel})
+    df = pd.DataFrame({'usuario': [user], 'senha': [hashed], 'master': [check], 'responsavel': responsavel, 'atualizado_em': datetime.now()})
 
     retorno = executa_crud.alterar(df)
 
@@ -145,7 +167,8 @@ def alterar_senha():
     st.code(retorno)
 
 def excluir_usuario():
-    df = pd.DataFrame({'usuario': [user]})
+    responsavel = st.session_state.username
+    df = pd.DataFrame({'usuario': [user], 'responsavel': [responsavel]})
 
     retorno = executa_crud.excluir(df)
 
@@ -157,10 +180,14 @@ def consultar_usuarios():
     df = executa_crud.consultar()
 
     st.dataframe(df)
+
+def consultar_excluidos():
+    df = executa_crud.consultar_excluidos()
+
+    st.dataframe(df)
     
 
 st.title("👑 Gerenciamento de Usuários")
-st.write("Apenas o usuário MASTER pode ver esta página.")
 
 with st.sidebar:
     st.title('Cadastro')
@@ -169,7 +196,7 @@ with st.sidebar:
     if "selecao_cadastro" not in st.session_state:
         st.session_state.selecao_cadastro = "Cadastrar novo Usuário"
 
-    lista_opcao = ["Cadastrar novo Usuário", "Alterar Senha", "Excluir Usuário", "Visualizar Usuários"]
+    lista_opcao = ["Cadastrar novo Usuário", "Alterar Senha", "Excluir Usuário", "Visualizar Usuários", "Visualizar Excluídos"]
 
     seleciona_crud = st.radio(
         'Selecione Opção',
@@ -178,6 +205,7 @@ with st.sidebar:
     )
 
 if seleciona_crud == 'Cadastrar novo Usuário':
+    st.write("### Cadastrar novo Usuário.")
     new_user = st.text_input("Novo usuário", key='cad_user')
     new_pass = st.text_input("Senha", type="password", key='cad_pwd')
     repete_pass = st.text_input("Repita Senha", type="password", key='cad_rpwd')
@@ -193,6 +221,7 @@ if seleciona_crud == 'Cadastrar novo Usuário':
         
 
 elif seleciona_crud == 'Alterar Senha':
+    st.write("### Alterar Senha.")
     user = st.text_input("Usuário", key='alt_user')
     new_pass = st.text_input("Nova Senha", type="password", key='alt_pwd')
     repete_pass = st.text_input("Repita Nova Senha", type="password", key='alt_rpwd')
@@ -208,9 +237,15 @@ elif seleciona_crud == 'Alterar Senha':
         
 
 elif seleciona_crud == 'Excluir Usuário':
+    st.write("### Excluir Usuário.")
     user = st.text_input("Usuário a ser excluído", key='exc_user')
     
     st.button("Excluir Usuário", on_click=excluir_usuario)
 
 elif seleciona_crud == 'Visualizar Usuários':
+    st.write("### Visualizar Usuários.")
     consultar_usuarios()
+
+elif seleciona_crud == 'Visualizar Excluídos':
+    st.write("### Visualizar Excluídos.")
+    consultar_excluidos()
