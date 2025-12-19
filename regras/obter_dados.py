@@ -11,13 +11,11 @@ from regras.merges import merge_crm_telefones_corban, merge_crm_disparos, merge_
 def carregar_dados():
     conectar = Conexao()
 
-    conectar.conectar_mysql_aws()
     conectar.conectar_postgres_aws()
     conectar.conectar_postgres()
 
-    conn_mysql_aws    = conectar.obter_conexao_mysql_aws()
     conn_postgres_aws = conectar.obter_conexao_postgres_aws()
-    conn_postgres     = conectar.obter_conexao_postgres()
+    conn_postgres = conectar.obter_conexao_postgres()
     
     ########## TELEFONES CORBAN ##########
     df_telefones_corban = telefones_corban.get_telefones_corban(conn_postgres)
@@ -32,7 +30,7 @@ def carregar_dados():
     ########################################
     
     ########## CRM ##########
-    df_crm = crm.get_crm(conn_postgres_aws, conn_mysql_aws)
+    df_crm = crm.get_crm(conn_postgres_aws)
     #########################
     
     ########## DIGISAC ##########

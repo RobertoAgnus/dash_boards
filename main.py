@@ -103,7 +103,7 @@ def navegacao():
         ])
     else:
         pg = st.navigation([
-            # main_page,
+            main_page,
             page_user
         ])
 
