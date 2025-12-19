@@ -66,8 +66,8 @@ def show_login():
     st.markdown("### 🔒 Login")
 
     with st.form("login_form"):
-        username = st.text_input("Usuário")
-        password = st.text_input("Senha", type="password")
+        username  = st.text_input("Usuário")
+        password  = st.text_input("Senha", type="password")
         submitted = st.form_submit_button("Entrar")
 
     df = obter_usuario(username)
@@ -82,6 +82,31 @@ def show_login():
         else:
             st.error("Usuário inválido.")
 
+def navegacao():
+    # Páginas
+    main_page     = st.Page("clientes_atendidos.py" , title="Clientes Atendidos"     )
+    page_2        = st.Page("clientes_novos.py"     , title="Clientes Novos"         )
+    page_3        = st.Page("disparos_realizados.py", title="Disparos Realizados"    )
+    page_4        = st.Page("base_fgts.py"          , title="Base FGTS -> CLT"       )
+    page_5        = st.Page("comissoes_corban.py"   , title="Comissões Corban"       )
+    page_6        = st.Page("campanhas.py"          , title="Campanhas Publicitárias")
+    page_master   = st.Page("gerenciar_usuario.py"  , title="Gerenciar Usuário"      )
+    page_user     = st.Page("alterar_senha.py"      , title="Alterar Senha"          )
+
+    # Nav do usuário master
+    if st.session_state.master:
+        pg = st.navigation([
+            # main_page,
+            page_6,
+            page_master,
+        ])
+    else:
+        pg = st.navigation([
+            main_page,
+            page_user
+        ])
+
+    pg.run()
 
 # ---------- Página protegida ----------
 def show_protected_page():
@@ -91,32 +116,7 @@ def show_protected_page():
         logout_user()
         st.rerun()
 
-    # Páginas
-    main_page     = st.Page("clientes_atendidos.py" , title="Clientes Atendidos" )
-    page_2        = st.Page("clientes_novos.py"     , title="Clientes Novos"     )
-    page_3        = st.Page("disparos_realizados.py", title="Disparos Realizados")
-    page_4        = st.Page("base_fgts.py"          , title="Base FGTS -> CLT"   )
-    page_5        = st.Page("comissoes_corban.py"   , title="Comissões Corban"   )
-    page_6        = st.Page("teste.py"              , title="TESTE"              )
-    page_master   = st.Page("gerenciar_usuario.py"  , title="Gerenciar Usuário"  )
-    page_user     = st.Page("alterar_senha.py"      , title="Alterar Senha"      )
-
-    # Nav do usuário master
-    if st.session_state.master:
-        pg = st.navigation([
-            main_page,
-            page_6,
-            page_master,
-        ])
-    else:
-        pg = st.navigation([
-            main_page,
-            page_6,
-            page_user
-        ])
-
-    pg.run()
-
+    navegacao()
 
 # ---------- Fluxo principal ----------
 def main():

@@ -1,16 +1,16 @@
-import mysql.connector
+import psycopg2
 import psycopg2
 import streamlit as st
 
 class Conexao:
     def __init__(self):
-        # Configurações de conexão ao banco de dados MySQL
-        self.config_mysql = {
-            'user'    : st.secrets["database"]["USER_MYSQL"],
-            'password': st.secrets["database"]["PASS_MYSQL"],
-            'host'    : st.secrets["database"]["HOST_MYSQL"],
-            'database': st.secrets["database"]["DATABASE_MYSQL"],
-            'port'    : st.secrets["database"]["PORT_MYSQL"]
+        # Configurações de conexão ao banco de dados POSTGRES AWS
+        self.config_postgres_aws = {
+            'user'    : st.secrets["database"]["USER_POSTGRES_AWS"],
+            'password': st.secrets["database"]["PASS_POSTGRES_AWS"],
+            'host'    : st.secrets["database"]["HOST_POSTGRES_AWS"],
+            'database': st.secrets["database"]["DATABASE_POSTGRES_AWS"],
+            'port'    : st.secrets["database"]["PORT_POSTGRES_AWS"]
         }
         self.config_postgres = {
             "user"    : st.secrets["database"]["USER_POSTGRES"],
@@ -19,16 +19,16 @@ class Conexao:
             "database": st.secrets["database"]["DATABASE_POSTGRES"],
             "port"    : st.secrets["database"]["PORT_POSTGRES"]
         }
-        self.conn_mysql    = None
-        self.conn_postgres = None
+        self.conn_postgres_aws = None
+        self.conn_postgres     = None
 
-    def conectar_mysql(self):
+    def conectar_postgres_aws(self):
         try:
-            self.conn_mysql = mysql.connector.connect(**self.config_mysql)
+            self.conn_postgres_aws = psycopg2.connect(**self.config_postgres_aws)
             print("Conexão MySQL bem-sucedida!")
-        except mysql.connector.Error as err:
+        except psycopg2.Error as err:
             print(f"Erro ao conectar ao MySQL: {err}")
-            self.conn_mysql = None
+            self.conn_postgres_aws = None
 
     def conectar_postgres(self):
         try:
@@ -39,9 +39,9 @@ class Conexao:
             print(f"Erro ao conectar ao PostgreSQL: {err}")
             self.conn_postgres = None
 
-    def desconectar_mysql(self):
-        if self.conn_mysql:
-            self.conn_mysql.close()
+    def desconectar_postgres_aws(self):
+        if self.conn_postgres_aws:
+            self.conn_postgres_aws.close()
             print("Conexão ao MySQL encerrada.")
 
     def desconectar_postgres(self):
@@ -50,8 +50,8 @@ class Conexao:
             self.conectar_postgres = None
             print("Conexão ao PostgreSQL encerrada.")
 
-    def obter_conexao_mysql(self):
-        return self.conn_mysql
+    def obter_conexao_postgres_aws(self):
+        return self.conn_postgres_aws
     
     def obter_conexao_postgres(self):
         return self.conn_postgres

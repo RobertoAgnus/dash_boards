@@ -10,6 +10,9 @@ from regras.obter_dados import carregar_dados
 from regras.tratamentos import get_datas_consulta, get_datas_disparos, get_datas_corban, metric_card
 
 
+if not st.session_state.get("authenticated", False):
+    st.stop()
+
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
     page_title="Clientes Atendidos",

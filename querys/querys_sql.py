@@ -5,25 +5,25 @@ class QuerysSQL:
     ##### CLIENTES ATENDIDOS #####
     def total_clientes(self):
         query = f"""select 
-                        count(distinct c.CPF) as TOTAL_CPF
-                    from CRM.Clientes c;"""
+                        count(distinct c.cpf) as "TOTAL_CPF"
+                    from public."Clientes" c;"""
         
         return query
     
     def clientes_atendidos(self):
         query = f"""select distinct
                         date_format(l.data, '%d/%m/%Y') as "Data",
-                        c.CPF as "CPF", 
-                        c.nome as Nome, 
-                        l.telefone as telefoneLead,
-                        e.cidade as Cidade, 
-                        e.estado as UF, 
-                        l.etapa as Etapa
-                    from CRM.Clientes c 
-                    right join CRM.Leads l 
-                        on c.id = l.clientId
-                    left join CRM.Enderecos e 
-                        on c.id = e.clientId
+                        c.cpf as "CPF", 
+                        c.nome as "Nome", 
+                        l.telefone as "telefoneLead",
+                        e.cidade as "Cidade", 
+                        e.estado as "UF", 
+                        l.etapa as "Etapa"
+                    from public."Clientes" c 
+                    right join public."Leads" l 
+                        on c.id = l."clientId"
+                    left join public."Enderecos" e 
+                        on c.id = e."clientId"
                     order by l.data desc;"""
         
         return query
@@ -31,24 +31,24 @@ class QuerysSQL:
     ##### CLIENTES NOVOS #####
     def qtd_clientes_total(self):
         query = f"""select 
-                        count(distinct c.CPF) as total
-                    from CRM.Clientes c;"""
+                        count(distinct c.cpf) as total
+                    from public."Clientes" c;"""
         return query
     
     def clientes_novos(self):
         query = f"""select distinct
-                        ct.dataInclusao as "Inclusão CRM",
+                        ct."dataInclusao" as "Inclusão CRM",
                         ctb.inclusao as "Inclusão Corban",
-                        c.CPF as CPF, 
-                        c.nome as Nome,
-                        t.telefone as Telefone
-                    from CRM.Clientes c
-                    left join CRM.Telefones t
-                    on c.id = t.clienteId
-                    left join CRM.Contratos ct
-                    on c.id = ct.clienteId
-                    left join sistema.ContratosCorban ctb
-                    on c.id = ctb.clienteId;"""
+                        c.cpf as "CPF", 
+                        c.nome as "Nome",
+                        t.telefone as "Telefone"
+                    from public."Clientes" c
+                    left join public."Telefones" t
+                    on c.id = t."clienteId"
+                    left join public."Contratos" ct
+                    on c.id = ct."clienteId"
+                    left join sistema."ContratosCorban" ctb
+                    on c.id = ctb."clienteId";"""
         
         return query
     
@@ -96,9 +96,9 @@ class QuerysSQL:
                             ct.valorFinanciado,
                             ct.valorLiberado,
                             sb.descricao as status,
-                            'CRM' as origem
-                        from CRM.Contratos ct
-                        left join CRM.StatusBanco sb on sb.id = ct.statusBancoId
+                            'public' as origem
+                        from public.Contratos ct
+                        left join public.StatusBanco sb on sb.id = ct.statusBancoId
                     )
                     select 
                         c.CPF,
@@ -113,24 +113,24 @@ class QuerysSQL:
                         l.telefone as telefoneLead, 
                         t.telefone as telefone
                     from contratos ct
-                    right join CRM.Clientes c on ct.clienteId = c.id
-                    left join CRM.Leads l on c.id = l.clientId
-                    left join CRM.Telefones t on c.id = t.clienteId
+                    right join public.Clientes c on ct.clienteId = c.id
+                    left join public.Leads l on c.id = l.clientId
+                    left join public.Telefones t on c.id = t.clienteId
                     where {condicao};"""
         return query
     
     def clientes_sem_cpf(self):
         query = """select distinct
-                        l.clientId as cliente_id, 
+                        l."clientId" as cliente_id, 
                         l.telefone as telefone
-                    from CRM.Leads l 
-                    left join CRM.Telefones t on l.telefone = t.telefone
-                    where l.clientId is null and t.clienteId is null;"""
+                    from public."Leads" l 
+                    left join public."Telefones" t on l.telefone = t.telefone
+                    where l."clientId" is null and t."clienteId" is null;"""
         return query
     
     def obtem_telefones_api_corban(self):
         query = """select 
-                        concat(tc.ddd, tc.numero) as telefoneAPI, 
+                        concat(tc.ddd, tc.numero) as "telefoneAPI", 
                         LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF"
                     from corban.telefones tc 
                     left join corban.clientes cc on tc.cliente_id = cc.cliente_id;"""
@@ -224,29 +224,29 @@ class QuerysSQL:
     
     def get_crm_consulta(self):
         query = f"""SELECT 
-                        cs.id AS consultaId,
-                        cs.clienteId,
-                        cs.updatedAt AS dataConsulta,
-                        cs.CPF AS cpf,
+                        cs.id AS "consultaId",
+                        cs."clienteId",
+                        cs."updatedAt" AS "dataConsulta",
+                        c.cpf,
                         cs.erros,
-                        cs.tabela AS tabelaId,
-                        cs.valorLiberado,
-                        cs.valorContrato,
+                        cs."tabelaId",
+                        cs."valorLiberado",
+                        cs."valorBruto",
                         b.nome as banco,
                         b.logo
-                    FROM CRM.Consultas cs
-                    left join CRM.Bancos b on cs.bancoId = b.id
-                    WHERE cs.updatedAt >= '2025-11-01 00:00:00'
-                    AND (cs.CPF is not null OR cs.CPF <> '');"""
+                    FROM public."Consultas" cs
+                    left join public."Bancos" b on cs."bancoId" = b.id
+                    left join public."Clientes" c on cs."clienteId" = c.id
+                    WHERE cs."updatedAt" >= '2025-11-01 00:00:00'
+                    AND (c.cpf is not null OR c.cpf <> '');"""
         return query
     
     def get_crm_cliente(self):
         query = f"""SELECT 
-                        cl.id AS clienteId,
-                        cl.identificador,
-                        cl.CPF AS cpf,
+                        cl.id AS "clienteId",
+                        cl.cpf,
                         cl.nome
-                    FROM CRM.Clientes cl;"""
+                    FROM public."Clientes" cl;"""
         return query
     
     def get_crm_telefone(self):
@@ -254,48 +254,48 @@ class QuerysSQL:
                         SELECT 
                             cl.id, 
                             ts.telefone 
-                        FROM CRM.Clientes cl 
-                        LEFT JOIN sistema.Telefones ts 
-                            ON cl.identificador = ts.clienteId
+                        FROM public."Clientes" cl 
+                        LEFT JOIN sistema."Telefones" ts 
+                            ON cl.identificador = ts."clienteId"
                     )
                     SELECT DISTINCT *
                     FROM (
                         SELECT 
-                            fs.id AS clienteId, 
+                            fs.id AS "clienteId", 
                             CASE
                                 WHEN fs.telefone IS NULL THEN tc.telefone
                                 WHEN fs.telefone <> tc.telefone THEN tc.telefone
                                 when tc.telefone is null then fs.telefone
                             END AS telefone_crm
                         FROM fone_sistema fs 
-                        LEFT JOIN CRM.Telefones tc 
-                            ON fs.id = tc.clienteId
+                        LEFT JOIN public."Telefones" tc 
+                            ON fs.id = tc."clienteId"
                     ) AS resultado
                     WHERE telefone_crm IS not NULL;"""
         return query
     
     def get_crm_lead(self):
         query = f"""SELECT 
-                        l.consultaId AS consultaId,
-                        l.clientId AS clienteId,
+                        l."consultaId" AS "consultaId",
+                        l."clientId" AS "clienteId",
                         l.telefone AS telefone_lead
-                    FROM CRM.Leads l
-                    WHERE l.consultaId IS NOT NULL 
-                        OR l.clientId IS NOT NULL;"""
+                    FROM public."Leads" l
+                    WHERE l."consultaId" IS NOT NULL 
+                        OR l."clientId" IS NOT NULL;"""
         return query
     
     def get_crm_tabela(self):
         query = f"""SELECT 
-                        CAST(tb.id AS SIGNED) AS tabelaId,
+                        CAST(tb.id AS integer) AS "tabelaId",
                         tb.nome AS tabela
-                    FROM CRM.Tabelas tb;"""
+                    FROM public."Tabelas" tb;"""
         return query
     
     def get_crm_parcela(self):
         query = f"""SELECT 
-                        pc.consultaId AS consultaId,
-                        pc.num AS parcelas
-                    FROM CRM.Parcelas pc;"""
+                        pc."consultaId",
+                        pc.numero AS parcelas
+                    FROM public."Parcelamento" pc;"""
         return query
     
     def get_base_consolidada(self):
@@ -306,6 +306,40 @@ class QuerysSQL:
                     FROM extracoes.base_consolidada;"""
         return query
     
+    ##### CAMPANHAS #####
+
+    def get_campanhas(self):
+        query_digisac = f"""
+                        select 
+                            c.nome as nome_digisac,
+                            c.nome_interno,
+                            c.telefone as fone_digisac,
+                            c.cpf as cpf_digisac,
+                            m.dt_mensagem,
+                            m.dsc_valor,
+                            m.msg_inicial
+                        from public.clientes c 
+                        left join public.mensagens m 
+                            on c.telefone = m.telefone 
+                        where m.campo_personalizado = 'CPF_aprovado';
+                        """
+        query_corban = f"""
+                        select 
+                            c.cliente_nome as nome_corban,
+                            c.cliente_cpf as cpf_corban,
+                            concat(t.ddd,t.numero) as fone_corban,
+                            a.data_status_api 
+                        from corban.clientes c 
+                        left join corban.telefones t 
+                            on c.cliente_id = t.cliente_id
+                        left join corban.contrato ct
+                            on c.cliente_id = ct.cliente_id 
+                        left join corban.propostas p
+                            on ct.proposta_id = p.proposta_id 
+                        where p.status_nome like '%Pago%'
+                            and p.data_status > '2025-11-01 00:00:00';
+                        """
+        return query_digisac, query_corban
 
 
     #####################################################################
@@ -324,9 +358,9 @@ class QuerysSQL:
                         pc.num         AS parcelas,
                         CONVERT(tb.id, SIGNED) AS tabelaIdTabela,
                         tb.nome AS tabela
-                    FROM CRM.Consultas cs
-                    left join CRM.Parcelas pc on cs.id = pc.consultaId
-                    left join CRM.Tabelas tb on cs.tabela = tb.id
+                    FROM public.Consultas cs
+                    left join public.Parcelas pc on cs.id = pc.consultaId
+                    left join public.Tabelas tb on cs.tabela = tb.id
                     WHERE cs.updatedAt >= '2025-11-01 00:00:00'
                     AND (cs.CPF is not null OR cs.CPF <> '');"""
     
@@ -343,8 +377,8 @@ class QuerysSQL:
                         cs.valorContrato,
                         CAST(pc.consultaId AS SIGNED) AS consultaId,
                         pc.num         AS parcelas
-                    FROM CRM.Consultas cs
-                    left join CRM.Parcelas pc on cs.id = pc.consultaId
+                    FROM public.Consultas cs
+                    left join public.Parcelas pc on cs.id = pc.consultaId
                     WHERE cs.updatedAt >= '2025-11-01 00:00:00'
                     AND (cs.CPF is not null OR cs.CPF <> '')
                     and cs.clienteId is not null
@@ -362,8 +396,8 @@ class QuerysSQL:
                         cs.valorContrato,
                         CAST(tb.id AS SIGNED) AS tabelaId,
                         tb.nome AS tabela
-                    FROM CRM.Consultas cs
-                    left join CRM.Tabelas tb on cs.tabela = tb.id
+                    FROM public.Consultas cs
+                    left join public.Tabelas tb on cs.tabela = tb.id
                     WHERE cs.updatedAt >= '2025-11-01 00:00:00'
                     AND (cs.CPF is not null OR cs.CPF <> '');"""
     
