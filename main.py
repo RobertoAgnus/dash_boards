@@ -35,12 +35,6 @@ if "authenticated" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = None
 
-st.set_page_config(
-    page_title="Login", 
-    layout="centered", 
-    page_icon="image/logo_agnus.ico"
-)
-
 
 # ---------- Funções utilitárias ----------
 def verify_password(password: str, hashed: str) -> bool:
@@ -64,6 +58,13 @@ def logout_user():
 def show_login():
     st.title("Controle de Leads")
     st.markdown("### 🔒 Login")
+
+    st.set_page_config(
+        page_title="Login", 
+        layout="centered", 
+        page_icon="image/logo_agnus.ico",
+        initial_sidebar_state="expanded"
+    )
 
     with st.form("login_form"):
         username  = st.text_input("Usuário")
@@ -96,7 +97,7 @@ def navegacao():
     # Nav do usuário master
     if st.session_state.master:
         pg = st.navigation([
-            # main_page,
+            main_page,
             page_6,
             page_master,
         ])

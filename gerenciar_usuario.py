@@ -7,6 +7,12 @@ from querys.connect import Conexao
 from psycopg2.extras import execute_values
 
 
+st.set_page_config(
+    page_title="Gerenciar Usuários", 
+    layout="centered", 
+    page_icon="image/logo_agnus.ico"
+)
+
 if "authenticated" not in st.session_state:
     st.error("Acesso negado. Faça login.")
     st.stop()
