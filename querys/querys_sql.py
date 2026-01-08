@@ -496,6 +496,12 @@ class QuerysSQL:
                     where aa."createdAt" >= '2026-01-05 00:00:00.000';
                 """
         return query
+        
+    def get_campanhas_meta(self):
+        query = """
+                SELECT * FROM controle.campanhas;
+                """
+        return query
 
     #####################################################################
     def get_teste(self):
