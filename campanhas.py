@@ -1,17 +1,10 @@
-import streamlit as st
-import altair as alt
-import pandas as pd
-import numpy as np
-import unicodedata
-import time
-import gdown
-import os
 import re
+import unicodedata
+import numpy as np
+import pandas as pd
+import altair as alt
+import streamlit as st
 from datetime import date
-from io import BytesIO
-import io
-import zipfile
-
 from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from regras.formatadores import formatar_cpf, formatar_telefone
@@ -34,6 +27,7 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
+
 ##### FUNÇÃO PARA REMOVER EMOJIS #####
 def remover_emojis(texto: str) -> str:
     if not isinstance(texto, str):
@@ -43,9 +37,11 @@ def remover_emojis(texto: str) -> str:
         if not unicodedata.category(c).startswith("So")
     )
 
+
 ##### FUNÇÃO PARA FORMATAR FLOAT #####
 def formata_float(valor):
     return f"{valor:,.2f}".replace('.','|').replace(',','.').replace('|',',').replace('nan', '0,00')
+
 
 ##### FUNÇÃO PARA MAPEAR MENSAGENS #####
 def mapeia_mensagens(mensagem):
@@ -64,6 +60,7 @@ def mapeia_mensagens(mensagem):
     else:
         return 'Orgânico'
     
+
 ##### FUNÇÃO PARA GERAR OS CARDS #####
 def metric_card(label, value):
     st.markdown(
@@ -75,12 +72,13 @@ def metric_card(label, value):
             margin-bottom: 15px;
             height: auto;
         ">
-            <p style="color: white; font-weight: bold;">{label}</p>
-            <h3 style="color: white; font-size: 1.5vw">{value}</h3>
+            <p style="color: white; font-weight: bold; font-size: clamp(0.5rem, 1.2vw, 0.9rem)">{label}</p>
+            <h3 style="color: white; font-size: clamp(0.5rem, 4vw, 1.5rem)">{value}</h3>
         </div>
         """,
         unsafe_allow_html=True
     )
+
 
 ##### FUNÇÃO PARA OBTER AS DATAS DA MENSAGEM #####
 def get_datas_mensagem(df):
@@ -93,6 +91,7 @@ def get_datas_mensagem(df):
     
     return menor_data, maior_data
 
+
 ##### FUNÇÃO PARA OBTER AS DATAS LIBERAÇÃO #####
 def get_datas_liberacao(df):
     # Remove linhas com Data liberação vazia
@@ -103,6 +102,7 @@ def get_datas_liberacao(df):
     maior_data = date.today()
     
     return menor_data, maior_data
+
 
 ##### CARREGAR OS DADOS (1x) #####
 conectar = Conexao()
@@ -213,7 +213,7 @@ with st.sidebar:
             
         # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
         try:
-
+            
             if (inicio_mensagem, fim_mensagem) != (menor_data_mensagem, maior_data_mensagem):
                 # Filtra as linhas de consulta dentro do intervalo
                 dados_filtrados = dados_filtrados[
@@ -222,18 +222,19 @@ with st.sidebar:
                 ]
                 
         except:
+            
             dados_filtrados = dados_filtrados[
                     dados_filtrados['Data da Mensagem'].isna()
                 ]
 
     ##### FILTRO DE INTERVALO DE DATA LIBERAÇÃO #####
-    dados_filtrados['Data da Liberação'] = (
-        pd.to_datetime(dados_filtrados['Data da Liberação'], errors='coerce', utc=True)
+    df_crm['Data da Liberação'] = (
+        pd.to_datetime(df_crm['Data da Liberação'], errors='coerce', utc=True)
         .dt.tz_localize(None)
         .dt.date
     )
 
-    menor_data_liberacao, maior_data_liberacao = get_datas_liberacao(dados_filtrados)
+    menor_data_liberacao, maior_data_liberacao = get_datas_liberacao(df_crm)
     if "filtro_periodo_liberacao" not in st.session_state:
         st.session_state.filtro_periodo_liberacao = (menor_data_liberacao, date.today())
 
@@ -255,15 +256,16 @@ with st.sidebar:
             
         # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
         try:
-
+            
             if (inicio_liberacao, fim_liberacao) != (menor_data_liberacao, maior_data_liberacao):
                 # Filtra as linhas de consulta dentro do intervalo
                 dados_filtrados = dados_filtrados[
-                    (dados_filtrados['Data da Liberação'] >= inicio_liberacao) &
-                    (dados_filtrados['Data da Liberação'] <= fim_liberacao)
+                    (dados_filtrados['Data da Liberação'].dt.date >= inicio_liberacao) &
+                    (dados_filtrados['Data da Liberação'].dt.date <= fim_liberacao)
                 ]
                 
         except:
+
             dados_filtrados = dados_filtrados[
                     dados_filtrados['Data da Liberação'].isna()
                 ]
@@ -275,7 +277,7 @@ with st.sidebar:
                 del st.session_state[key]
         st.rerun()
 
-
+##### FORMATAÇÕES FINAIS DOS DADOS #####
 dados_filtrados['Financiado'] = dados_filtrados['Financiado'].astype(float).apply(formata_float)
 dados_filtrados['Liberado'  ] = dados_filtrados['Liberado'  ].apply(formata_float)
 dados_filtrados['Parcela'   ] = dados_filtrados['Parcela'   ].apply(formata_float)
