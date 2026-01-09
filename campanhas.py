@@ -115,9 +115,41 @@ conn_postgres = conectar.obter_conexao_postgres()
 
 consulta = QuerysSQL()
 
-crm = consulta.get_campanhas()
+digisac, corban, crm = consulta.get_campanhas()
 
+df_digisac = pd.read_sql_query(digisac, conn_postgres)
+df_corban = pd.read_sql_query(corban, conn_postgres)
 df_crm = pd.read_sql_query(crm, conn_postgres_aws)
+
+df_dc = pd.merge(df_digisac, df_corban, on=['numero'], how='left')
+
+def tamanho_nome(nome):
+    if isinstance(nome, str):
+        return len(nome)
+    return 0
+
+def limpar_nome(nome):
+    if pd.isna(nome):
+        return nome
+
+    # Remove acentos
+    nome = unicodedata.normalize('NFKD', nome)
+    nome = nome.encode('ASCII', 'ignore').decode('ASCII')
+
+    # Remove caracteres especiais (mantém letras e espaço)
+    nome = re.sub(r'[^A-Za-z\s]', '', nome)
+
+    # Remove espaços duplicados
+    nome = re.sub(r'\s+', ' ', nome).strip()
+
+    return nome
+
+df_dc = df_dc.drop_duplicates()
+df_dc['nome_digisac'] = df_dc['nome_digisac'].apply(remover_emojis).apply(limpar_nome)
+df_dc['nome_digisac'] = np.where(df_dc['nome_digisac'].apply(tamanho_nome) < df_dc['nome_interno'].apply(tamanho_nome), df_dc['nome_interno'], df_dc['nome_digisac'])
+df_dc['cpf_digisac'] = np.where(df_dc['cpf_digisac'].isna(), df_dc['cpf_corban'], df_dc['cpf_digisac'])
+df_dc = df_dc[df_dc['liberacao'] >= '2026-01-05 00:00:00']
+df_dc
 
 
 campanhas = consulta.get_campanhas_meta()

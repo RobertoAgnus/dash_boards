@@ -393,47 +393,50 @@ class QuerysSQL:
     ##### CAMPANHAS #####
 
     def get_campanhas(self):
-        # query_digisac = f"""
-        #                 select 
-        #                     c.nome as nome_digisac,
-        #                     c.nome_interno,
-        #                     c.telefone as fone_digisac,
-        #                     c.cpf as cpf_digisac,
-        #                     m.dt_mensagem,
-        #                     m.dsc_valor as banco,
-        #                     m.msg_inicial
-        #                 from public.clientes c 
-        #                 left join public.mensagens m 
-        #                     on c.telefone = m.telefone 
-        #                 where m.campo_personalizado = 'CPF_aprovado'
-        #                     and m.dt_mensagem >= '2026-01-05 00:00:00.000';
-        #                 """
-        # query_corban = f"""
-        #                 select 
-        #                     c.cliente_nome as nome,
-        #                     c.cliente_cpf as cpf,
-        #                     concat(t.ddd,t.numero) as telefone,
-        #                     a.data_status_api as liberacao,
-        #                     ct.valor_financiado,
-        #                     ct.valor_liberado,
-        #                     ct.valor_parcela,
-        #                     ct.prazo,
-        #                     null as nome_banco,
-        #                     cc.comissao_valor_liberado as valor_comissao
-        #                 from corban.clientes c 
-        #                 left join corban.telefones t 
-        #                     on c.cliente_id = t.cliente_id
-        #                 left join corban.contrato ct
-        #                     on c.cliente_id = ct.cliente_id 
-        #                 left join corban.propostas p
-        #                     on ct.proposta_id = p.proposta_id 
-        #                 left join corban.api a
-        #                     on ct.proposta_id = a.proposta_id
-        #                 left join corban.comissionamentos cc
-        #                     on ct.proposta_id = cc.proposta_id
-        #                 where p.status_nome like '%Pago%'
-        #                     and p.data_status >= '2026-01-05 00:00:00';
-        #                 """
+        query_digisac = f"""
+                        select 
+                            c.nome as nome_digisac,
+                            c.nome_interno,
+                            c.telefone as numero,
+                            LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') AS cpf_digisac,
+                            m.dt_mensagem,
+                            m.dsc_valor as banco,
+                            m.msg_inicial
+                        from public.clientes c 
+                        left join public.mensagens m 
+                            on c.telefone = m.telefone 
+                        where m.campo_personalizado = 'CPF_aprovado'
+                            and m.dt_mensagem >= '2026-01-05 00:00:00.000';
+                        """
+        query_corban = f"""
+                        select 
+                            c.cliente_nome as nome,
+                            LPAD(REGEXP_REPLACE(c.cliente_cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
+                            CASE
+                                WHEN LENGTH(concat(t.ddd,t.numero)) < 11
+                                THEN SUBSTRING(concat(t.ddd,t.numero) FROM 1 FOR 2) || '9' || SUBSTRING(concat(t.ddd,t.numero) FROM 3)
+                                ELSE concat(t.ddd,t.numero)
+                            END AS numero,
+                            a.data_status_api as liberacao,
+                            ct.valor_financiado,
+                            ct.valor_liberado,
+                            ct.valor_parcela,
+                            ct.prazo,
+                            ct.banco_nome as nome_banco,
+                            cc.comissao_valor_liberado as valor_comissao
+                        from corban.clientes c 
+                        left join corban.telefones t 
+                            on c.cliente_id = t.cliente_id
+                        left join corban.contrato ct
+                            on c.cliente_id = ct.cliente_id 
+                        left join corban.propostas p
+                            on ct.proposta_id = p.proposta_id 
+                        left join corban.api a
+                            on ct.proposta_id = a.proposta_id
+                        left join corban.comissionamentos cc
+                            on ct.proposta_id = cc.proposta_id
+                        where p.status_nome like '%Pago%';
+                        """
         # query_crm = f"""
         #             select 
         #                 c.nome as nome,
@@ -456,8 +459,7 @@ class QuerysSQL:
         #             where p."usuarioId" = '29' 
         #                 and p."dataPagamento" >= '2026-01-05 00:00:00.000';
         #             """
-        # return query_digisac, query_corban, query_crm
-        query = f"""
+        query_crm = f"""
                     select 
                         aa.telefone as numero,
                         c.cpf,
@@ -495,7 +497,8 @@ class QuerysSQL:
                         on c.id = t."clienteId"
                     where aa."createdAt" >= '2026-01-05 00:00:00.000';
                 """
-        return query
+        return query_digisac, query_corban, query_crm
+        # return query
         
     def get_campanhas_meta(self):
         query = """
