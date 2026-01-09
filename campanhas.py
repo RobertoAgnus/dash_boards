@@ -283,6 +283,20 @@ with st.sidebar:
                 del st.session_state[key]
         st.rerun()
 
+def filtrar_liberados(row):
+    if pd.notna(row['Financiado']):
+        if pd.notna(row['Data da Liberação']):
+            if inicio_liberacao <= row['Data da Liberação'].date() <= fim_liberacao:
+                return True
+            else:
+                return False
+        else:
+            return False
+    else:
+        return True
+
+df_controle = df_controle[df_controle.apply(filtrar_liberados, axis=1)]
+
 ##### FORMATAÇÕES FINAIS DOS DADOS #####
 dados_filtrados['Financiado'] = dados_filtrados['Financiado'].astype(float).apply(formata_float)
 dados_filtrados['Liberado'  ] = dados_filtrados['Liberado'  ].apply(formata_float)
@@ -295,6 +309,7 @@ df_controle['Financiado'] = df_controle['Financiado'].astype(float).apply(format
 df_controle['Liberado'  ] = df_controle['Liberado'  ].apply(formata_float)
 df_controle['Parcela'   ] = df_controle['Parcela'   ].apply(formata_float)
 df_controle['Comissão'  ] = df_controle['Comissão'  ].apply(formata_float)
+
 
 df_controle['Liberado'] = np.where(df_controle['Liberado'].empty, '0,00', df_controle['Liberado'])
 df_controle['Comissão'] = np.where(df_controle['Comissão'].empty, '0,00', df_controle['Comissão'])
