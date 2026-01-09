@@ -226,6 +226,12 @@ with st.sidebar:
             dados_filtrados = dados_filtrados[
                     dados_filtrados['Data da Mensagem'].isna()
                 ]
+            
+
+    dados_filtrados['Data da Mensagem' ] = pd.to_datetime(dados_filtrados['Data da Mensagem' ]).dt.strftime('%d/%m/%Y')
+
+    df_controle = dados_filtrados.copy()
+
 
     ##### FILTRO DE INTERVALO DE DATA LIBERAÇÃO #####
     df_crm['Data da Liberação'] = (
@@ -283,10 +289,12 @@ dados_filtrados['Liberado'  ] = dados_filtrados['Liberado'  ].apply(formata_floa
 dados_filtrados['Parcela'   ] = dados_filtrados['Parcela'   ].apply(formata_float)
 dados_filtrados['Comissão'  ] = dados_filtrados['Comissão'  ].apply(formata_float)
 
-dados_filtrados['Data da Mensagem' ] = pd.to_datetime(dados_filtrados['Data da Mensagem' ]).dt.strftime('%d/%m/%Y')
 dados_filtrados['Data da Liberação'] = pd.to_datetime(dados_filtrados['Data da Liberação']).dt.strftime('%d/%m/%Y')
 
-df_controle = dados_filtrados.copy()
+df_controle['Financiado'] = df_controle['Financiado'].astype(float).apply(formata_float)
+df_controle['Liberado'  ] = df_controle['Liberado'  ].apply(formata_float)
+df_controle['Parcela'   ] = df_controle['Parcela'   ].apply(formata_float)
+df_controle['Comissão'  ] = df_controle['Comissão'  ].apply(formata_float)
 
 df_controle['Liberado'] = np.where(df_controle['Liberado'].empty, '0,00', df_controle['Liberado'])
 df_controle['Comissão'] = np.where(df_controle['Comissão'].empty, '0,00', df_controle['Comissão'])
