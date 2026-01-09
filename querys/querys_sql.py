@@ -343,6 +343,8 @@ class QuerysSQL:
                             on c.cliente_id = ct.cliente_id 
                         left join corban.propostas p
                             on ct.proposta_id = p.proposta_id 
+                        left join corban.api a
+                            on p.proposta_id = a.proposta_id
                         where p.status_nome like '%Pago%'
                             and p.data_status > '2025-11-01 00:00:00';
                         """
