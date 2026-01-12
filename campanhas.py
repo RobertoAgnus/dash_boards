@@ -111,28 +111,6 @@ def get_datas_liberacao(df):
     
     return menor_data, maior_data
 
-
-##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao()
-
-conectar.conectar_postgres_aws()
-conectar.conectar_postgres()
-
-conn_postgres_aws = conectar.obter_conexao_postgres_aws()
-conn_postgres = conectar.obter_conexao_postgres()
-
-consulta = QuerysSQL()
-
-digisac, corban, crm = consulta.get_campanhas()
-
-# df_digisac = pd.read_sql_query(digisac, conn_postgres)
-df_corban = pd.read_sql_query(corban, conn_postgres)
-df_crm = pd.read_sql_query(crm, conn_postgres_aws)
-
-df_corban = df_corban[df_corban['liberacao'] >= '2026-01-05 00:00:00']
-
-df_crm_corban = pd.merge(df_crm, df_corban, on=['numero'], how='left')
-
 def tamanho_nome(nome):
     if isinstance(nome, str):
         return len(nome)
@@ -154,10 +132,35 @@ def limpar_nome(nome):
 
     return nome
 
-# df_crm_corban['nome_digisac'] = df_crm_corban['nome_digisac'].apply(remover_emojis).apply(limpar_nome)
-# df_crm_corban['nome_digisac'] = np.where(df_crm_corban['nome_digisac'].apply(tamanho_nome) < df_crm_corban['nome_interno'].apply(tamanho_nome), df_crm_corban['nome_interno'], df_crm_corban['nome_digisac'])
-# df_crm_corban['cpf_digisac']  = np.where(df_crm_corban['cpf_digisac'].isna(), df_crm_corban['cpf_corban'], df_crm_corban['cpf_digisac'])
-# df_crm_corban = df_crm_corban[df_crm_corban['liberacao'] >= '2026-01-05 00:00:00']
+
+##### CARREGAR OS DADOS (1x) #####
+conectar = Conexao()
+
+conectar.conectar_postgres_aws()
+conectar.conectar_postgres()
+
+conn_postgres_aws = conectar.obter_conexao_postgres_aws()
+conn_postgres = conectar.obter_conexao_postgres()
+
+consulta = QuerysSQL()
+
+digisac, corban, crm = consulta.get_campanhas()
+campanhas            = consulta.get_campanhas_meta()
+
+# df_digisac      = pd.read_sql_query(digisac, conn_postgres)
+df_corban       = pd.read_sql_query(corban, conn_postgres)
+df_crm          = pd.read_sql_query(crm, conn_postgres_aws)
+custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
+
+df_corban = df_corban[df_corban['liberacao'] >= '2026-01-05 00:00:00']
+
+df_crm_corban = pd.merge(df_crm, df_corban, on=['numero'], how='outer')
+
+# df_crm_corban
+# teste_01 = df_crm_corban[df_crm_corban['liberacao'].notna()]
+# teste_01
+# teste_02 = len(teste_01)
+# teste_02
 
 df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_x'            ].isna(), df_crm_corban['nome_y'          ], df_crm_corban['nome_x'            ])
 df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf'               ].isna(), df_crm_corban['cpf_corban'      ], df_crm_corban['cpf'               ])
@@ -168,8 +171,26 @@ df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['valorLiberado'    
 df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['valor_parcela_x'   ].isna(), df_crm_corban['valor_parcela_y' ], df_crm_corban['valor_parcela_x'   ])
 df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['prazo_x'           ].isna(), df_crm_corban['prazo_y'         ], df_crm_corban['prazo_x'           ])
 df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['valorTotalComissao'].isna(), df_crm_corban['valor_comissao'  ], df_crm_corban['valorTotalComissao'])
+df_crm_corban['createdAt'         ] = np.where(df_crm_corban['createdAt'         ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['createdAt'         ])
+df_crm_corban['mensagemInicial'   ] = np.where(df_crm_corban['mensagemInicial'   ].isna(), 'Não Identificado'               , df_crm_corban['mensagemInicial'   ])
 
 # df_crm_corban
+# teste_01 = df_crm_corban[df_crm_corban['liberacao'].notna()]
+# teste_01
+# teste_02 = len(teste_01)
+# teste_02
+
+df_crm_corban['createdAt'] = (
+    pd.to_datetime(df_crm_corban['createdAt'], utc=True)
+    .dt.tz_localize(None)
+)
+
+df_crm_corban = (
+    df_crm_corban
+    .sort_values('createdAt')
+    .groupby('cpf', as_index=False)
+    .tail(1)
+)
 
 df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['nome_banco_x'      ])
 df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['dataPagamento'     ])
@@ -180,9 +201,12 @@ df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['createdAt'] > df_c
 df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['valorTotalComissao'])
 
 # df_crm_corban
+# teste_01 = df_crm_corban[df_crm_corban['liberacao'].notna()]
+# teste_01
+# teste_02 = len(teste_01)
+# teste_02
 
 df_crm_corban = df_crm_corban[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao']]
-
 
 df_crm_corban = df_crm_corban.rename(
     columns={
@@ -194,10 +218,6 @@ df_crm_corban = df_crm_corban.rename(
 )
 
 df_crm_corban = df_crm_corban.drop_duplicates(subset=['numero', 'createdAt', 'nome_banco'])
-
-campanhas = consulta.get_campanhas_meta()
-
-custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
 
 df_crm = df_crm_corban.copy()
 
@@ -378,7 +398,7 @@ controle = controle.rename(columns={'mensagens': 'Campanhas', 'Telefone': 'Leads
 
 
 def mapeia_campanha(valor):
-    return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP')
+    return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
 
 
 custo_campanhas = custo_campanhas.rename(columns={'data': 'Data da Mensagem', 'nome': 'Campanhas', 'valor': 'Investimento'})
@@ -407,37 +427,22 @@ controle['Ticket Médio'] = (
     media['valor_total_produzido'] / media['quantidade_total']
 )
 
-# controle['CAC'] = 0.0
-
-mask_zero = (controle['Investimento'] > 0) & (controle['Pagos'] == 0)
-mask_normal = controle['Pagos'] > 0
-
-controle.loc[mask_zero, 'CAC'] = 0.0
-controle.loc[mask_normal, 'CAC'] = (
-    media['valor_total_investido'] / media['quantidade_total']
+controle['CAC'] = (
+    controle['Investimento']
+    .div(controle['Pagos'])
+    .replace([np.inf, -np.inf], 0)
+    .fillna(0)
 )
-
-# controle.loc[mask_normal, 'CAC'] = (
-#     controle.loc[mask_normal, 'Investimento'] /
-#     controle.loc[mask_normal, 'Pagos']
-# )
-
-
-# controle['ROI'] = 0.0
 
 mask_zero = (controle['Investimento'] == 0) & (controle['Comissão Recebida'] > 0)
 mask_normal = controle['Investimento'] > 0
 
-controle.loc[mask_zero, 'ROI'] = 1
-controle.loc[mask_normal, 'ROI'] = (
+controle['ROI'] = np.where(
+    controle['Investimento'] == 0,
+    1,
     (media['valor_total_comissao'] - media['valor_total_investido']) /
     media['valor_total_investido']
 )
-
-# controle.loc[mask_normal, 'ROI'] = (
-#     (controle.loc[mask_normal, 'Comissão Recebida'] - controle.loc[mask_normal, 'Investimento']) /
-#     controle.loc[mask_normal, 'Investimento']
-# )
 
 controle['ROI'] = np.where(controle['ROI'] >= 0, ['🟢 +' + formata_float(x) for x in controle['ROI']], ['🔴 ' + formata_float(x) for x in controle['ROI']])
 
