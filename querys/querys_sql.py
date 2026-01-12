@@ -409,7 +409,7 @@ class QuerysSQL:
                             and m.dt_mensagem >= '2026-01-05 00:00:00.000';
                         """
         query_corban = f"""
-                        select 
+                        select
                             c.cliente_nome as nome,
                             LPAD(REGEXP_REPLACE(c.cliente_cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
                             CASE
@@ -417,7 +417,10 @@ class QuerysSQL:
                                 THEN SUBSTRING(concat(t.ddd,t.numero) FROM 1 FOR 2) || '9' || SUBSTRING(concat(t.ddd,t.numero) FROM 3)
                                 ELSE concat(t.ddd,t.numero)
                             END AS numero,
-                            a.data_status_api as liberacao,
+                            case
+                                when ct.banco_nome in ('Credspot','MERCANTIL') then p.data_status
+                                else a.data_status_api
+                            end as liberacao,
                             ct.valor_financiado,
                             ct.valor_liberado,
                             ct.valor_parcela,
@@ -435,7 +438,10 @@ class QuerysSQL:
                             on ct.proposta_id = a.proposta_id
                         left join corban.comissionamentos cc
                             on ct.proposta_id = cc.proposta_id
-                        where p.status_nome like '%Pago%';
+                        where 
+                            p.data_status >= '2026-01-05' 
+                            and (a.status_api in ('APROVADA')
+                            or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
                         """
         # query_crm = f"""
         #             select 
