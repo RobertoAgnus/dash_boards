@@ -125,7 +125,7 @@ consulta = QuerysSQL()
 
 digisac, corban, crm = consulta.get_campanhas()
 
-df_digisac = pd.read_sql_query(digisac, conn_postgres)
+# df_digisac = pd.read_sql_query(digisac, conn_postgres)
 df_corban = pd.read_sql_query(corban, conn_postgres)
 df_crm = pd.read_sql_query(crm, conn_postgres_aws)
 
