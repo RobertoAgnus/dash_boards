@@ -170,20 +170,34 @@ df_crm_corban['createdAt'] = (
     .dt.tz_localize(None)
 )
 
-df_crm_corban = (
-    df_crm_corban
-    .sort_values('createdAt')
-    .groupby('cpf', as_index=False)
-    .tail(1)
+df_crm_corban['dataPagamento'] = (
+    pd.to_datetime(df_crm_corban['dataPagamento'], utc=True)
+    .dt.tz_localize(None)
 )
 
-df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['nome_banco_x'      ])
-df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['dataPagamento'     ])
-df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['valorBruto'        ])
-df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['valorLiberado'     ])
-df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['valor_parcela_x'   ])
-df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['prazo_x'           ])
-df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['createdAt'] > df_crm_corban['liberacao'], None, df_crm_corban['valorTotalComissao'])
+mask = df_crm_corban['createdAt'] > df_crm_corban['dataPagamento']
+
+# df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['nome_banco_x'      ])
+# df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valorBruto'        ])
+# df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valorLiberado'     ])
+# df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valor_parcela_x'   ])
+# df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['prazo_x'           ])
+# df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valorTotalComissao'])
+df_crm_corban.loc[mask, 'nome_banco_x'      ] = None
+df_crm_corban.loc[mask, 'valorBruto'        ] = None
+df_crm_corban.loc[mask, 'valorLiberado'     ] = None
+df_crm_corban.loc[mask, 'valor_parcela_x'   ] = None
+df_crm_corban.loc[mask, 'prazo_x'           ] = None
+df_crm_corban.loc[mask, 'valorTotalComissao'] = None
+df_crm_corban.loc[mask, 'dataPagamento'     ] = pd.NaT
+
+df_crm_corban = df_crm_corban.drop_duplicates(subset=['cpf', 'dataPagamento'])
+# df_crm_corban
+
+teste_1 = df_crm_corban['createdAt'].apply(type).value_counts()
+teste_1
+teste_2 = df_crm_corban['dataPagamento'].apply(type).value_counts()
+teste_2
 
 df_crm_corban = df_crm_corban[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao']]
 
@@ -196,16 +210,14 @@ df_crm_corban = df_crm_corban.rename(
     }
 )
 
-df_crm_corban = df_crm_corban.drop_duplicates(subset=['numero', 'createdAt', 'nome_banco'])
+# df_crm_corban = df_crm_corban.drop_duplicates(subset=['numero', 'createdAt', 'nome_banco'])
 
-df_crm = df_crm_corban.copy()
+df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['dataPagamento'].isna(), 0, df_crm_corban['valorTotalComissao'])
 
-df_crm['valorTotalComissao'] = np.where(df_crm['dataPagamento'].isna(), 0, df_crm['valorTotalComissao'])
+df_crm_corban = formatar_cpf(df_crm_corban, 'cpf')
+df_crm_corban = formatar_telefone(df_crm_corban, 'numero')
 
-df_crm = formatar_cpf(df_crm, 'cpf')
-df_crm = formatar_telefone(df_crm, 'numero')
-
-df_crm = df_crm.rename(columns={
+df_crm_corban = df_crm_corban.rename(columns={
     'cpf':'CPF',
     'nome':'Nome',
     'createdAt':'Data da Mensagem',
@@ -219,13 +231,19 @@ df_crm = df_crm.rename(columns={
     'valorTotalComissao': 'Comissão'
 })
 
-df_crm['Data da Mensagem'] = (
-    pd.to_datetime(df_crm['Data da Mensagem'], errors='coerce', utc=True)
+df_crm_corban['Data da Mensagem'] = (
+    pd.to_datetime(df_crm_corban['Data da Mensagem'], errors='coerce', utc=True)
     .dt.tz_localize(None)
     .dt.date
 )
 
-dados_filtrados = df_crm.copy()
+df_crm_corban['Data da Liberação'] = (
+    pd.to_datetime(df_crm_corban['Data da Liberação'], errors='coerce', utc=True)
+    .dt.tz_localize(None)
+    .dt.date
+)
+
+dados_filtrados = df_crm_corban.copy()
 
 # dados_filtrados = dados_filtrados.drop_duplicates()
 

@@ -499,9 +499,7 @@ class QuerysSQL:
                     left join public."Bancos" b 
                         on cs."bancoId" = b.id
                     where p."createdAt" >= '2026-01-05T00:00:00'
-                        and p."statusBancoId" = '12'
-                        and aa."createdAt" >= '2026-01-05T00:00:00'
-                        and aa."createdAt" <= p."dataPagamento";
+                        and aa."createdAt" >= '2026-01-05T00:00:00';
                 """
         return query_digisac, query_corban, query_crm
         # return query
