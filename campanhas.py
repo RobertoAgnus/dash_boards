@@ -161,7 +161,7 @@ custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
 
 # Realiza merge entre as bases
 df_crm_corban = pd.merge(df_crm, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer')    #left_on=['cpf'], right_on=['cpf_corban'], how='outer')
-df_crm_corban
+# df_crm_corban
 
 df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_y'          ].isna(), df_crm_corban['nome_x'            ], df_crm_corban['nome_y'            ])
 df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf_corban'      ].isna(), df_crm_corban['cpf'               ], df_crm_corban['cpf_corban'        ])
