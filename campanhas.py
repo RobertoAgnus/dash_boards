@@ -90,28 +90,17 @@ def metric_card(label, value):
     )
 
 
-##### FUNÇÃO PARA OBTER AS DATAS DA MENSAGEM #####
-def get_datas_mensagem(df):
+##### FUNÇÃO PARA OBTER AS DATAS #####
+def get_datas(df, coluna):
     # Remove linhas com Data Mensagem vazia
-    df = df.dropna(subset=['Data da Mensagem'])
+    df = df.dropna(subset=[coluna])
 
     # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = df['Data da Mensagem'].min()
+    menor_data = df[coluna].min()
     maior_data = date.today()
     
     return menor_data, maior_data
 
-
-##### FUNÇÃO PARA OBTER AS DATAS LIBERAÇÃO #####
-def get_datas_liberacao(df):
-    # Remove linhas com Data liberação vazia
-    df = df.dropna(subset=['Data da Liberação'])
-
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = df['Data da Liberação'].min()
-    maior_data = date.today()
-    
-    return menor_data, maior_data
 
 ##### FUNÇÃO PARA OBTER O COMPRIMENTO DO NOME #####
 def tamanho_nome(nome):
@@ -276,7 +265,7 @@ with st.sidebar:
         .dt.date
     )
 
-    menor_data_mensagem, maior_data_mensagem = get_datas_mensagem(dados_filtrados)
+    menor_data_mensagem, maior_data_mensagem = get_datas(dados_filtrados, 'Data da Mensagem')
     if "filtro_periodo_mensagem" not in st.session_state:
         st.session_state.filtro_periodo_mensagem = (menor_data_mensagem, date.today())
 
@@ -319,7 +308,7 @@ with st.sidebar:
         .dt.date
     )
     
-    menor_data_liberacao, maior_data_liberacao = get_datas_liberacao(dados_filtrados)
+    menor_data_liberacao, maior_data_liberacao = get_datas(dados_filtrados, 'Data da Liberação')
     if "filtro_periodo_liberacao" not in st.session_state:
         st.session_state.filtro_periodo_liberacao = (menor_data_liberacao, date.today())
     

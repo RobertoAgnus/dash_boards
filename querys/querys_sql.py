@@ -487,20 +487,21 @@ class QuerysSQL:
                         end as prazo,
                         case
                             when p."valorTotalComissao" = 0 then p."valorLiberado"*0.09
-	                        when p."dataPagamento" is not null then p."valorTotalComissao"
+                            when p."dataPagamento" is not null then p."valorTotalComissao"
                         end as "valorTotalComissao"
-                    from "Clientes" c
-                    full outer join "AutoAtendimento" aa
-                        on c.id = aa."clienteId"
-                    left join "Consultas" cs
-                        on aa."simulacaoCltId" = cs.id
-                    left join "Bancos" b
+                    from public."AutoAtendimento" aa
+                    left join public."Propostas" p 
+                        on p."clienteId" = aa."clienteId"
+                    left join public."Clientes" c 
+                        on aa."clienteId" = c.id
+                    left join public."Consultas" cs
+                        on p."consultaId" = cs.id
+                    left join public."Bancos" b 
                         on cs."bancoId" = b.id
-                    left join "Propostas" p
-                        on cs.id = p."consultaId"
-                    left join "Telefones" t
-                        on c.id = t."clienteId"
-                    where aa."createdAt" >= '2026-01-05 00:00:00.000';
+                    where p."createdAt" >= '2026-01-05T00:00:00'
+                        and p."statusBancoId" = '12'
+                        and aa."createdAt" >= '2026-01-05T00:00:00'
+                        and aa."createdAt" <= p."dataPagamento";
                 """
         return query_digisac, query_corban, query_crm
         # return query
