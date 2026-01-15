@@ -229,17 +229,6 @@ df_crm['Data da Mensagem'] = (
     .dt.date
 )
 
-df_crm['Data da Liberação'] = (
-    df_crm['Data da Liberação']
-    .astype(str)
-    .str.strip()
-)
-df_crm['Data da Liberação'] = (
-    pd.to_datetime(df_crm['Data da Liberação'], errors='coerce')
-    .dt.tz_localize(None)
-    .dt.date
-)
-
 dados_filtrados = df_crm.copy()
 
 # dados_filtrados = dados_filtrados.drop_duplicates()
