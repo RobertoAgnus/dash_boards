@@ -423,7 +423,7 @@ class QuerysSQL:
                             ct.valor_parcela,
                             ct.prazo,
                             ct.banco_nome as nome_banco,
-                            cc.comissao_valor_liberado as valor_comissao
+                            cc.valor as valor_comissao
                         from unificados.clientes c 
                         left join unificados.telefones t 
                             on c.id = t.cliente_id
@@ -433,7 +433,7 @@ class QuerysSQL:
                             on ct.proposta_id_corban = cast(p.proposta_id as varchar)
                         left join unificados.api a
                             on ct.proposta_id_corban = a.proposta_id_corban
-                        left join unificados.comissionamentos cc
+                        left join unificados.comissoes cc
                             on ct.proposta_id_corban = cc.proposta_id_corban
                         left join unificados.datas dt
                             on ct.proposta_id_corban = dt.proposta_id_corban

@@ -8,6 +8,8 @@ from datetime import date
 from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from regras.formatadores import formatar_cpf, formatar_telefone
+import warnings
+warnings.filterwarnings("ignore")
 
 
 if not st.session_state.get("authenticated", False):
@@ -111,11 +113,13 @@ def get_datas_liberacao(df):
     
     return menor_data, maior_data
 
+##### FUNÇÃO PARA OBTER O COMPRIMENTO DO NOME #####
 def tamanho_nome(nome):
     if isinstance(nome, str):
         return len(nome)
     return 0
 
+##### FUNÇÃO PARA LIMPAR O NOME #####
 def limpar_nome(nome):
     if pd.isna(nome):
         return nome
@@ -140,7 +144,7 @@ conectar.conectar_postgres_aws()
 conectar.conectar_postgres()
 
 conn_postgres_aws = conectar.obter_conexao_postgres_aws()
-conn_postgres = conectar.obter_conexao_postgres()
+conn_postgres     = conectar.obter_conexao_postgres()
 
 consulta = QuerysSQL()
 
@@ -152,22 +156,25 @@ df_corban       = pd.read_sql_query(corban, conn_postgres)
 df_crm          = pd.read_sql_query(crm, conn_postgres_aws)
 custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
 
-df_corban = df_corban[df_corban['numero_corban'] != '99999999999']
+# Remove telefone inválido
+# df_corban = df_corban[df_corban['numero_corban'] != '99999999999']
 
+# Realiza merge entre as bases
 df_crm_corban = pd.merge(df_crm, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer')    #left_on=['cpf'], right_on=['cpf_corban'], how='outer')
+df_crm_corban
 
-df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_x'            ].isna(), df_crm_corban['nome_y'          ], df_crm_corban['nome_x'            ])
-df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf'               ].isna(), df_crm_corban['cpf_corban'      ], df_crm_corban['cpf'               ])
-df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['nome_banco_x'      ].isna(), df_crm_corban['nome_banco_y'    ], df_crm_corban['nome_banco_x'      ])
-df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['dataPagamento'     ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['dataPagamento'     ])
-df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['valorBruto'        ].isna(), df_crm_corban['valor_financiado'], df_crm_corban['valorBruto'        ])
-df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['valorLiberado'     ].isna(), df_crm_corban['valor_liberado'  ], df_crm_corban['valorLiberado'     ])
-df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['valor_parcela_x'   ].isna(), df_crm_corban['valor_parcela_y' ], df_crm_corban['valor_parcela_x'   ])
-df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['prazo_x'           ].isna(), df_crm_corban['prazo_y'         ], df_crm_corban['prazo_x'           ])
-df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['valorTotalComissao'].isna(), df_crm_corban['valor_comissao'  ], df_crm_corban['valorTotalComissao'])
-df_crm_corban['createdAt'         ] = np.where(df_crm_corban['createdAt'         ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['createdAt'         ])
-df_crm_corban['numero'            ] = np.where(df_crm_corban['numero'            ].isna(), df_crm_corban['numero_corban'   ], df_crm_corban['numero'            ])
-df_crm_corban['mensagemInicial'   ] = np.where(df_crm_corban['mensagemInicial'   ].isna(), 'Não Identificado'               , df_crm_corban['mensagemInicial'   ])
+df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_y'          ].isna(), df_crm_corban['nome_x'            ], df_crm_corban['nome_y'            ])
+df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf_corban'      ].isna(), df_crm_corban['cpf'               ], df_crm_corban['cpf_corban'        ])
+df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['nome_banco_y'    ].isna(), df_crm_corban['nome_banco_x'      ], df_crm_corban['nome_banco_y'      ])
+df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['liberacao'       ].isna(), df_crm_corban['dataPagamento'     ], df_crm_corban['liberacao'         ])
+df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['valor_financiado'].isna(), df_crm_corban['valorBruto'        ], df_crm_corban['valor_financiado'  ])
+df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['valor_liberado'  ].isna(), df_crm_corban['valorLiberado'     ], df_crm_corban['valor_liberado'    ])
+df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['valor_parcela_y' ].isna(), df_crm_corban['valor_parcela_x'   ], df_crm_corban['valor_parcela_y'   ])
+df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['prazo_y'         ].isna(), df_crm_corban['prazo_x'           ], df_crm_corban['prazo_y'           ])
+df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['valor_comissao'  ].isna(), df_crm_corban['valorTotalComissao'], df_crm_corban['valor_comissao'    ])
+df_crm_corban['createdAt'         ] = np.where(df_crm_corban['liberacao'       ].isna(), df_crm_corban['createdAt'         ], df_crm_corban['liberacao'         ])
+df_crm_corban['numero'            ] = np.where(df_crm_corban['numero_corban'   ].isna(), df_crm_corban['numero'            ], df_crm_corban['numero_corban'     ])
+df_crm_corban['mensagemInicial'   ] = np.where(df_crm_corban['mensagemInicial' ].isna(), 'Não Identificado'                 , df_crm_corban['mensagemInicial'   ])
 
 df_crm_corban['createdAt'] = (
     pd.to_datetime(df_crm_corban['createdAt'], utc=True)
