@@ -410,36 +410,35 @@ class QuerysSQL:
                         """
         query_corban = f"""
                         select
-                            c.cliente_nome as nome,
-                            LPAD(REGEXP_REPLACE(c.cliente_cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
+                            c.nome,
+                            LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
                             CASE
-                                WHEN LENGTH(concat(t.ddd,t.numero)) < 11
-                                THEN SUBSTRING(concat(t.ddd,t.numero) FROM 1 FOR 2) || '9' || SUBSTRING(concat(t.ddd,t.numero) FROM 3)
-                                ELSE concat(t.ddd,t.numero)
-                            END AS numero,
-                            case
-                                when ct.banco_nome in ('Credspot','MERCANTIL') then p.data_status
-                                else a.data_status_api
-                            end as liberacao,
+                                WHEN LENGTH(t.telefone) < 11
+                                THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
+                                ELSE t.telefone
+                            END AS numero_corban,
+                            dt.pagamento as liberacao,
                             ct.valor_financiado,
                             ct.valor_liberado,
                             ct.valor_parcela,
                             ct.prazo,
                             ct.banco_nome as nome_banco,
                             cc.comissao_valor_liberado as valor_comissao
-                        from corban.clientes c 
-                        left join corban.telefones t 
-                            on c.cliente_id = t.cliente_id
-                        left join corban.contrato ct
-                            on c.cliente_id = ct.cliente_id 
-                        left join corban.propostas p
-                            on ct.proposta_id = p.proposta_id 
-                        left join corban.api a
-                            on ct.proposta_id = a.proposta_id
-                        left join corban.comissionamentos cc
-                            on ct.proposta_id = cc.proposta_id
+                        from unificados.clientes c 
+                        left join unificados.telefones t 
+                            on c.id = t.cliente_id
+                        left join unificados.contrato ct
+                            on c.id = ct.cliente_id 
+                        left join unificados.propostas p
+                            on ct.proposta_id_corban = cast(p.proposta_id as varchar)
+                        left join unificados.api a
+                            on ct.proposta_id_corban = a.proposta_id_corban
+                        left join unificados.comissionamentos cc
+                            on ct.proposta_id_corban = cc.proposta_id_corban
+                        left join unificados.datas dt
+                            on ct.proposta_id_corban = dt.proposta_id_corban
                         where 
-                            p.data_status >= '2026-01-05' 
+                            dt.cadastro >= '2026-01-05' 
                             and (a.status_api in ('APROVADA')
                             or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
                         """
