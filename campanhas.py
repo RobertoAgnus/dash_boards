@@ -177,12 +177,6 @@ df_crm_corban['dataPagamento'] = (
 
 mask = df_crm_corban['createdAt'] > df_crm_corban['dataPagamento']
 
-# df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['nome_banco_x'      ])
-# df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valorBruto'        ])
-# df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valorLiberado'     ])
-# df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valor_parcela_x'   ])
-# df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['prazo_x'           ])
-# df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['createdAt'] > df_crm_corban['dataPagamento'], None  , df_crm_corban['valorTotalComissao'])
 df_crm_corban.loc[mask, 'nome_banco_x'      ] = None
 df_crm_corban.loc[mask, 'valorBruto'        ] = None
 df_crm_corban.loc[mask, 'valorLiberado'     ] = None
@@ -193,11 +187,6 @@ df_crm_corban.loc[mask, 'dataPagamento'     ] = pd.NaT
 
 df_crm_corban = df_crm_corban.drop_duplicates(subset=['cpf', 'dataPagamento'])
 # df_crm_corban
-
-teste_1 = df_crm_corban['createdAt'].apply(type).value_counts()
-teste_1
-teste_2 = df_crm_corban['dataPagamento'].apply(type).value_counts()
-teste_2
 
 df_crm_corban = df_crm_corban[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao']]
 
@@ -326,7 +315,7 @@ with st.sidebar:
         .dt.date
     )
     
-    menor_data_liberacao, maior_data_liberacao = get_datas(dados_filtrados, 'Data da Liberação')
+    menor_data_liberacao, maior_data_liberacao = get_datas(df_crm_corban, 'Data da Liberação')
     if "filtro_periodo_liberacao" not in st.session_state:
         st.session_state.filtro_periodo_liberacao = (menor_data_liberacao, date.today())
     
@@ -350,6 +339,7 @@ with st.sidebar:
         try:
             
             if (inicio_liberacao, fim_liberacao) != (menor_data_liberacao, maior_data_liberacao):
+                
                 # Filtra as linhas de consulta dentro do intervalo
                 dados_filtrados = dados_filtrados[
                     (dados_filtrados['Data da Liberação'] >= inicio_liberacao) &
@@ -357,11 +347,11 @@ with st.sidebar:
                 ]
                 
         except:
-
+            
             dados_filtrados = dados_filtrados[
                     dados_filtrados['Data da Liberação'].isna()
                 ]
-
+        
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):
         for key in list(st.session_state.keys()):
