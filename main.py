@@ -93,6 +93,7 @@ def navegacao():
     page_6        = st.Page("campanhas.py"          , title="Campanhas Publicitárias")
     page_master   = st.Page("gerenciar_usuario.py"  , title="Gerenciar Usuário"      )
     page_user     = st.Page("alterar_senha.py"      , title="Alterar Senha"          )
+    teste         = st.Page("teste.py"              , title="TESTE"                  )
 
     # Nav do usuário master
     if st.session_state.master:

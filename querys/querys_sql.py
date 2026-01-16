@@ -487,20 +487,18 @@ class QuerysSQL:
                         end as prazo,
                         case
                             when p."valorTotalComissao" = 0 then p."valorLiberado"*0.09
-	                        when p."dataPagamento" is not null then p."valorTotalComissao"
+                            when p."dataPagamento" is not null then p."valorTotalComissao"
                         end as "valorTotalComissao"
-                    from "Clientes" c
-                    full outer join "AutoAtendimento" aa
-                        on c.id = aa."clienteId"
-                    left join "Consultas" cs
-                        on aa."simulacaoCltId" = cs.id
-                    left join "Bancos" b
+                    from public."AutoAtendimento" aa
+                    left join public."Propostas" p 
+                        on p."clienteId" = aa."clienteId"
+                    left join public."Clientes" c 
+                        on aa."clienteId" = c.id
+                    left join public."Consultas" cs
+                        on p."consultaId" = cs.id
+                    left join public."Bancos" b 
                         on cs."bancoId" = b.id
-                    left join "Propostas" p
-                        on cs.id = p."consultaId"
-                    left join "Telefones" t
-                        on c.id = t."clienteId"
-                    where aa."createdAt" >= '2026-01-05 00:00:00.000';
+                    where aa."createdAt" >= '2026-01-05T00:00:00';
                 """
         return query_digisac, query_corban, query_crm
         # return query
@@ -512,6 +510,172 @@ class QuerysSQL:
         return query
 
     #####################################################################
+    def get_campanhas_teste(self):
+        query_corban = f"""
+                        select
+                            c.nome,
+                            LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
+                            CASE
+                                WHEN LENGTH(t.telefone) < 11
+                                THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
+                                ELSE t.telefone
+                            END AS numero_corban,
+                            dt.pagamento as liberacao,
+                            ct.valor_financiado,
+                            ct.valor_liberado,
+                            ct.valor_parcela,
+                            ct.prazo,
+                            ct.banco_nome as nome_banco,
+                            cc.valor as valor_comissao
+                        from unificados.clientes c 
+                        left join unificados.telefones t 
+                            on c.id = t.cliente_id
+                        left join unificados.contrato ct
+                            on c.id = ct.cliente_id 
+                        left join unificados.propostas p
+                            on ct.proposta_id_corban = cast(p.proposta_id as varchar)
+                        left join unificados.api a
+                            on ct.proposta_id_corban = a.proposta_id_corban
+                        left join unificados.comissoes cc
+                            on ct.proposta_id_corban = cc.proposta_id_corban
+                        left join unificados.datas dt
+                            on ct.proposta_id_corban = dt.proposta_id_corban
+                        where 
+                            dt.cadastro >= '2026-01-05' 
+                            and (a.status_api in ('APROVADA')
+                            or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
+                        """
+        query_crm = f"""
+                    select 
+                        aa.telefone as numero,
+                        c.cpf,
+                        c.nome,
+                        aa."createdAt",
+                        aa."mensagemInicial",
+                        b.nome as nome_banco,
+                        p."dataPagamento",
+                        case 
+                            when p."dataPagamento" is not null then cs."valorBruto"
+                        end as "valorBruto",
+                        case
+                            when p."dataPagamento" is not null then p."valorLiberado"
+                        end as "valorLiberado",
+                        case 
+                            when p."dataPagamento" is not null then (cast(cs."valorBruto" as float) / p.prazo)
+                        end as valor_parcela,
+                        case 
+                            when p."dataPagamento" is not null then p.prazo 
+                        end as prazo,
+                        case
+                            when p."valorTotalComissao" = 0 then p."valorLiberado"*0.09
+                            when p."dataPagamento" is not null then p."valorTotalComissao"
+                        end as "valorTotalComissao"
+                    from public."AutoAtendimento" aa
+                    left join public."Propostas" p 
+                        on p."clienteId" = aa."clienteId"
+                    left join public."Clientes" c 
+                        on aa."clienteId" = c.id
+                    left join public."Consultas" cs
+                        on p."consultaId" = cs.id
+                    left join public."Bancos" b 
+                        on cs."bancoId" = b.id
+                    where aa."createdAt" >= '2026-01-05T00:00:00';
+                """
+        return query_corban, query_crm
+    
+    def get_teste_corban_propostas(self):
+        query = f"""
+                    select
+                        c.nome,
+                        LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
+                        CASE
+                            WHEN LENGTH(t.telefone) < 11
+                            THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
+                            ELSE t.telefone
+                        END AS numero_corban,
+                        dt.pagamento as liberacao,
+                        ct.valor_financiado,
+                        ct.valor_liberado,
+                        ct.valor_parcela,
+                        ct.prazo,
+                        ct.banco_nome as nome_banco,
+                        cc.valor as valor_comissao
+                    from unificados.clientes c 
+                    left join unificados.telefones t 
+                        on c.id = t.cliente_id
+                    left join unificados.contrato ct
+                        on c.id = ct.cliente_id 
+                    left join unificados.propostas p
+                        on ct.proposta_id_corban = cast(p.proposta_id as varchar)
+                    left join unificados.api a
+                        on ct.proposta_id_corban = a.proposta_id_corban
+                    left join unificados.comissoes cc
+                        on ct.proposta_id_corban = cc.proposta_id_corban
+                    left join unificados.datas dt
+                        on ct.proposta_id_corban = dt.proposta_id_corban
+                    where 
+                        dt.cadastro >= '2026-01-05' 
+                        and (a.status_api in ('APROVADA')
+                        or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
+                    """
+        return query
+
+    def get_teste_crm_autoatendimento(self):
+        query = f"""
+                    select 
+                        aa."clienteId",
+                        aa.telefone as numero,
+                        aa."createdAt",
+                        aa."mensagemInicial"
+                    from public."AutoAtendimento" aa
+                    where aa."createdAt" >= '2026-01-05T00:00:00';
+                """
+        return query
+    
+    def get_teste_crm_propostas(self):
+        query = f"""
+                    select 
+                        p."clienteId",
+                        p."consultaId",
+                        p."dataPagamento",
+                        p."valorLiberado",
+                        p.prazo,
+                        p."valorTotalComissao"
+                    from public."Propostas" p;
+                """
+        return query
+    
+    def get_teste_crm_clientes(self):
+        query = f"""
+                    select 
+                        c.id,
+                        c.cpf,
+                        c.nome
+                    from public."Clientes" c;
+                """
+        return query
+    
+    def get_teste_crm_consultas(self):
+        query = f"""
+                    select 
+                        cs.id,
+                        cs."bancoId",
+                        cs."valorBruto"
+                    from public."Consultas" cs;
+                """
+        return query
+    
+    def get_teste_crm_bancos(self):
+        query = f"""
+                    select 
+                        b.id,
+                        b.nome as nome_banco
+                    from public."Bancos" b;
+                """
+        return query
+
+
+
     def get_teste(self):
         return """SELECT 
                         CONVERT(cs.id, SIGNED)     AS consultaId,
