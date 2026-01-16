@@ -149,6 +149,8 @@ df_corban       = pd.read_sql_query(corban, conn_postgres)
 df_crm          = pd.read_sql_query(crm, conn_postgres_aws)
 custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
 
+custo_campanhas['nome'] = custo_campanhas['nome'].apply(mapeia_campanha)
+
 # Remove telefone inválido
 # df_corban = df_corban[df_corban['numero_corban'] != '99999999999']
 
@@ -156,18 +158,18 @@ custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
 df_crm_corban = pd.merge(df_crm, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer')    #left_on=['cpf'], right_on=['cpf_corban'], how='outer')
 # df_crm_corban
 
-df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_y'          ].isna(), df_crm_corban['nome_x'            ], df_crm_corban['nome_y'            ])
-df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf_corban'      ].isna(), df_crm_corban['cpf'               ], df_crm_corban['cpf_corban'        ])
-df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['nome_banco_y'    ].isna(), df_crm_corban['nome_banco_x'      ], df_crm_corban['nome_banco_y'      ])
-df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['liberacao'       ].isna(), df_crm_corban['dataPagamento'     ], df_crm_corban['liberacao'         ])
-df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['valor_financiado'].isna(), df_crm_corban['valorBruto'        ], df_crm_corban['valor_financiado'  ])
-df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['valor_liberado'  ].isna(), df_crm_corban['valorLiberado'     ], df_crm_corban['valor_liberado'    ])
-df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['valor_parcela_y' ].isna(), df_crm_corban['valor_parcela_x'   ], df_crm_corban['valor_parcela_y'   ])
-df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['prazo_y'         ].isna(), df_crm_corban['prazo_x'           ], df_crm_corban['prazo_y'           ])
-df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['valor_comissao'  ].isna(), df_crm_corban['valorTotalComissao'], df_crm_corban['valor_comissao'    ])
-df_crm_corban['createdAt'         ] = np.where(df_crm_corban['liberacao'       ].isna(), df_crm_corban['createdAt'         ], df_crm_corban['liberacao'         ])
-df_crm_corban['numero'            ] = np.where(df_crm_corban['numero_corban'   ].isna(), df_crm_corban['numero'            ], df_crm_corban['numero_corban'     ])
-df_crm_corban['mensagemInicial'   ] = np.where(df_crm_corban['mensagemInicial' ].isna(), 'Não Identificado'                 , df_crm_corban['mensagemInicial'   ])
+df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_x'            ].isna(), df_crm_corban['nome_y'          ], df_crm_corban['nome_x'            ])
+df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf'               ].isna(), df_crm_corban['cpf_corban'      ], df_crm_corban['cpf'               ])
+df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['nome_banco_x'      ].isna(), df_crm_corban['nome_banco_y'    ], df_crm_corban['nome_banco_x'      ])
+df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['dataPagamento'     ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['dataPagamento'     ])
+df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['valorBruto'        ].isna(), df_crm_corban['valor_financiado'], df_crm_corban['valorBruto'        ])
+df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['valorLiberado'     ].isna(), df_crm_corban['valor_liberado'  ], df_crm_corban['valorLiberado'     ])
+df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['valor_parcela_x'   ].isna(), df_crm_corban['valor_parcela_y' ], df_crm_corban['valor_parcela_x'   ])
+df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['prazo_x'           ].isna(), df_crm_corban['prazo_y'         ], df_crm_corban['prazo_x'           ])
+df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['valorTotalComissao'].isna(), df_crm_corban['valor_comissao'  ], df_crm_corban['valorTotalComissao'])
+df_crm_corban['createdAt'         ] = np.where(df_crm_corban['createdAt'         ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['createdAt'         ])
+df_crm_corban['numero'            ] = np.where(df_crm_corban['numero'            ].isna(), df_crm_corban['numero_corban'   ], df_crm_corban['numero'            ])
+df_crm_corban['mensagemInicial'   ] = np.where(df_crm_corban['mensagemInicial'   ].isna(), 'Não Identificado'               , df_crm_corban['mensagemInicial'   ])
 
 df_crm_corban['createdAt'] = (
     pd.to_datetime(df_crm_corban['createdAt'], utc=True)
@@ -179,6 +181,8 @@ df_crm_corban['dataPagamento'] = (
     .dt.tz_localize(None)
 )
 
+df_crm_corban = df_crm_corban.sort_values(['cpf','numero','createdAt','dataPagamento'], ascending=[True,True,False,False])
+
 mask = df_crm_corban['createdAt'] > df_crm_corban['dataPagamento']
 
 df_crm_corban.loc[mask, 'nome_banco_x'      ] = None
@@ -189,8 +193,9 @@ df_crm_corban.loc[mask, 'prazo_x'           ] = None
 df_crm_corban.loc[mask, 'valorTotalComissao'] = None
 df_crm_corban.loc[mask, 'dataPagamento'     ] = pd.NaT
 
-df_crm_corban = df_crm_corban.drop_duplicates(subset=['cpf', 'dataPagamento'])
-# df_crm_corban
+df_crm_corban['_chave_dedupe'] = df_crm_corban['dataPagamento'].fillna(df_crm_corban['createdAt'])
+
+df_crm_corban = df_crm_corban.drop_duplicates(subset='_chave_dedupe').drop(columns='_chave_dedupe')
 
 df_crm_corban = df_crm_corban[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao']]
 
@@ -236,11 +241,12 @@ df_crm_corban['Data da Liberação'] = (
     .dt.date
 )
 
+df_crm_corban['mensagens'] = df_crm_corban['Mensagem Inicial'].apply(mapeia_mensagens)
 dados_filtrados = df_crm_corban.copy()
 
 # dados_filtrados = dados_filtrados.drop_duplicates()
 
-dados_filtrados['mensagens'] = dados_filtrados['Mensagem Inicial'].apply(mapeia_mensagens)
+# dados_filtrados['mensagens'] = dados_filtrados['Mensagem Inicial'].apply(mapeia_mensagens)
 
 ##### ÁREA DO DASHBOARD #####
 
@@ -249,7 +255,7 @@ with st.sidebar:
     st.title('Filtros')
 
     ##### FILTRO DE MENSAGENS INICIAIS #####
-    mensagem_inicial = dados_filtrados['mensagens'].dropna().unique().tolist()
+    mensagem_inicial = df_crm_corban['mensagens'].dropna().unique().tolist()
     mensagem_inicial = [str(x).strip() for x in mensagem_inicial if x is not None]
     mensagem_inicial = sorted(mensagem_inicial)
     
@@ -268,6 +274,8 @@ with st.sidebar:
         filtros = [str(x).strip() for x in selectbox_mensagem]
         dados_filtrados = dados_filtrados[dados_filtrados['mensagens'].isin(filtros)]
         
+        custo_campanhas = custo_campanhas[custo_campanhas['nome'].isin(filtros)]
+        
 
     ##### FILTRO DE INTERVALO DE DATA MENSAGEM #####
     dados_filtrados['Data da Mensagem'] = (
@@ -276,7 +284,7 @@ with st.sidebar:
         .dt.date
     )
 
-    menor_data_mensagem, maior_data_mensagem = get_datas(dados_filtrados, 'Data da Mensagem')
+    menor_data_mensagem, maior_data_mensagem = get_datas(df_crm_corban, 'Data da Mensagem')
     if "filtro_periodo_mensagem" not in st.session_state:
         st.session_state.filtro_periodo_mensagem = (menor_data_mensagem, date.today())
 
@@ -305,12 +313,19 @@ with st.sidebar:
                     (dados_filtrados['Data da Mensagem'] >= inicio_mensagem) &
                     (dados_filtrados['Data da Mensagem'] <= fim_mensagem)
                 ]
+                custo_campanhas = custo_campanhas[
+                    (custo_campanhas['data'] >= inicio_mensagem) &
+                    (custo_campanhas['data'] <= fim_mensagem)
+                ]
                 
         except:
             
             dados_filtrados = dados_filtrados[
-                    dados_filtrados['Data da Mensagem'].isna()
-                ]
+                dados_filtrados['Data da Mensagem'].isna()
+            ]
+            custo_campanhas = custo_campanhas[
+                custo_campanhas['data'].isna()
+            ]
 
     ##### FILTRO DE INTERVALO DE DATA LIBERAÇÃO #####
     dados_filtrados['Data da Liberação'] = (
@@ -349,12 +364,19 @@ with st.sidebar:
                     (dados_filtrados['Data da Liberação'] >= inicio_liberacao) &
                     (dados_filtrados['Data da Liberação'] <= fim_liberacao)
                 ]
+                custo_campanhas = custo_campanhas[
+                    (custo_campanhas['data'] >= inicio_liberacao) &
+                    (custo_campanhas['data'] <= fim_liberacao)
+                ]
                 
         except:
             
             dados_filtrados = dados_filtrados[
-                    dados_filtrados['Data da Liberação'].isna()
-                ]
+                dados_filtrados['Data da Liberação'].isna()
+            ]
+            custo_campanhas = custo_campanhas[
+                custo_campanhas['data'].isna()
+            ]
         
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):
@@ -385,11 +407,10 @@ controle = df_controle.groupby(['mensagens', 'Data da Mensagem']).agg({'numero':
 controle = controle.rename(columns={'mensagens': 'Campanhas', 'numero': 'leads', 'Data da Liberação': 'Pagos', 'Liberado': 'Valor de Produção', 'Comissão': 'Comissão Recebida'})
 
 custo_campanhas = custo_campanhas.rename(columns={'data': 'Data da Mensagem', 'nome': 'Campanhas', 'leads': 'Leads', 'valor': 'Investimento'})
-custo_campanhas['Campanhas'] = custo_campanhas['Campanhas'].apply(mapeia_campanha)
 
 custo_campanhas['Data da Mensagem'] = pd.to_datetime(custo_campanhas['Data da Mensagem']).dt.strftime('%d/%m/%Y')
 
-controle = pd.merge(controle, custo_campanhas, on=['Data da Mensagem', 'Campanhas'], how='left')
+controle = pd.merge(controle, custo_campanhas, on=['Data da Mensagem', 'Campanhas'], how='outer')
 
 controle = controle.groupby(['Campanhas']).sum().reset_index()
 
@@ -418,8 +439,8 @@ controle['CAC'] = (
     .fillna(0)
 )
 
-mask_zero = (controle['Investimento'] == 0) & (controle['Comissão Recebida'] > 0)
-mask_normal = controle['Investimento'] > 0
+# mask_zero = (controle['Investimento'] == 0) & (controle['Comissão Recebida'] > 0)
+# mask_normal = controle['Investimento'] > 0
 
 controle['ROI'] = np.where(
     controle['Investimento'] == 0,
@@ -489,9 +510,9 @@ soma_roi = np.where(soma_roi >= 0, f"🟢 +{soma_roi:,.2f}".replace('.','|').rep
 
 controle['Valor de Produção'] = controle['Valor de Produção'].apply(formata_float)
 controle['Comissão Recebida'] = controle['Comissão Recebida'].apply(formata_float)
-controle['Ticket Médio'] = controle['Ticket Médio'].apply(formata_float)
-controle['Investimento'] = controle['Investimento'].apply(formata_float)
-controle['CAC'] = controle['CAC'].apply(formata_float)
+controle['Ticket Médio'     ] = controle['Ticket Médio'     ].apply(formata_float)
+controle['Investimento'     ] = controle['Investimento'     ].apply(formata_float)
+controle['CAC'              ] = controle['CAC'              ].apply(formata_float)
 
 
 with st.container():
@@ -537,6 +558,7 @@ with st.container():
     st.dataframe(controle, width='stretch', height=500, hide_index=True)
 
 dados_filtrados = dados_filtrados[['numero','CPF','Nome','Data da Mensagem','Mensagem Inicial','Banco','Data da Liberação','Financiado','Liberado','Parcela','Prazo','Comissão']]
+
 dados_filtrados['Data da Liberação'] = (
     pd.to_datetime(
         dados_filtrados['Data da Liberação'],

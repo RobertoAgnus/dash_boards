@@ -498,8 +498,7 @@ class QuerysSQL:
                         on p."consultaId" = cs.id
                     left join public."Bancos" b 
                         on cs."bancoId" = b.id
-                    where p."createdAt" >= '2026-01-05T00:00:00'
-                        and aa."createdAt" >= '2026-01-05T00:00:00';
+                    where aa."createdAt" >= '2026-01-05T00:00:00';
                 """
         return query_digisac, query_corban, query_crm
         # return query
