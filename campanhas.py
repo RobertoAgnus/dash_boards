@@ -125,6 +125,10 @@ def limpar_nome(nome):
 
     return nome
 
+##### FUNÇÃO PARA MAPEAR AS CAMPANHAS #####
+def mapeia_campanha(valor):
+    return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
+
 
 ##### CARREGAR OS DADOS (1x) #####
 conectar = Conexao()
@@ -378,16 +382,12 @@ df_controle['Comissão'] = df_controle['Comissão'].str.replace('.', '', regex=F
 
 controle = df_controle.groupby(['mensagens', 'Data da Mensagem']).agg({'numero': 'count', 'Data da Liberação': 'count', 'Liberado': 'sum', 'Comissão': 'sum'}).reset_index()
 
-controle = controle.rename(columns={'mensagens': 'Campanhas', 'numero': 'Leads', 'Data da Liberação': 'Pagos', 'Liberado': 'Valor de Produção', 'Comissão': 'Comissão Recebida'})
+controle = controle.rename(columns={'mensagens': 'Campanhas', 'numero': 'leads', 'Data da Liberação': 'Pagos', 'Liberado': 'Valor de Produção', 'Comissão': 'Comissão Recebida'})
 
-def mapeia_campanha(valor):
-    return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
-
-
-custo_campanhas = custo_campanhas.rename(columns={'data': 'Data da Mensagem', 'nome': 'Campanhas', 'valor': 'Investimento'})
+custo_campanhas = custo_campanhas.rename(columns={'data': 'Data da Mensagem', 'nome': 'Campanhas', 'leads': 'Leads', 'valor': 'Investimento'})
 custo_campanhas['Campanhas'] = custo_campanhas['Campanhas'].apply(mapeia_campanha)
 
-custo_campanhas['Data da Mensagem']  = pd.to_datetime(custo_campanhas['Data da Mensagem']).dt.strftime('%d/%m/%Y')
+custo_campanhas['Data da Mensagem'] = pd.to_datetime(custo_campanhas['Data da Mensagem']).dt.strftime('%d/%m/%Y')
 
 controle = pd.merge(controle, custo_campanhas, on=['Data da Mensagem', 'Campanhas'], how='left')
 
@@ -402,12 +402,13 @@ media = (
         valor_total_produzido=('Valor de Produção', 'sum'),
         valor_total_investido=('Investimento', 'sum'),
         valor_total_comissao=('Comissão Recebida', 'sum'),
-        quantidade_total=('Pagos', 'sum')
+        total_pago=('Pagos', 'sum'),
+        total_leads=('Leads', 'sum')
     )
 )
 
 controle['Ticket Médio'] = (
-    media['valor_total_produzido'] / media['quantidade_total']
+    media['valor_total_produzido'] / media['total_pago']
 )
 
 controle['CAC'] = (
