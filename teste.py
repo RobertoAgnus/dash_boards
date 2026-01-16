@@ -141,13 +141,28 @@ conn_postgres     = conectar.obter_conexao_postgres()
 
 consulta = QuerysSQL()
 
-digisac, corban, crm = consulta.get_campanhas()
-campanhas            = consulta.get_campanhas_meta()
+corban              = consulta.get_teste_corban_propostas()
+crm_autoatendimento = consulta.get_teste_crm_autoatendimento()
+crm_propostas       = consulta.get_teste_crm_propostas()
+crm_clientes        = consulta.get_teste_crm_clientes()
+crm_consultas       = consulta.get_teste_crm_consultas()
+crm_bancos          = consulta.get_teste_crm_bancos()
+campanhas           = consulta.get_campanhas_meta()
 
-# df_digisac      = pd.read_sql_query(digisac, conn_postgres)
-df_corban       = pd.read_sql_query(corban, conn_postgres)
-df_crm          = pd.read_sql_query(crm, conn_postgres_aws)
-custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
+df_corban              = pd.read_sql_query(corban             , conn_postgres    )
+df_crm_autoatendimento = pd.read_sql_query(crm_autoatendimento, conn_postgres_aws)
+df_crm_propostas       = pd.read_sql_query(crm_propostas      , conn_postgres_aws)
+df_crm_clientes        = pd.read_sql_query(crm_clientes       , conn_postgres_aws)
+df_crm_consultas       = pd.read_sql_query(crm_consultas      , conn_postgres_aws)
+df_crm_bancos          = pd.read_sql_query(crm_bancos         , conn_postgres_aws)
+custo_campanhas        = pd.read_sql_query(campanhas          , conn_postgres    )
+
+df_crm_a_p    = pd.merge(df_crm_autoatendimento, df_crm_propostas, on      = 'clienteId' ,                how='left')
+df_crm_ap_cs  = pd.merge(df_crm_a_p            , df_crm_consultas, left_on = 'consultaId', right_on='id', how='left')
+df_crm_apcs_c = pd.merge(df_crm_ap_cs          , df_crm_clientes , left_on = 'clienteId' , right_on='id', how='left')
+df_crm        = pd.merge(df_crm_apcs_c         , df_crm_bancos   , left_on = 'bancoId'   , right_on='id', how='left')
+
+df_crm['valor_parcela'] = df_crm['valorBruto'].astype(float) / df_crm['prazo']
 
 custo_campanhas['nome'] = custo_campanhas['nome'].apply(mapeia_campanha)
 
@@ -157,7 +172,7 @@ custo_campanhas['nome'] = custo_campanhas['nome'].apply(mapeia_campanha)
 # Realiza merge entre as bases
 # df_crm_corban = pd.merge(df_crm, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer')    #left_on=['cpf'], right_on=['cpf_corban'], how='outer')
 df_crm_corban = pd.merge(df_crm, df_corban, left_on=['numero'], right_on=['numero_corban'], how='outer')    #left_on=['cpf'], right_on=['cpf_corban'], how='outer')
-# df_crm_corban
+df_crm_corban
 
 df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_x'            ].isna(), df_crm_corban['nome_y'          ], df_crm_corban['nome_x'            ])
 df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf'               ].isna(), df_crm_corban['cpf_corban'      ], df_crm_corban['cpf'               ])
