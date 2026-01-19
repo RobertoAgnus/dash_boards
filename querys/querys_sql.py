@@ -423,7 +423,8 @@ class QuerysSQL:
                             ct.valor_parcela,
                             ct.prazo,
                             ct.banco_nome as nome_banco,
-                            cc.valor as valor_comissao
+                            cc.valor as valor_comissao,
+                            ct.taxa
                         from unificados.clientes c 
                         left join unificados.telefones t 
                             on c.id = t.cliente_id
@@ -503,6 +504,17 @@ class QuerysSQL:
         return query_digisac, query_corban, query_crm
         # return query
         
+    def get_telefones_crm(self):
+        query = """
+                select 
+                    c.cpf, 
+                    t.numero 
+                from public."Clientes" c 
+                left join public."Telefones" t 
+                    on c.id = t."clienteId";
+                """
+        return query
+    
     def get_campanhas_meta(self):
         query = """
                 SELECT * FROM controle.campanhas;
@@ -578,9 +590,9 @@ class QuerysSQL:
                     left join public."Consultas" cs
                         on p."consultaId" = cs.id
                     left join public."Bancos" b 
-                        on cs."bancoId" = b.id
-                    where aa."createdAt" >= '2026-01-05T00:00:00';
+                        on cs."bancoId" = b.id;
                 """
+                    # where aa."createdAt" >= '2026-01-05T00:00:00';
         return query_corban, query_crm
     
     def get_teste_corban_propostas(self):
