@@ -408,63 +408,63 @@ class QuerysSQL:
                         where m.campo_personalizado = 'CPF_aprovado'
                             and m.dt_mensagem >= '2026-01-05 00:00:00.000';
                         """
-        query_corban = f"""
+        # query_corban = f"""
+        #                 select
+        #                     c.nome,
+        #                     LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
+        #                     CASE
+        #                         WHEN LENGTH(t.telefone) < 11
+        #                         THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
+        #                         ELSE t.telefone
+        #                     END AS numero_corban,
+        #                     dt.pagamento as liberacao,
+        #                     ct.valor_financiado,
+        #                     ct.valor_liberado,
+        #                     ct.valor_parcela,
+        #                     ct.prazo,
+        #                     ct.banco_nome as nome_banco,
+        #                     cc.valor as valor_comissao,
+        #                     ct.tabela_id
+        #                 from unificados.clientes c 
+        #                 left join unificados.telefones t 
+        #                     on c.id = t.cliente_id
+        #                 left join unificados.contrato ct
+        #                     on c.id = ct.cliente_id 
+        #                 left join unificados.propostas p
+        #                     on ct.proposta_id_corban = cast(p.proposta_id as varchar)
+        #                 left join unificados.api a
+        #                     on ct.proposta_id_corban = a.proposta_id_corban
+        #                 left join unificados.comissoes cc
+        #                     on ct.proposta_id_corban = cc.proposta_id_corban
+        #                 left join unificados.datas dt
+        #                     on ct.proposta_id_corban = dt.proposta_id_corban
+        #                 where (a.status_api in ('APROVADA')
+        #                     or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
+        #                 """
+        query_corban = """
                         select
                             c.nome,
                             LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
-                            CASE
-                                WHEN LENGTH(t.telefone) < 11
-                                THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
-                                ELSE t.telefone
-                            END AS numero_corban,
                             dt.pagamento as liberacao,
                             ct.valor_financiado,
                             ct.valor_liberado,
                             ct.valor_parcela,
                             ct.prazo,
                             ct.banco_nome as nome_banco,
-                            cc.valor as valor_comissao,
-                            ct.taxa
-                        from unificados.clientes c 
-                        left join unificados.telefones t 
-                            on c.id = t.cliente_id
+                            ct.proposta_id_corban as proposta_id,
+                            ct.tabela_id
+                        from unificados.propostas p
                         left join unificados.contrato ct
-                            on c.id = ct.cliente_id 
-                        left join unificados.propostas p
-                            on ct.proposta_id_corban = cast(p.proposta_id as varchar)
+                            on p.proposta_id = cast(ct.proposta_id_corban  as integer)
                         left join unificados.api a
                             on ct.proposta_id_corban = a.proposta_id_corban
-                        left join unificados.comissoes cc
-                            on ct.proposta_id_corban = cc.proposta_id_corban
                         left join unificados.datas dt
                             on ct.proposta_id_corban = dt.proposta_id_corban
-                        where 
-                            dt.cadastro >= '2026-01-05' 
-                            and (a.status_api in ('APROVADA')
+                        left join unificados.clientes c
+                            on ct.cliente_id_corban = c.cliente_id
+                        where (a.status_api in ('APROVADA')
                             or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
                         """
-        # query_crm = f"""
-        #             select 
-        #                 c.nome as nome,
-        #                 c.cpf as cpf,
-        #                 t.numero as telefone,
-        #                 p."dataPagamento" as liberacao,
-        #                 p."valorBruto" as valor_financiado,
-        #                 p."valorLiberado" as valor_liberado,
-        #                 (p."valorLiberado" / p.prazo) as valor_parcela,
-        #                 p.prazo,
-        #                 b.nome as nome_banco,
-        #                 p."valorTotalComissao" as valor_comissao
-        #             from public."Propostas" p
-        #             left join public."Clientes" c
-        #                 on p."clienteId" = c.id
-        #             left join public."Telefones" t
-        #                 on c.id = t."clienteId" 
-        #             left join public."Bancos" b
-        #                 on p."bancoId" = b.id
-        #             where p."usuarioId" = '29' 
-        #                 and p."dataPagamento" >= '2026-01-05 00:00:00.000';
-        #             """
         query_crm = f"""
                     select 
                         aa.telefone as numero,
@@ -486,38 +486,83 @@ class QuerysSQL:
                         case 
                             when p."dataPagamento" is not null then p.prazo 
                         end as prazo,
-                        case
-                            when p."valorTotalComissao" = 0 then p."valorLiberado"*0.09
-                            when p."dataPagamento" is not null then p."valorTotalComissao"
-                        end as "valorTotalComissao"
-                    from public."AutoAtendimento" aa
+                        p."valorTotalComissao",
+                        t.codigo
+                    from public."AutoAtendimento" aa 
+                    left join public."Consultas" cs 
+                        on aa."simulacaoFgtsId" = cs.id or aa."simulacaoCltId" = cs.id
                     left join public."Propostas" p 
-                        on p."clienteId" = aa."clienteId"
-                    left join public."Clientes" c 
-                        on aa."clienteId" = c.id
-                    left join public."Consultas" cs
-                        on p."consultaId" = cs.id
+                        on cs.id = p."consultaId" 
+                    left join public."Tabelas" t 
+                        on cs."tabelaId" = t.id 
                     left join public."Bancos" b 
                         on cs."bancoId" = b.id
-                    where aa."createdAt" >= '2026-01-05T00:00:00';
+                    left join public."Clientes" c 
+                        on aa."clienteId" = c.id;
                 """
         return query_digisac, query_corban, query_crm
         # return query
         
-    def get_telefones_crm(self):
-        query = """
-                select 
-                    c.cpf, 
-                    t.numero 
+    def get_telefones(self):
+        query_crm = """
+                select distinct
+                    c.cpf as cpf_corban, 
+                    CASE
+                        WHEN LENGTH(t.numero) < 11
+                        THEN SUBSTRING(t.numero FROM 1 FOR 2) || '9' || SUBSTRING(t.numero FROM 3)
+                        ELSE t.numero
+                    END AS numero_corban
                 from public."Clientes" c 
                 left join public."Telefones" t 
                     on c.id = t."clienteId";
                 """
-        return query
+        query_corban = """
+                        select 
+                            LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
+                            CASE
+                                WHEN LENGTH(t.telefone) < 11
+                                THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
+                                ELSE t.telefone
+                            END AS numero_corban
+                        from unificados.clientes c 
+                        left join unificados.telefones t 
+                            on c.cliente_id = t.cliente_id_corban
+                        where LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') = ANY(%s);
+                        """
+        return query_crm, query_corban
     
     def get_campanhas_meta(self):
         query = """
                 SELECT * FROM controle.campanhas;
+                """
+        return query
+    
+    def get_comissoes_corban(self):
+        query = """
+                select 
+                    cc.proposta_id_corban as proposta_id,
+                    sum(cc.valor) as valor_comissao
+                from unificados.comissoes cc
+                group by cc.proposta_id_corban, cc.valor;
+                """
+        return query
+    
+    def get_tabelas_comissao(self):
+        query = """
+                select
+                    cast(t.tabela_codigo as varchar) as codigo,
+                    t.percentual_valor_liberado as percentual,
+                    case 
+                        when t.prazo_inicio is null then 0
+                        else t.prazo_inicio
+                    end as prazo_inicio,
+                    case
+                        when t.prazo_fim is null then 99
+                        else t.prazo_fim
+                    end as prazo_fim 
+                from unificados.tabelas t
+                where t.vigencia_fim is null
+                    and t.percentual_valor_liberado > 0;
                 """
         return query
 

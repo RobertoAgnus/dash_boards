@@ -29,6 +29,7 @@ st.set_page_config(
 
 alt.themes.enable("dark")
 
+# =============== FUNÇÕES ===============
 
 ##### FUNÇÃO PARA REMOVER EMOJIS #####
 def remover_emojis(texto: str) -> str:
@@ -125,9 +126,21 @@ def limpar_nome(nome):
 
     return nome
 
+##### FUNÇÃO PARA LIMPAR CPF #####
+def limpar_cpf(cpf):
+    cpf = str(cpf).replace('.', '').replace('-', '')
+    return np.where(cpf == 'nan', None, cpf)
+
 ##### FUNÇÃO PARA MAPEAR AS CAMPANHAS #####
 def mapeia_campanha(valor):
     return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
+
+##### FUNÇÃO PARA TRATAR OS CÓDIGOS #####
+def trata_codigo(codigo):
+    codigo = str(codigo).replace('.0', '')
+    return np.where((codigo == 'None') | (codigo == 'nan'), None, codigo)
+
+# =======================================
 
 
 ##### CARREGAR OS DADOS (1x) #####
@@ -141,163 +154,242 @@ conn_postgres     = conectar.obter_conexao_postgres()
 
 consulta = QuerysSQL()
 
-digisac, corban, crm = consulta.get_campanhas()
-campanhas            = consulta.get_campanhas_meta()
-telefones_crm        = consulta.get_telefones_crm()
+digisac, corban, crm    = consulta.get_campanhas()
+campanhas               = consulta.get_campanhas_meta()
+fones_crm, fones_corban = consulta.get_telefones()
+comissoes_corban        = consulta.get_comissoes_corban()
+tabelas_comissoes       = consulta.get_tabelas_comissao()
 
 # df_digisac      = pd.read_sql_query(digisac, conn_postgres)
 df_corban       = pd.read_sql_query(corban, conn_postgres)
 df_crm          = pd.read_sql_query(crm, conn_postgres_aws)
 custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
-df_telefones    = pd.read_sql_query(telefones_crm, conn_postgres_aws)
+df_fones_crm    = pd.read_sql_query(fones_crm, conn_postgres_aws)
+df_comissoes    = pd.read_sql_query(comissoes_corban, conn_postgres)
+df_tabelas      = pd.read_sql_query(tabelas_comissoes, conn_postgres)
 
-# df_corban = pd.merge(df_corban, df_telefones, left_on='cpf_corban', right_on='cpf', how='left')
 
-# df_corban['numero_corban'] = np.where((df_corban['numero_corban'] != df_corban['numero']) & (df_corban['numero'].notnull()), df_corban['numero'], df_corban['numero_corban'])
+# ============= TRATAMENTOS =============
+df_corban = pd.merge(df_corban, df_fones_crm, on='cpf_corban', how='left')
+df_corban = pd.merge(df_corban, df_comissoes, on='proposta_id', how='left')
 
-df_corban = df_corban.drop_duplicates(subset=['cpf_corban', 'liberacao'])
+sem_fones = df_corban[df_corban['numero_corban'].isnull()]
 
-mask = df_crm['createdAt'] > df_crm['dataPagamento']
+cpfs_sem_fone = sem_fones['cpf_corban'].unique().tolist()
 
-df_crm.loc[mask, 'nome_banco'        ] = None
-df_crm.loc[mask, 'valorBruto'        ] = None
-df_crm.loc[mask, 'valorLiberado'     ] = None
-df_crm.loc[mask, 'valor_parcela'     ] = None
-df_crm.loc[mask, 'prazo'             ] = None
-df_crm.loc[mask, 'valorTotalComissao'] = None
-df_crm.loc[mask, 'dataPagamento'     ] = pd.NaT
+df_fones_corban = pd.read_sql_query(fones_corban, conn_postgres, params=(cpfs_sem_fone,))
 
-df_crm = (
-    df_crm
-    .sort_values(by='createdAt', ascending=False)
-    .drop_duplicates(
-        subset=[
-            'numero',
-            'valor_parcela',
-            'dataPagamento'
-        ],
-        keep='first'
-    )
-    .reset_index(drop=True)
-)
+df_corban = pd.merge(df_corban, df_fones_corban, on='cpf_corban', how='left')
+
+df_corban['numero_corban'] = np.where(df_corban['numero_corban_x'].isnull(), df_corban['numero_corban_y'], df_corban['numero_corban_x'])
 
 custo_campanhas['nome'] = custo_campanhas['nome'].apply(mapeia_campanha)
 
-# df_trata_crm = df_crm[(df_crm['cpf'].notna()) & (df_crm['nome'].notna())]
-# df_trata_crm = df_trata_crm[['numero', 'cpf', 'nome']].drop_duplicates()
-# df_trata_crm = df_trata_crm.rename(columns={'cpf': 'cpf_trata_crm', 'nome': 'nome_trata_crm'})
-# df_crm = pd.merge(df_crm, df_trata_crm, on='numero', how='left')
-# df_crm['cpf']  = np.where(df_crm['cpf'].isna(), df_crm['cpf_trata_crm'], df_crm['cpf'])
-# df_crm['nome'] = np.where(df_crm['nome'].isna(), df_crm['nome_trata_crm'], df_crm['nome'])
-# df_crm = df_crm.drop_duplicates()
-
-# df_trata_corban = df_corban[(df_corban['cpf_corban'].notna()) & (df_corban['nome'].notna())]
-# df_trata_corban = df_trata_corban[['numero_corban', 'cpf_corban', 'nome']]
-# df_trata_corban = df_trata_corban.rename(columns={'cpf_corban': 'cpf_trata_corban', 'nome': 'nome_trata_corban'})
-# df_corban = pd.merge(df_corban, df_trata_corban, on='numero_corban', how='left')
-# df_corban['cpf_corban'] = np.where(df_corban['cpf_corban'].isna(), df_corban['cpf_trata_corban'], df_corban['cpf_corban'])
-# df_corban['nome'] = np.where(df_corban['nome'].isna(), df_corban['nome_trata_corban'], df_corban['nome'])
-# df_corban = df_corban.drop_duplicates()
-
-# # Remove telefone inválido
-# # df_corban = df_corban[df_corban['numero_corban'] != '99999999999']
-
+# ================ MERGE ================
 # Realiza merge entre as bases
-df_crm_corban = pd.merge(df_crm, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer')
+df = pd.merge(df_crm, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer', indicator=True)
 
-df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_x'            ].isna(), df_crm_corban['nome_y'          ], df_crm_corban['nome_x'            ])
-df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf'               ].isna(), df_crm_corban['cpf_corban'      ], df_crm_corban['cpf'               ])
-df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['nome_banco_x'      ].isna(), df_crm_corban['nome_banco_y'    ], df_crm_corban['nome_banco_x'      ])
-df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['dataPagamento'     ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['dataPagamento'     ])
-df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['dataPagamento'     ].isna(), None                             , df_crm_corban['nome_banco_x'      ])
-df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['valorBruto'        ].isna(), df_crm_corban['valor_financiado'], df_crm_corban['valorBruto'        ])
-df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['valorLiberado'     ].isna(), df_crm_corban['valor_liberado'  ], df_crm_corban['valorLiberado'     ])
-df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['valor_parcela_x'   ].isna(), df_crm_corban['valor_parcela_y' ], df_crm_corban['valor_parcela_x'   ])
-df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['prazo_x'           ].isna(), df_crm_corban['prazo_y'         ], df_crm_corban['prazo_x'           ])
-df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['valorTotalComissao'].isna(), df_crm_corban['valor_comissao'  ], df_crm_corban['valorTotalComissao'])
-df_crm_corban['createdAt'         ] = np.where(df_crm_corban['createdAt'         ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['createdAt'         ])
-df_crm_corban['numero'            ] = np.where(df_crm_corban['numero'            ].isna(), df_crm_corban['numero_corban'   ], df_crm_corban['numero'            ])
-df_crm_corban['mensagemInicial'   ] = np.where(df_crm_corban['mensagemInicial'   ].isna(), 'Não Identificado'               , df_crm_corban['mensagemInicial'   ])
+# # Garante linhas únicas
+# df = df.drop_duplicates()
 
-df_crm_corban['createdAt'] = (
-    pd.to_datetime(df_crm_corban['createdAt'], utc=True)
+# =============== DATAS =================
+# Padroniza colunas de datas
+df['createdAt'] = (
+    pd.to_datetime(df['createdAt'], utc=True)
     .dt.tz_localize(None)
 )
 
-df_crm_corban['dataPagamento'] = (
-    pd.to_datetime(df_crm_corban['dataPagamento'], utc=True)
+df['dataPagamento'] = (
+    pd.to_datetime(df['dataPagamento'], utc=True)
     .dt.tz_localize(None)
 )
 
-# df_crm_corban = df_crm_corban.sort_values(['cpf','numero','createdAt','dataPagamento'], ascending=[True,True,False,False])
+df['liberacao'] = (
+    pd.to_datetime(df['liberacao'], utc=True)
+    .dt.tz_localize(None)
+)
 
-# mask = df_crm_corban['createdAt'] > df_crm_corban['dataPagamento']
+# df = df.drop_duplicates(subset=['numero', 'cpf', 'createdAt', 'dataPagamento'])
 
-# df_crm_corban.loc[mask, 'nome_banco_x'      ] = None
-# df_crm_corban.loc[mask, 'valorBruto'        ] = None
-# df_crm_corban.loc[mask, 'valorLiberado'     ] = None
-# df_crm_corban.loc[mask, 'valor_parcela_x'   ] = None
-# df_crm_corban.loc[mask, 'prazo_x'           ] = None
-# df_crm_corban.loc[mask, 'valorTotalComissao'] = None
-# df_crm_corban.loc[mask, 'dataPagamento'     ] = pd.NaT
+df['nome_x'            ] = np.where(df['nome_x'            ].isna(), df['nome_y'          ], df['nome_x'            ])
+df['cpf'               ] = np.where(df['cpf'               ].isna(), df['cpf_corban'      ], df['cpf'               ])
+df['nome_banco_x'      ] = np.where(df['nome_banco_x'      ].isna(), df['nome_banco_y'    ], df['nome_banco_x'      ])
+df['dataPagamento'     ] = np.where(df['dataPagamento'     ].isna(), df['liberacao'       ], df['dataPagamento'     ])
+df['nome_banco_x'      ] = np.where(df['dataPagamento'     ].isna(), None                  , df['nome_banco_x'      ])
+df['valorBruto'        ] = np.where(df['valorBruto'        ].isna(), df['valor_financiado'], df['valorBruto'        ])
+df['valorLiberado'     ] = np.where(df['valorLiberado'     ].isna(), df['valor_liberado'  ], df['valorLiberado'     ])
+df['valor_parcela_x'   ] = np.where(df['valor_parcela_x'   ].isna(), df['valor_parcela_y' ], df['valor_parcela_x'   ])
+df['prazo_x'           ] = np.where(df['prazo_x'           ].isna(), df['prazo_y'         ], df['prazo_x'           ])
+df['valorTotalComissao'] = np.where(df['valorTotalComissao'].isna(), df['valor_comissao'  ], df['valorTotalComissao'])
+df['createdAt'         ] = np.where(df['createdAt'         ].isna(), df['liberacao'       ], df['createdAt'         ])
+df['codigo'            ] = np.where(df['codigo'            ].isna(), df['tabela_id'       ], df['codigo'            ])
+df['numero'            ] = np.where(df['numero'            ].isna(), df['numero_corban'   ], df['numero'            ])
+df['mensagemInicial'   ] = np.where(df['mensagemInicial'   ].isna(), 'Não Identificado'    , df['mensagemInicial'   ])
 
-# # df_crm_corban = df_crm_corban.sort_values(['numero', 'cpf', 'createdAt', 'dataPagamento'])
+df['cpf'] = df['cpf'].apply(limpar_cpf)
 
-# # # df_crm_corban['_chave_dedupe'] = df_crm_corban['dataPagamento'].fillna(df_crm_corban['createdAt'])
+df['numero_corban_x'] = np.where(df['numero'].notna(), None, df['numero_corban_x'])
+df['numero_corban_y'] = np.where(df['numero'].notna(), None, df['numero_corban_y'])
+df['numero_corban'] = np.where(df['numero'].notna(), None, df['numero_corban'])
 
-# # # df_crm_corban = df_crm_corban.drop_duplicates(subset='_chave_dedupe').drop(columns='_chave_dedupe')
+df = df.drop_duplicates()
 
-# # df_crm_corban
+# Dividindo em duas linhas, registros diferentes em ambos
+linhas_both = df[
+    (df['_merge'] == 'both') &
+    (df['dataPagamento'] != df['liberacao']) &
+    (
+        (df['dataPagamento'].notna()) & 
+        (df['liberacao'].notna())
+    )
+]
 
-# # df_crm_corban = df_crm_corban.drop_duplicates()
+col_left  = ['nome_x', 'createdAt', 'mensagemInicial' , 'nome_banco_x'  , 'dataPagamento'  , 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao', 'codigo']
+col_right = ['nome_y', 'liberacao', 'valor_financiado', 'valor_liberado', 'valor_parcela_y', 'prazo_y'   , 'nome_banco_y' , 'valor_comissao' , 'tabela_id'                              ]
 
-# # # REGRA 1 - Excluir quando tudo é igual, exceto banco
-# # mask_regra1 = (
-# #     df_crm_corban.duplicated(
-# #         subset=[
-# #             'numero',
-# #             'createdAt',
-# #             'valor_parcela_x',
-# #             'dataPagamento'
-# #         ],
-# #         keep=False
-# #     ) &
-# #     (df_crm_corban['nome_banco_x'] != df_crm_corban['nome_banco_y'])
-# # )
+left_only = linhas_both.copy()
+left_only[col_right] = None
+left_only['_merge'] = 'left_only'
 
-# # df_crm_corban = df_crm_corban.loc[~mask_regra1].reset_index(drop=True)
+right_only = linhas_both.copy()
+right_only[col_left] = None
+right_only['_merge'] = 'right_only'
 
-# # # REGRA 2 - Excluir linha com dataPagamento nula se existir outra válida
-# # mask_regra2 = (
-# #     df_crm_corban['dataPagamento'].isna() &
-# #     df_crm_corban.duplicated(
-# #         subset=['numero', 'createdAt', 'mensagemInicial'],
-# #         keep=False
-# #     )
-# # )
+df = pd.concat(
+    [
+        df.drop(linhas_both.index),
+        left_only,
+        right_only
+    ],
+    ignore_index=True
+)
 
-# # df_crm_corban = df_crm_corban.loc[~mask_regra2].reset_index(drop=True)
+df['nome_x'            ] = np.where(df['nome_x'            ].isna(), df['nome_y'          ], df['nome_x'            ])
+df['nome_banco_x'      ] = np.where(df['nome_banco_x'      ].isna(), df['nome_banco_y'    ], df['nome_banco_x'      ])
+df['dataPagamento'     ] = np.where(df['dataPagamento'     ].isna(), df['liberacao'       ], df['dataPagamento'     ])
+df['nome_banco_x'      ] = np.where(df['dataPagamento'     ].isna(), None                  , df['nome_banco_x'      ])
+df['valorBruto'        ] = np.where(df['valorBruto'        ].isna(), df['valor_financiado'], df['valorBruto'        ])
+df['valorLiberado'     ] = np.where(df['valorLiberado'     ].isna(), df['valor_liberado'  ], df['valorLiberado'     ])
+df['valor_parcela_x'   ] = np.where(df['valor_parcela_x'   ].isna(), df['valor_parcela_y' ], df['valor_parcela_x'   ])
+df['prazo_x'           ] = np.where(df['prazo_x'           ].isna(), df['prazo_y'         ], df['prazo_x'           ])
+df['valorTotalComissao'] = np.where(df['valorTotalComissao'].isna(), df['valor_comissao'  ], df['valorTotalComissao'])
+df['createdAt'         ] = np.where(df['createdAt'         ].isna(), df['liberacao'       ], df['createdAt'         ])
+df['codigo'            ] = np.where(df['codigo'            ].isna(), df['tabela_id'       ], df['codigo'            ])
+df['mensagemInicial'   ] = np.where(df['mensagemInicial'   ].isna(), 'Não Identificado'    , df['mensagemInicial'   ])
 
-# # # REGRA 3 - Manter o maior createdAt
-# # df_crm_corban = (
-# #     df_crm_corban
-# #     .sort_values(by='createdAt', ascending=False)
-# #     .drop_duplicates(
-# #         subset=[
-# #             'numero',
-# #             'valor_parcela_x',
-# #             'dataPagamento'
-# #         ],
-# #         keep='first'
-# #     )
-# #     .reset_index(drop=True)
-# # )
+df = df[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao', 'codigo', '_merge']]
 
-# # df_crm_corban = df_crm_corban[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao']]
+mask_datas = (
+    (df['dataPagamento'].notna()) &
+    (df['createdAt'] > df['dataPagamento'])
+)
 
-# # df_crm_corban = df_crm_corban.sort_values(['numero', 'cpf', 'createdAt', 'dataPagamento'])
+df['nome_banco_x'      ] = np.where(mask_datas, None, df['nome_banco_x'      ])
+df['valorBruto'        ] = np.where(mask_datas, None, df['valorBruto'        ])
+df['valorLiberado'     ] = np.where(mask_datas, None, df['valorLiberado'     ])
+df['valor_parcela_x'   ] = np.where(mask_datas, None, df['valor_parcela_x'   ])
+df['prazo_x'           ] = np.where(mask_datas, None, df['prazo_x'           ])
+df['valorTotalComissao'] = np.where(mask_datas, None, df['valorTotalComissao'])
+df['codigo'            ] = np.where(mask_datas, None, df['codigo'            ])
+df['dataPagamento'     ] = np.where(mask_datas, pd.NaT, df['dataPagamento'     ])
 
-# # df_crm_corban
+# =======================================
+
+# =============== DATAS =================
+# Padroniza colunas de datas
+df['createdAt'] = (
+    pd.to_datetime(df['createdAt'], utc=True)
+    .dt.tz_localize(None)
+)
+
+df['dataPagamento'] = (
+    pd.to_datetime(df['dataPagamento'], utc=True)
+    .dt.tz_localize(None)
+)
+
+df = df.drop_duplicates()
+
+# Garantindo pagamentos mais prováveis para data da mensagem
+cols_msg = ['cpf', 'numero', 'dataPagamento', 'valorLiberado']
+# cols_ctt = ['cpf_corban', 'numero_corban', 'liberacao']
+
+df_valid = df[
+    df['createdAt'].notna() &
+    df['dataPagamento'].notna() &
+    (df['createdAt'] <= df['dataPagamento'])
+].copy()
+
+df_valid['delta'] = (
+    df_valid['dataPagamento'] - df_valid['createdAt']
+).dt.total_seconds()
+
+# escolhe o contrato mais próximo para cada mensagem
+idx_msg = (
+    df_valid
+    .sort_values('delta', ascending=True)
+    .groupby(cols_msg, as_index=False)
+    .head(1)
+    .index
+)
+
+df_match = df_valid.loc[idx_msg].drop(columns='delta')
+
+contratos_usados = df_match['createdAt'].unique()
+
+df_contrato_orfao = df[
+    df['dataPagamento'].notna() &
+    ~df['createdAt'].isin(contratos_usados)
+].copy()
+
+# zera colunas do sistema X
+for col in ['nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao', 'codigo']:
+    if col in df_contrato_orfao:
+        df_contrato_orfao[col] = None
+
+df_tratado = pd.concat(
+    [df_match, df_contrato_orfao],
+    ignore_index=True
+)
+
+mensagens_usadas = df_tratado['createdAt'].unique()
+
+df_msg_orfao = df[
+    df['createdAt'].notna() &
+    ~df['createdAt'].isin(mensagens_usadas)
+].copy()
+
+df_crm_corban = pd.concat(
+    [df_msg_orfao, df_tratado],
+    ignore_index=True
+)
+
+df_crm_corban['codigo'] = np.where(df_crm_corban['codigo'] == 'Diamante', '677444', df_crm_corban['codigo'])
+df_crm_corban['codigo'] = np.where(df_crm_corban['codigo'] == 'Gold'    , '620175', df_crm_corban['codigo'])
+
+df_crm_corban['codigo'] = df_crm_corban['codigo'].apply(trata_codigo)
+
+df_crm_corban = pd.merge(df_crm_corban, df_tabelas, on='codigo', how='left')
+
+mask_comissao = (
+    (
+        (df_crm_corban['valorTotalComissao'].isna()) |
+        (df_crm_corban['valorTotalComissao'] == 0)
+    ) &
+    (df_crm_corban['dataPagamento'].notna()) &
+    (df_crm_corban['prazo_x'] >= df_crm_corban['prazo_inicio']) &
+    (df_crm_corban['prazo_x'] <= df_crm_corban['prazo_fim'])
+)
+
+df_crm_corban['valorTotalComissao'] = np.where(mask_comissao, df_crm_corban['valorLiberado'].astype(float) * (df_crm_corban['percentual'].astype(float) / 100), df_crm_corban['valorTotalComissao'])
+
+# linhas_excluir = df_crm_corban[
+#     (df_crm_corban['dataPagamento'].notna()) &
+#     (df_crm_corban['valorTotalComissao'].isna())
+# ]
+
+df_crm_corban = df_crm_corban[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao', '_merge']]
+
+df_crm_corban = df_crm_corban.drop_duplicates()
 
 df_crm_corban = df_crm_corban.rename(
     columns={
@@ -307,10 +399,6 @@ df_crm_corban = df_crm_corban.rename(
         'prazo_x': 'prazo'
     }
 )
-
-# df_crm_corban = df_crm_corban.drop_duplicates(subset=['numero', 'createdAt', 'nome_banco'])
-
-# df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['dataPagamento'].isna(), 0, df_crm_corban['valorTotalComissao'])
 
 df_crm_corban = formatar_cpf(df_crm_corban, 'cpf')
 df_crm_corban = formatar_telefone(df_crm_corban, 'numero')
@@ -343,16 +431,43 @@ df_crm_corban['Data da Liberação'] = (
 
 df_crm_corban['mensagens'] = df_crm_corban['Mensagem Inicial'].apply(mapeia_mensagens)
 
-df_crm_corban['Comissão'] = np.where(df_crm_corban['Data da Liberação'].isna(), None, df_crm_corban['Comissão'])
-df_crm_corban['Financiado'] = np.where(df_crm_corban['Financiado'] == 0, df_crm_corban['Parcela'] * df_crm_corban['Prazo'], df_crm_corban['Financiado'])
+df_crm_corban['Comissão'  ] = np.where(df_crm_corban['Data da Liberação'].isna(), None                                             , df_crm_corban['Comissão'  ])
+df_crm_corban['Financiado'] = np.where(df_crm_corban['Financiado'       ] == 0  , df_crm_corban['Parcela'] * df_crm_corban['Prazo'], df_crm_corban['Financiado'])
 
-# df_crm_corban
+# cols_repeticao = [
+#     'CPF',
+#     'numero',
+#     'Data da Mensagem',
+#     'Data da Liberação',
+#     'Financiado',
+#     'Liberado'
+# ]
+
+# mask_repetidas = df_crm_corban.duplicated(
+#     subset=cols_repeticao,
+#     keep=False
+# )
+
+# mask_left_only = df_crm_corban['_merge'] == 'left_only'
+
+# mask_none = df_crm_corban['Data da Liberação'].notna()
+
+# mask_final = mask_repetidas & mask_left_only & mask_none
+
+# cols_anular = [
+#     'Data da Liberação',
+#     'Financiado',
+#     'Liberado',
+#     'Parcela',
+#     'Prazo',
+#     'Comissão'
+# ]
+
+# df_crm_corban.loc[mask_final, cols_anular] = None
+
+
 
 dados_filtrados = df_crm_corban.copy()
-
-# dados_filtrados = dados_filtrados.drop_duplicates()
-
-# dados_filtrados['mensagens'] = dados_filtrados['Mensagem Inicial'].apply(mapeia_mensagens)
 
 ##### ÁREA DO DASHBOARD #####
 
@@ -544,9 +659,6 @@ controle['CAC'] = (
     .replace([np.inf, -np.inf], 0)
     .fillna(0)
 )
-
-# mask_zero = (controle['Investimento'] == 0) & (controle['Comissão Recebida'] > 0)
-# mask_normal = controle['Investimento'] > 0
 
 controle['ROI'] = np.where(
     controle['Investimento'] == 0,
