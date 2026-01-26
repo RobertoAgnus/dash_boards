@@ -434,39 +434,6 @@ df_crm_corban['mensagens'] = df_crm_corban['Mensagem Inicial'].apply(mapeia_mens
 df_crm_corban['Comissão'  ] = np.where(df_crm_corban['Data da Liberação'].isna(), None                                             , df_crm_corban['Comissão'  ])
 df_crm_corban['Financiado'] = np.where(df_crm_corban['Financiado'       ] == 0  , df_crm_corban['Parcela'] * df_crm_corban['Prazo'], df_crm_corban['Financiado'])
 
-# cols_repeticao = [
-#     'CPF',
-#     'numero',
-#     'Data da Mensagem',
-#     'Data da Liberação',
-#     'Financiado',
-#     'Liberado'
-# ]
-
-# mask_repetidas = df_crm_corban.duplicated(
-#     subset=cols_repeticao,
-#     keep=False
-# )
-
-# mask_left_only = df_crm_corban['_merge'] == 'left_only'
-
-# mask_none = df_crm_corban['Data da Liberação'].notna()
-
-# mask_final = mask_repetidas & mask_left_only & mask_none
-
-# cols_anular = [
-#     'Data da Liberação',
-#     'Financiado',
-#     'Liberado',
-#     'Parcela',
-#     'Prazo',
-#     'Comissão'
-# ]
-
-# df_crm_corban.loc[mask_final, cols_anular] = None
-
-
-
 dados_filtrados = df_crm_corban.copy()
 
 ##### ÁREA DO DASHBOARD #####
@@ -632,6 +599,8 @@ custo_campanhas = custo_campanhas.rename(columns={'data': 'Data da Mensagem', 'n
 custo_campanhas['Data da Mensagem'] = pd.to_datetime(custo_campanhas['Data da Mensagem']).dt.strftime('%d/%m/%Y')
 
 controle = pd.merge(controle, custo_campanhas, on=['Data da Mensagem', 'Campanhas'], how='outer')
+
+controle['Leads'] = np.where(controle['Leads'].isna(), controle['leads'], controle['Leads'])
 
 controle = controle.groupby(['Campanhas']).sum().reset_index()
 
