@@ -137,7 +137,7 @@ with st.sidebar:
     # Status Corban
     if len(selectbox_status_corban) != 0:
         dados_filtrados = dados_filtrados[dados_filtrados['Status Corban'].isin(selectbox_status_corban)]
-    dados
+    
     ##### FILTRO DE INTERVALO DE DATA CONSULTA #####
     menor_data_consulta, maior_data_consulta = tratamentos.get_datas(dados, 'Data Consulta')
     if "filtro_periodo_consulta" not in st.session_state:

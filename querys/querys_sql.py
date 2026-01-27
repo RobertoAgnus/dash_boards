@@ -69,8 +69,8 @@ class QuerysSQL:
         query = """select distinct
                         LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF",
                         concat(tc.ddd, tc.numero) as "telefoneAPICorban" 
-                    from corban.clientes cc  
-                    left join corban.telefones tc on cc.cliente_id = tc.cliente_id;"""
+                    from unificados.clientes cc  
+                    left join unificados.telefones tc on cc.cliente_id = tc.cliente_id;"""
         return query
     
     def consulta_base_fgts(self, condicao):
@@ -132,8 +132,8 @@ class QuerysSQL:
         query = """select 
                         concat(tc.ddd, tc.numero) as "telefoneAPI", 
                         LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF"
-                    from corban.telefones tc 
-                    left join corban.clientes cc on tc.cliente_id = cc.cliente_id;"""
+                    from unificados.telefones tc 
+                    left join unificados.clientes cc on tc.cliente_id = cc.cliente_id;"""
         return query
     
     ##### COMISSÕES CORBAN #####
@@ -142,7 +142,7 @@ class QuerysSQL:
                         ac.proposta_id,
                         ac.data_status_api,
                         ac.status_api
-                    from corban.api ac ;"""
+                    from unificados.api ac ;"""
         return query
 
     def comissionamento(self):
@@ -153,7 +153,7 @@ class QuerysSQL:
                                 REPLACE(cc2.recebe_valor_base, ',', '.')::NUMERIC
                             ELSE 0
                         end as recebe_valor_base
-                    from corban.comissionamentos cc2 ;"""
+                    from unificados.comissionamentos cc2 ;"""
         return query
 
     def comissoes(self):
@@ -161,7 +161,7 @@ class QuerysSQL:
                         cc.data,
                         cc.valor,
                         cc.proposta_id
-                    from corban.comissoes cc ;"""
+                    from unificados.comissoes cc ;"""
         return query
 
     def datas(self):
@@ -169,14 +169,14 @@ class QuerysSQL:
                         dc.cancelado,
                         dc.pagamento,
                         dc.proposta_id
-                    from corban.datas dc ;"""
+                    from unificados.datas dc ;"""
         return query
 
     def proposta(self):
         query = """select
                         pc.proposta_id,
                         pc.valor_total_comissionado
-                    from corban.contrato pc ;"""
+                    from unificados.contrato pc ;"""
         return query
 
     def propostas(self):
@@ -185,7 +185,7 @@ class QuerysSQL:
                         psc.origem,
                         psc.proposta_id,
                         psc.status_nome
-                    from corban.propostas psc;"""
+                    from unificados.propostas psc;"""
         return query
 
 
@@ -207,10 +207,10 @@ class QuerysSQL:
                         cc.cliente_nome as nome_corban,
                         concat(tc.ddd,tc.numero) as telefone_propostas,
                         ac.data_atualizacao_api 
-                    from corban.api ac
-                    left join corban.contrato pc on ac.proposta_id = pc.proposta_id 
-                    left join corban.clientes cc on pc.cliente_id = cc.cliente_id
-                    left join corban.telefones tc on cc.cliente_id = tc.cliente_id
+                    from unificados.api ac
+                    left join unificados.contrato pc on ac.proposta_id = pc.proposta_id 
+                    left join unificados.clientes cc on pc.cliente_id = cc.cliente_id
+                    left join unificados.telefones tc on cc.cliente_id = tc.cliente_id
                     where pc.produto_id = 13;"""
         return query
     
@@ -218,8 +218,9 @@ class QuerysSQL:
         query = f"""select 
                         cc.cliente_cpf as cpf_telefone_corban, 
                         concat(tc.ddd,tc.numero) as telefone_corban 
-                    from corban.telefones tc
-                    right join corban.clientes cc on cc.cliente_id = tc.cliente_id;"""
+                    from unificados.telefones tc
+                    right join unificados.clientes cc 
+                        on cc.cliente_id = tc.cliente_id;"""
         return query
     
     # def get_crm_consulta_mysql_aws(self):
