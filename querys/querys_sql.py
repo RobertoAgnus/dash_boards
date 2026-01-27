@@ -216,11 +216,11 @@ class QuerysSQL:
     
     def get_telefones_corban(self):
         query = f"""select 
-                        cc.cliente_cpf as cpf_telefone_corban, 
-                        concat(tc.ddd,tc.numero) as telefone_corban 
+                        cc.cpf as cpf_telefone_corban, 
+                        tc.telefone as telefone_corban 
                     from unificados.telefones tc
                     right join unificados.clientes cc 
-                        on cc.cliente_id = tc.cliente_id;"""
+                        on cc.cliente_id = tc.cliente_id_corban;"""
         return query
     
     # def get_crm_consulta_mysql_aws(self):
