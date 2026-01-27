@@ -222,23 +222,23 @@ class QuerysSQL:
                     right join corban.clientes cc on cc.cliente_id = tc.cliente_id;"""
         return query
     
-    def get_crm_consulta_mysql_aws(self):
-        query = f"""SELECT 
-                        cs.id AS consultaId,
-                        cs.clienteId,
-                        cs.updatedAt AS dataConsulta,
-                        c.cpf,
-                        cs.erros,
-                        cs.tabela as tabelaId,
-                        cs.valorLiberado,
-                        cs.valorContrato,
-                        b.nome as banco
-                    FROM CRM.Consultas cs
-                    left join CRM.Bancos b on cs.bancoId = b.id
-                    left join CRM.Clientes c on cs.clienteId = c.id
-                    WHERE cs.updatedAt >= '2025-11-01 00:00:00'
-                    AND (c.cpf is not null OR c.cpf <> '');"""
-        return query
+    # def get_crm_consulta_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     cs.id AS consultaId,
+    #                     cs.clienteId,
+    #                     cs.updatedAt AS dataConsulta,
+    #                     c.cpf,
+    #                     cs.erros,
+    #                     cs.tabela as tabelaId,
+    #                     cs.valorLiberado,
+    #                     cs.valorContrato,
+    #                     b.nome as banco
+    #                 FROM CRM.Consultas cs
+    #                 left join CRM.Bancos b on cs.bancoId = b.id
+    #                 left join CRM.Clientes c on cs.clienteId = c.id
+    #                 WHERE cs.updatedAt >= '2025-11-01 00:00:00'
+    #                 AND (c.cpf is not null OR c.cpf <> '');"""
+    #     return query
     
     def get_crm_consulta_postgres_aws(self):
         query = f"""SELECT 
@@ -258,13 +258,13 @@ class QuerysSQL:
                     AND (c.cpf is not null OR c.cpf <> '');"""
         return query
     
-    def get_crm_cliente_mysql_aws(self):
-        query = f"""SELECT 
-                        cl.id AS clienteId,
-                        cl.cpf,
-                        cl.nome
-                    FROM CRM.Clientes cl;"""
-        return query
+    # def get_crm_cliente_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     cl.id AS clienteId,
+    #                     cl.cpf,
+    #                     cl.nome
+    #                 FROM CRM.Clientes cl;"""
+    #     return query
     
     def get_crm_cliente_postgres_aws(self):
         query = f"""SELECT 
@@ -274,30 +274,30 @@ class QuerysSQL:
                     FROM public."Clientes" cl;"""
         return query
     
-    def get_crm_telefone_mysql_aws(self):
-        query = f"""WITH fone_sistema AS (
-                        SELECT 
-                            cl.id, 
-                            ts.telefone 
-                        FROM CRM.Clientes cl 
-                        LEFT JOIN CRM.Telefones ts 
-                            ON cl.id = ts.clienteId
-                    )
-                    SELECT DISTINCT *
-                    FROM (
-                        SELECT 
-                            fs.id AS clienteId, 
-                            CASE
-                                WHEN fs.telefone IS NULL THEN tc.telefone
-                                WHEN fs.telefone <> tc.telefone THEN tc.telefone
-                                when tc.telefone is null then fs.telefone
-                            END AS telefone_crm
-                        FROM fone_sistema fs 
-                        LEFT JOIN CRM.Telefones tc 
-                            ON fs.id = tc.clienteId
-                    ) AS resultado
-                    WHERE telefone_crm IS not NULL;"""
-        return query
+    # def get_crm_telefone_mysql_aws(self):
+    #     query = f"""WITH fone_sistema AS (
+    #                     SELECT 
+    #                         cl.id, 
+    #                         ts.telefone 
+    #                     FROM CRM.Clientes cl 
+    #                     LEFT JOIN CRM.Telefones ts 
+    #                         ON cl.id = ts.clienteId
+    #                 )
+    #                 SELECT DISTINCT *
+    #                 FROM (
+    #                     SELECT 
+    #                         fs.id AS clienteId, 
+    #                         CASE
+    #                             WHEN fs.telefone IS NULL THEN tc.telefone
+    #                             WHEN fs.telefone <> tc.telefone THEN tc.telefone
+    #                             when tc.telefone is null then fs.telefone
+    #                         END AS telefone_crm
+    #                     FROM fone_sistema fs 
+    #                     LEFT JOIN CRM.Telefones tc 
+    #                         ON fs.id = tc.clienteId
+    #                 ) AS resultado
+    #                 WHERE telefone_crm IS not NULL;"""
+    #     return query
     
     def get_crm_telefone_postgres_aws(self):
         query = f"""WITH fone_sistema AS (
@@ -324,25 +324,25 @@ class QuerysSQL:
                     WHERE telefone_crm IS not NULL;"""
         return query
     
-    def get_sistema_lead_mysql_aws(self):
-        query = f"""SELECT 
-                        l.consultaId,
-                        l.clientId AS clienteId,
-                        l.telefone AS telefone_lead
-                    FROM sistema.Leads l
-                    WHERE l.consultaId IS NOT NULL 
-                        and l.clientId IS NOT NULL;"""
-        return query
+    # def get_sistema_lead_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     l.consultaId,
+    #                     l.clientId AS clienteId,
+    #                     l.telefone AS telefone_lead
+    #                 FROM sistema.Leads l
+    #                 WHERE l.consultaId IS NOT NULL 
+    #                     and l.clientId IS NOT NULL;"""
+    #     return query
     
-    def get_crm_lead_mysql_aws(self):
-        query = f"""SELECT 
-                        l.consultaId,
-                        l.clientId AS clienteId,
-                        l.telefone AS telefone_lead
-                    FROM CRM.Leads l
-                    WHERE l.consultaId IS NOT NULL 
-                        and l.clientId IS NOT NULL;"""
-        return query
+    # def get_crm_lead_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     l.consultaId,
+    #                     l.clientId AS clienteId,
+    #                     l.telefone AS telefone_lead
+    #                 FROM CRM.Leads l
+    #                 WHERE l.consultaId IS NOT NULL 
+    #                     and l.clientId IS NOT NULL;"""
+    #     return query
     
     def get_crm_autoatendimento_postgres_aws(self):
         query = f"""SELECT 
@@ -354,12 +354,12 @@ class QuerysSQL:
                         and l."clienteId" IS NOT NULL;"""
         return query
     
-    def get_crm_tabela_mysql_aws(self):
-        query = f"""SELECT 
-                        tb.id AS tabelaId,
-                        tb.nome AS tabela
-                    FROM CRM.Tabelas tb;"""
-        return query
+    # def get_crm_tabela_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     tb.id AS tabelaId,
+    #                     tb.nome AS tabela
+    #                 FROM CRM.Tabelas tb;"""
+    #     return query
     
     def get_crm_tabela_postgres_aws(self):
         query = f"""SELECT 
@@ -368,12 +368,12 @@ class QuerysSQL:
                     FROM public."Tabelas" tb;"""
         return query
     
-    def get_crm_parcela_mysql_aws(self):
-        query = f"""SELECT 
-                        pc.consultaId,
-                        pc.num AS parcelas
-                    FROM CRM.Parcelas pc;"""
-        return query
+    # def get_crm_parcela_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     pc.consultaId,
+    #                     pc.num AS parcelas
+    #                 FROM CRM.Parcelas pc;"""
+    #     return query
     
     def get_crm_parcela_postgres_aws(self):
         query = f"""SELECT 

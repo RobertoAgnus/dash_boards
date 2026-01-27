@@ -1,55 +1,59 @@
-import streamlit as st
-
+import re
 from datetime import date
 
 
-##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
-def get_datas_consulta(dados):
-    # Remove linhas com Data Consulta vazia
-    dados = dados.dropna(subset=['Data Consulta'])
+class Tratamentos:
+    def __init__(self):
+        ...
 
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Consulta'].min()
-    maior_data = date.today()
+    ##### FUNÇÃO PARA OBTER AS DATAS #####
+    def get_datas(self, df, coluna):
+        # Remove linhas com Data Mensagem vazia
+        df = df.dropna(subset=[coluna])
+
+        # Obtendo a menor e a maior data da coluna 'data'
+        menor_data = df[coluna].min()
+        maior_data = date.today()
+        
+        return menor_data, maior_data
+
+
+    ##### FUNÇÃO PARA MAPEAR MENSAGENS #####
+    def mapeia_mensagens(self, mensagem):
+        if '[' in str(mensagem):
+            resultado = re.search(r'\[[^\]]+\]', mensagem)
+
+            if (len(resultado.group()) < 10):
+                return resultado.group() if resultado else None
+            else:
+                return "Orgânico"
+            
+        elif '(' in str(mensagem):
+            resultado = re.search(r'\([^\)]+\)', mensagem)
+            
+            if (len(resultado.group()) < 9) and (len(resultado.group()) > 3):
+                if re.search(r"[^\(0-9R$\)]", resultado.group()):
+                    return resultado.group() if resultado else None
+                else:
+                    return "Orgânico"
+            else:
+                return "Orgânico"
+        elif ("Olá! Gostaria" in str(mensagem)) |\
+            ("Olá! Quero" in str(mensagem)) |\
+            ("Olá! Tenho interesse" in str(mensagem)) |\
+            ("Olá, Gostaria" in str(mensagem)) |\
+            ("Olá, quero" in str(mensagem)):
+            return "(site)"
+        elif ("Falar com atendente" in str(mensagem)) |\
+            ("Falar com suporte" in str(mensagem)) |\
+            ("Ver atualização" in str(mensagem)) |\
+            ("Receber proposta" in str(mensagem)):
+            return "Disparos"
+        else:
+            return "Orgânico"
+        
+    ##### FUNÇÃO PARA MAPEAR AS CAMPANHAS #####
+    def mapeia_campanha(self, valor):
+        return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
+
     
-    return menor_data, maior_data
-
-##### FUNÇÃO PARA OBTER AS DATAS DISPAROS #####
-def get_datas_disparos(dados):
-    # Remove linhas com Data disparos vazia
-    dados = dados.dropna(subset=['Data Disparo'])
-
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Disparo'].min()
-    maior_data = date.today()
-
-    return menor_data, maior_data
-
-##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
-def get_datas_corban(dados):
-    # Remove linhas com Data Corban vazia
-    dados = dados.dropna(subset=['Data Corban'])
-
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Corban'].min()
-    maior_data = date.today()
-
-    return menor_data, maior_data
-
-##### FUNÇÃO PARA GERAR OS CARDS #####
-def metric_card(label, value):
-    st.markdown(
-        f"""
-        <div style="
-            background-color: #262730;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 15px;
-            height: auto;
-        ">
-            <p style="color: white; font-weight: bold;">{label}</p>
-            <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )

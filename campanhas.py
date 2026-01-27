@@ -7,7 +7,8 @@ import streamlit as st
 from datetime import date
 from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
-from regras.formatadores import formatar_cpf, formatar_telefone
+from regras.formatadores import Regras
+from regras.tratamentos import Tratamentos
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -30,47 +31,9 @@ st.set_page_config(
 alt.themes.enable("dark")
 
 # =============== FUNÇÕES ===============
+regras      = Regras()
+tratamentos = Tratamentos()
 
-##### FUNÇÃO PARA REMOVER EMOJIS #####
-def remover_emojis(texto: str) -> str:
-    if not isinstance(texto, str):
-        return texto
-    return "".join(
-        c for c in texto
-        if not unicodedata.category(c).startswith("So")
-    )
-
-
-##### FUNÇÃO PARA FORMATAR FLOAT #####
-def formata_float(valor):
-    if valor is None or pd.isna(valor):
-        return "0,00"
-
-    return (
-        f"{float(valor):,.2f}"
-        .replace('.', '|')
-        .replace(',', '.')
-        .replace('|', ',')
-    )
-
-
-##### FUNÇÃO PARA MAPEAR MENSAGENS #####
-def mapeia_mensagens(mensagem):
-    if '[' in str(mensagem):
-        resultado = re.search(r'\[[^\]]+\]', mensagem)
-
-        return resultado.group() if resultado else None
-    elif '(s' in str(mensagem):
-        resultado = re.search(r'\([^\)]+\)', mensagem)
-
-        return resultado.group() if resultado else None
-    elif ('Falar com atendente' in str(mensagem)) or ('Falar com suporte' in str(mensagem)) or ('Ver atualização' in str(mensagem)) or ('Receber proposta' in str(mensagem)):
-        return 'Disparos'
-    elif ('Olá! Gostaria de fazer' in str(mensagem)) or ('Olá, quero antecipar' in str(mensagem)):
-        return '(site)'
-    else:
-        return 'Orgânico'
-    
 
 ##### FUNÇÃO PARA GERAR OS CARDS #####
 def metric_card(label, value):
@@ -91,54 +54,6 @@ def metric_card(label, value):
     )
 
 
-##### FUNÇÃO PARA OBTER AS DATAS #####
-def get_datas(df, coluna):
-    # Remove linhas com Data Mensagem vazia
-    df = df.dropna(subset=[coluna])
-
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = df[coluna].min()
-    maior_data = date.today()
-    
-    return menor_data, maior_data
-
-
-##### FUNÇÃO PARA OBTER O COMPRIMENTO DO NOME #####
-def tamanho_nome(nome):
-    if isinstance(nome, str):
-        return len(nome)
-    return 0
-
-##### FUNÇÃO PARA LIMPAR O NOME #####
-def limpar_nome(nome):
-    if pd.isna(nome):
-        return nome
-
-    # Remove acentos
-    nome = unicodedata.normalize('NFKD', nome)
-    nome = nome.encode('ASCII', 'ignore').decode('ASCII')
-
-    # Remove caracteres especiais (mantém letras e espaço)
-    nome = re.sub(r'[^A-Za-z\s]', '', nome)
-
-    # Remove espaços duplicados
-    nome = re.sub(r'\s+', ' ', nome).strip()
-
-    return nome
-
-##### FUNÇÃO PARA LIMPAR CPF #####
-def limpar_cpf(cpf):
-    cpf = str(cpf).replace('.', '').replace('-', '')
-    return np.where(cpf == 'nan', None, cpf)
-
-##### FUNÇÃO PARA MAPEAR AS CAMPANHAS #####
-def mapeia_campanha(valor):
-    return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
-
-##### FUNÇÃO PARA TRATAR OS CÓDIGOS #####
-def trata_codigo(codigo):
-    codigo = str(codigo).replace('.0', '')
-    return np.where((codigo == 'None') | (codigo == 'nan'), None, codigo)
 
 # =======================================
 
@@ -183,7 +98,7 @@ df_corban = pd.merge(df_corban, df_fones_corban, on='cpf_corban', how='left')
 
 df_corban['numero_corban'] = np.where(df_corban['numero_corban_x'].isnull(), df_corban['numero_corban_y'], df_corban['numero_corban_x'])
 
-custo_campanhas['nome'] = custo_campanhas['nome'].apply(mapeia_campanha)
+custo_campanhas['nome'] = custo_campanhas['nome'].apply(tratamentos.mapeia_campanha)
 
 # ================ MERGE ================
 # Realiza merge entre as bases
@@ -226,7 +141,7 @@ df['codigo'            ] = np.where(df['codigo'            ].isna(), df['tabela_
 df['numero'            ] = np.where(df['numero'            ].isna(), df['numero_corban'   ], df['numero'            ])
 df['mensagemInicial'   ] = np.where(df['mensagemInicial'   ].isna(), 'Não Identificado'    , df['mensagemInicial'   ])
 
-df['cpf'] = df['cpf'].apply(limpar_cpf)
+df['cpf'] = df['cpf'].apply(regras.limpar_cpf)
 
 df['numero_corban_x'] = np.where(df['numero'].notna(), None, df['numero_corban_x'])
 df['numero_corban_y'] = np.where(df['numero'].notna(), None, df['numero_corban_y'])
@@ -366,7 +281,7 @@ df_crm_corban = pd.concat(
 df_crm_corban['codigo'] = np.where(df_crm_corban['codigo'] == 'Diamante', '677444', df_crm_corban['codigo'])
 df_crm_corban['codigo'] = np.where(df_crm_corban['codigo'] == 'Gold'    , '620175', df_crm_corban['codigo'])
 
-df_crm_corban['codigo'] = df_crm_corban['codigo'].apply(trata_codigo)
+df_crm_corban['codigo'] = df_crm_corban['codigo'].apply(regras.trata_codigo)
 
 df_crm_corban = pd.merge(df_crm_corban, df_tabelas, on='codigo', how='left')
 
@@ -400,8 +315,8 @@ df_crm_corban = df_crm_corban.rename(
     }
 )
 
-df_crm_corban = formatar_cpf(df_crm_corban, 'cpf')
-df_crm_corban = formatar_telefone(df_crm_corban, 'numero')
+df_crm_corban = regras.formatar_cpf(df_crm_corban, 'cpf')
+df_crm_corban = regras.formatar_telefone(df_crm_corban, 'numero')
 
 df_crm_corban = df_crm_corban.rename(columns={
     'cpf':'CPF',
@@ -429,7 +344,7 @@ df_crm_corban['Data da Liberação'] = (
     .dt.date
 )
 
-df_crm_corban['mensagens'] = df_crm_corban['Mensagem Inicial'].apply(mapeia_mensagens)
+df_crm_corban['mensagens'] = df_crm_corban['Mensagem Inicial'].apply(tratamentos.mapeia_mensagens)
 
 df_crm_corban['Comissão'  ] = np.where(df_crm_corban['Data da Liberação'].isna(), None                                             , df_crm_corban['Comissão'  ])
 df_crm_corban['Financiado'] = np.where(df_crm_corban['Financiado'       ] == 0  , df_crm_corban['Parcela'] * df_crm_corban['Prazo'], df_crm_corban['Financiado'])
@@ -456,7 +371,7 @@ with st.sidebar:
         key="filtro_mensagem",
         placeholder='Selecionar'
     )
-
+    
     if len(selectbox_mensagem) != 0:
         dados_filtrados['mensagens'] = dados_filtrados['mensagens'].astype(str).str.strip()
         filtros = [str(x).strip() for x in selectbox_mensagem]
@@ -472,7 +387,7 @@ with st.sidebar:
         .dt.date
     )
 
-    menor_data_mensagem, maior_data_mensagem = get_datas(df_crm_corban, 'Data da Mensagem')
+    menor_data_mensagem, maior_data_mensagem = tratamentos.get_datas(df_crm_corban, 'Data da Mensagem')
     if "filtro_periodo_mensagem" not in st.session_state:
         st.session_state.filtro_periodo_mensagem = (menor_data_mensagem, date.today())
 
@@ -522,7 +437,7 @@ with st.sidebar:
         .dt.date
     )
     
-    menor_data_liberacao, maior_data_liberacao = get_datas(df_crm_corban, 'Data da Liberação')
+    menor_data_liberacao, maior_data_liberacao = tratamentos.get_datas(df_crm_corban, 'Data da Liberação')
     if "filtro_periodo_liberacao" not in st.session_state:
         st.session_state.filtro_periodo_liberacao = (menor_data_liberacao, date.today())
     
@@ -566,6 +481,18 @@ with st.sidebar:
                 custo_campanhas['data'].isna()
             ]
         
+    ##### FILTRO DE EXIBIÇÃO #####
+    if "selecao_exibicao" not in st.session_state:
+        st.session_state.selecao_exibicao = "Planilha"
+
+    lista_opcao = ["Planilha", "Gráfico"]
+
+    seleciona_exibicao = st.radio(
+        'Selecione Opção',
+        lista_opcao,
+        key='selecao_exibicao'
+    )
+
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):
         for key in list(st.session_state.keys()):
@@ -574,10 +501,10 @@ with st.sidebar:
         st.rerun()
 
 ##### FORMATAÇÕES FINAIS DOS DADOS #####
-dados_filtrados['Financiado'] = dados_filtrados['Financiado'].astype(float).apply(formata_float)
-dados_filtrados['Liberado'  ] = dados_filtrados['Liberado'  ].apply(formata_float)
-dados_filtrados['Parcela'   ] = dados_filtrados['Parcela'   ].apply(formata_float)
-dados_filtrados['Comissão'  ] = dados_filtrados['Comissão'  ].apply(formata_float)
+dados_filtrados['Financiado'] = dados_filtrados['Financiado'].astype(float).apply(regras.formata_float)
+dados_filtrados['Liberado'  ] = dados_filtrados['Liberado'  ].apply(regras.formata_float)
+dados_filtrados['Parcela'   ] = dados_filtrados['Parcela'   ].apply(regras.formata_float)
+dados_filtrados['Comissão'  ] = dados_filtrados['Comissão'  ].apply(regras.formata_float)
 
 dados_filtrados['Data da Mensagem' ] = pd.to_datetime(dados_filtrados['Data da Mensagem' ]).dt.strftime('%d/%m/%Y')
 # dados_filtrados['Data da Liberação'] = pd.to_datetime(dados_filtrados['Data da Liberação']).dt.strftime('%d/%m/%Y')
@@ -636,7 +563,7 @@ controle['ROI'] = np.where(
     media['valor_total_investido']
 )
 
-controle['ROI'] = np.where(controle['ROI'] >= 0, ['🟢 +' + formata_float(x) for x in controle['ROI']], ['🔴 ' + formata_float(x) for x in controle['ROI']])
+controle['ROI'] = np.where(controle['ROI'] >= 0, ['🟢 +' + regras.formata_float(x) for x in controle['ROI']], ['🔴 ' + regras.formata_float(x) for x in controle['ROI']])
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
@@ -695,11 +622,11 @@ else:
 
 soma_roi = np.where(soma_roi >= 0, f"🟢 +{soma_roi:,.2f}".replace('.','|').replace(',','.').replace('|',','), f"🔴 {soma_roi:,.2f}".replace('.','|').replace(',','.').replace('|',','))
 
-controle['Valor de Produção'] = controle['Valor de Produção'].apply(formata_float)
-controle['Comissão Recebida'] = controle['Comissão Recebida'].apply(formata_float)
-controle['Ticket Médio'     ] = controle['Ticket Médio'     ].apply(formata_float)
-controle['Investimento'     ] = controle['Investimento'     ].apply(formata_float)
-controle['CAC'              ] = controle['CAC'              ].apply(formata_float)
+controle['Valor de Produção'] = controle['Valor de Produção'].apply(regras.formata_float)
+controle['Comissão Recebida'] = controle['Comissão Recebida'].apply(regras.formata_float)
+controle['Ticket Médio'     ] = controle['Ticket Médio'     ].apply(regras.formata_float)
+controle['Investimento'     ] = controle['Investimento'     ].apply(regras.formata_float)
+controle['CAC'              ] = controle['CAC'              ].apply(regras.formata_float)
 
 
 with st.container():
@@ -740,9 +667,217 @@ with st.container():
         metric_card("Total ROI", f"{soma_roi}")
 
 
+# ===============================================================
+# Garantir tipos corretos
+df_grafico = controle.copy()
+df_grafico['ROI'] = df_grafico['ROI'].apply(regras.remover_emojis).replace('+', '')
+
+df_grafico = df_grafico.rename(columns={
+    "Valor de Produção": "valor_producao",
+    "Comissão Recebida": "comissao_recebida",
+    "Ticket Médio": "ticket_medio"
+})
+
+cols_float = [
+    "valor_producao", "comissao_recebida",
+    "Investimento", "ticket_medio", "CAC", "ROI"
+]
+
+for c in cols_float:
+    df_grafico[c] = (
+        df_grafico[c]
+        .astype(str)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+        .astype(float)
+    )
+
+df_grafico["Leads"] = df_grafico["Leads"].astype(int)
+df_grafico["Pagos"] = df_grafico["Pagos"].astype(int)
+
+campanha_select = alt.selection_point(
+    fields=["Campanhas"],
+    empty="all"
+)
+
+graf_producao = (
+    alt.Chart(df_grafico)
+    .mark_bar()
+    .encode(
+        y=alt.Y(
+            "Campanhas:N",
+            sort="-x",
+            title="Campanhas"
+        ),
+        x=alt.X(
+            "valor_producao:Q",
+            title="Valor de Produção (R$)"
+        ),
+        color=alt.condition(
+            campanha_select,
+            alt.value("#1f77b4"),
+            alt.value("#d3d3d3")
+        ),
+        tooltip=[
+            "Campanhas",
+            alt.Tooltip("valor_producao:Q", format=",.2f"),
+            alt.Tooltip("comissao_recebida:Q", format=",.2f")
+        ]
+    )
+    .add_params(campanha_select)
+    .properties(
+        height=400,
+        title="Valor de Produção por Campanha"
+    )
+)
+
+graf_scatter = (
+    alt.Chart(df_grafico)
+    .mark_circle(size=120)
+    .encode(
+        x=alt.X("Investimento:Q", title="Investimento (R$)"),
+        y=alt.Y("comissao_recebida:Q", title="Comissão Recebida (R$)"),
+        size=alt.Size("Pagos:Q", title="Pagos"),
+        color=alt.Color(
+            "ROI:Q",
+            scale=alt.Scale(scheme="redyellowgreen"),
+            title="ROI"
+        ),
+        tooltip=[
+            "Campanhas",
+            alt.Tooltip("Investimento:Q", format=",.2f"),
+            alt.Tooltip("comissao_recebida:Q", format=",.2f"),
+            "Pagos",
+            "ROI"
+        ]
+    )
+    .properties(
+        height=350,
+        title="Eficiência: Investimento x Comissão"
+    )
+    .add_params(campanha_select)
+    .transform_filter(campanha_select)
+)
+
+df_long = df_grafico.melt(
+    id_vars="Campanhas",
+    value_vars=["Leads", "Pagos"],
+    var_name="Tipo",
+    value_name="Quantidade"
+)
+
+base = (
+    alt.Chart(df_long)
+    .transform_joinaggregate(
+        total='sum(Quantidade)',
+        groupby=['Campanhas']
+    )
+    .transform_calculate(
+        percentual='datum.Quantidade / datum.total'
+    )
+)
+
+graf_leads = (
+    base
+    .mark_bar()
+    .encode(
+        x=alt.X("Quantidade:Q", title="Quantidade"),
+        y=alt.Y("Campanhas:N", sort="-x"),
+        color=alt.Color("Tipo:N"),
+        tooltip=[
+            "Campanhas",
+            "Tipo",
+            alt.Tooltip("Quantidade:Q", title="Quantidade", format=","),
+            alt.Tooltip("percentual:Q", title="Percentual", format=".1%")
+        ]
+    )
+    .properties(
+        height=350,
+        title="Leads x Pagos"
+    )
+    .add_params(campanha_select)
+    .transform_filter(campanha_select)
+)
+
+df_fin = df_grafico.melt(
+    id_vars="Campanhas",
+    value_vars=["valor_producao", "comissao_recebida"],
+    var_name="Tipo",
+    value_name="Valor"
+)
+
+base = (
+    alt.Chart(df_fin)
+    .transform_joinaggregate(
+        total='sum(Valor)',
+        groupby=['Campanhas']
+    )
+    .transform_calculate(
+        percentual='datum.Valor / datum.total'
+    )
+)
+
+graf_fin = (
+    base
+    .mark_bar()
+    .encode(
+        x=alt.X("Valor:Q", stack=True, title="Valor (R$)"),
+        y=alt.Y("Campanhas:N", sort="-x"),
+        color=alt.Color("Tipo:N"),
+        tooltip=[
+            "Campanhas",
+            "Tipo",
+            alt.Tooltip("Valor:Q", title="Valor", format=","),
+            alt.Tooltip("percentual:Q", title="Percentual", format=".1%")
+        ]
+    )
+    .properties(
+        height=350,
+        title="Produção x Comissão"
+    )
+    .add_params(campanha_select)
+    .transform_filter(campanha_select)
+)
+
+dashboard = alt.vconcat(
+    graf_producao,
+    alt.hconcat(
+        graf_scatter,
+        graf_leads
+    ),
+    graf_fin
+).resolve_scale(color="independent")
+# chart = (
+#     alt.Chart(df_grafico)
+#     .mark_bar()
+#     .encode(
+#         y=alt.Y("Campanhas:N", sort="-x"),
+#         x=alt.X("valor_producao:Q", title="Valor de Produção (R$)"),
+#         tooltip=[
+#             "Campanhas",
+#             alt.Tooltip("valor_producao:Q", format=",.2f")
+#         ]
+#     )
+#     .properties(height=400)
+# )
+
+# st.altair_chart(chart, use_container_width=True)
+# ===============================================================
+
 ##### ÁREA DA TABELA #####
-with st.container():
-    st.dataframe(controle, width='stretch', height=500, hide_index=True)
+
+if seleciona_exibicao == 'Planilha':
+    with st.container():
+        st.dataframe(controle, width='stretch', height=500, hide_index=True)
+else:
+    with st.container():
+        st.altair_chart(graf_producao, use_container_width=True)
+    with st.container():
+        st.altair_chart(graf_scatter, use_container_width=True)
+    with st.container():
+        st.altair_chart(graf_leads, use_container_width=True)
+    with st.container():
+        st.altair_chart(graf_fin, use_container_width=True)
 
 dados_filtrados = dados_filtrados[['numero','CPF','Nome','Data da Mensagem','Mensagem Inicial','Banco','Data da Liberação','Financiado','Liberado','Parcela','Prazo','Comissão']]
 
