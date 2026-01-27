@@ -1,20 +1,21 @@
 import pandas as pd
 
 from querys.querys_sql import QuerysSQL
-from regras.formatadores import formatar_cpf, formatar_telefone
+from regras.formatadores import Regras
 
 
 def get_digisac(conn):
     ##### CRIAR INSTÂNCIA ÚNICA #####
     consulta = QuerysSQL()
+    regras = Regras()
 
     consulta_digisac = consulta.get_digisac()
     df = pd.read_sql_query(consulta_digisac, conn)
     df['data_digisac'] = pd.to_datetime(df['data'])
 
-    df = formatar_telefone(df, 'telefone_digisac')
+    df = regras.formatar_telefone(df, 'telefone_digisac')
 
-    df = formatar_cpf(df, 'cpf_digisac')
+    df = regras.formatar_cpf(df, 'cpf_digisac')
     
     df.loc[df['nome_interno'].str.contains('CPF', case=False, na=False), 'cpf_digisac'] = df['nome_interno'].str.split('CPF:').str[1].str.strip()
 

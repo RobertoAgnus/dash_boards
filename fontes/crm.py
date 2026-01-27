@@ -2,19 +2,20 @@ import pandas as pd
 import numpy as np
 
 from querys.querys_sql import QuerysSQL
-from regras.formatadores import formatar_cpf, formatar_telefone
+from regras.formatadores import Regras
 
 
 def get_crm(conn_postgres_aws, conn_mysql_aws):
     ##### CRIAR INSTÂNCIA ÚNICA #####
     consulta = QuerysSQL()
+    regras = Regras()
 
     def obter_consulta(query, conn):
         df_consulta1 = pd.read_sql(query, conn)
 
         df_consulta1['dataConsulta'] = pd.to_datetime(df_consulta1['dataConsulta'])
         
-        df_consulta1 = formatar_cpf(df_consulta1, 'cpf')
+        df_consulta1 = regras.formatar_cpf(df_consulta1, 'cpf')
 
         pega_clienteId = df_consulta1.groupby('cpf')['clienteId'].first().reset_index()
         
@@ -89,7 +90,7 @@ def get_crm(conn_postgres_aws, conn_mysql_aws):
 
     # df_cliente = pd.concat([df_cliente_mysql_aws, df_cliente_postgres_aws], ignore_index=True)
 
-    df_cliente = formatar_cpf(df_cliente_postgres_aws, 'cpf')
+    df_cliente = regras.formatar_cpf(df_cliente_postgres_aws, 'cpf')
 
     df_cliente = df_cliente.drop_duplicates()
 
@@ -104,7 +105,7 @@ def get_crm(conn_postgres_aws, conn_mysql_aws):
 
     # df_telefone = pd.concat([df_telefone_mysql_aws, df_telefone_postgres_aws], ignore_index=True)
 
-    df_telefone = formatar_telefone(df_telefone_postgres_aws, 'telefone_crm')
+    df_telefone = regras.formatar_telefone(df_telefone_postgres_aws, 'telefone_crm')
 
     df_telefone['telefone_crm'] = df_telefone['telefone_crm'].astype(str).str.replace(
             r'^(11)(?=\d{11,})', 
@@ -135,7 +136,7 @@ def get_crm(conn_postgres_aws, conn_mysql_aws):
 
     # df_lead = pd.concat([df_lead_sistema_mysql_aws, df_lead_crm_mysql_aws, df_autoatendimento_crm_postgres_aws], ignore_index=True)
 
-    df_lead = formatar_telefone(df_autoatendimento_crm_postgres_aws, 'telefone_lead')
+    df_lead = regras.formatar_telefone(df_autoatendimento_crm_postgres_aws, 'telefone_lead')
 
     df_lead = df_lead.drop_duplicates()
 

@@ -7,11 +7,15 @@ import io
 import zipfile
 
 from regras.obter_dados import carregar_dados
-from regras.tratamentos import get_datas_consulta, get_datas_disparos, get_datas_corban, metric_card
+from regras.tratamentos import Tratamentos
 
 
 if not st.session_state.get("authenticated", False):
     st.stop()
+
+
+tratamentos = Tratamentos()
+
 
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
@@ -133,9 +137,9 @@ with st.sidebar:
     # Status Corban
     if len(selectbox_status_corban) != 0:
         dados_filtrados = dados_filtrados[dados_filtrados['Status Corban'].isin(selectbox_status_corban)]
-
+    dados
     ##### FILTRO DE INTERVALO DE DATA CONSULTA #####
-    menor_data_consulta, maior_data_consulta = get_datas_consulta(dados)
+    menor_data_consulta, maior_data_consulta = tratamentos.get_datas(dados, 'Data Consulta')
     if "filtro_periodo_consulta" not in st.session_state:
         st.session_state.filtro_periodo_consulta = (menor_data_consulta, date.today())
 
@@ -171,7 +175,7 @@ with st.sidebar:
                 ]
             
     ##### FILTRO DE INTERVALO DE DATA DISPAROS #####
-    menor_data_disparos, maior_data_disparos = get_datas_disparos(dados)
+    menor_data_disparos, maior_data_disparos = tratamentos.get_datas(dados, 'Data Disparo')
     
     if "filtro_periodo_disparos" not in st.session_state:
         st.session_state.filtro_periodo_disparos = (menor_data_disparos, maior_data_disparos)
@@ -210,7 +214,7 @@ with st.sidebar:
                 ]
 
     ##### FILTRO DE INTERVALO DE DATA CORBAN #####
-    menor_data_corban, maior_data_corban = get_datas_corban(dados)
+    menor_data_corban, maior_data_corban = tratamentos.get_datas(dados, 'Data Corban')
     
     if "filtro_periodo_corban" not in st.session_state:
         st.session_state.filtro_periodo_corban = (menor_data_corban, maior_data_corban)
@@ -286,11 +290,11 @@ with st.container():
     with col_1a:
         
         ##### CARD TOTAL DE CONSULTAS #####
-        metric_card("Consultas Realizadas", f"{format(int(len(dados_filtrados[(dados_filtrados['Data Consulta'].notna()) & (dados_filtrados['Data Consulta'].notnull())])), ',').replace(',', '.')}")
+        tratamentos.metric_card("Consultas Realizadas", f"{format(int(len(dados_filtrados[(dados_filtrados['Data Consulta'].notna()) & (dados_filtrados['Data Consulta'].notnull())])), ',').replace(',', '.')}")
 
     with col_1b:
         ##### CARD TOTAL VISUALIZAÇÕES #####
-        metric_card("Visualizações na Tela", f"{format(int(len(dados_filtrados)), ',').replace(',', '.')}")
+        tratamentos.metric_card("Visualizações na Tela", f"{format(int(len(dados_filtrados)), ',').replace(',', '.')}")
 
 
 ##### ÁREA DA TABELA #####

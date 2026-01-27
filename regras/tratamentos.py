@@ -1,4 +1,5 @@
 import re
+import streamlit as st
 from datetime import date
 
 
@@ -56,4 +57,20 @@ class Tratamentos:
     def mapeia_campanha(self, valor):
         return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
 
-    
+    ##### FUNÇÃO PARA GERAR OS CARDS #####
+    def metric_card(self, label, value):
+        st.markdown(
+            f"""
+            <div style="
+                background-color: #262730;
+                border-radius: 10px;
+                text-align: center;
+                margin-bottom: 15px;
+                height: auto;
+            ">
+                <p style="color: white; font-weight: bold; font-size: clamp(0.5rem, 1.2vw, 0.9rem)">{label}</p>
+                <h3 style="color: white; font-size: clamp(0.5rem, 4vw, 1.5rem)">{value}</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
