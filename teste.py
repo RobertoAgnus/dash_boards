@@ -1,268 +1,35 @@
-import re
-import unicodedata
-import numpy as np
+import io
+import zipfile
 import pandas as pd
 import altair as alt
 import streamlit as st
+
+from io import BytesIO
 from datetime import date
-from querys.connect import Conexao
-from querys.querys_sql import QuerysSQL
-from regras.formatadores import formatar_cpf, formatar_telefone
-import warnings
-warnings.filterwarnings("ignore")
+
+from regras.tratamentos import Tratamentos
+from regras.obter_dados import carregar_dados
 
 
 if not st.session_state.get("authenticated", False):
     st.stop()
 
-if "authenticated" not in st.session_state:
-    st.error("Acesso negado. Faça login.")
-    st.stop()
-
-
 ##### CONFIGURAÇÃO DA PÁGINA #####
 st.set_page_config(
-    page_title="Campanhas Publicitárias",
+    page_title="Clientes Atendidos",
     page_icon="image/logo_agnus.ico",
     layout="wide",
     initial_sidebar_state="expanded")
 
 alt.themes.enable("dark")
 
-
-##### FUNÇÃO PARA REMOVER EMOJIS #####
-def remover_emojis(texto: str) -> str:
-    if not isinstance(texto, str):
-        return texto
-    return "".join(
-        c for c in texto
-        if not unicodedata.category(c).startswith("So")
-    )
-
-
-##### FUNÇÃO PARA FORMATAR FLOAT #####
-def formata_float(valor):
-    if valor is None or pd.isna(valor):
-        return "0,00"
-
-    return (
-        f"{float(valor):,.2f}"
-        .replace('.', '|')
-        .replace(',', '.')
-        .replace('|', ',')
-    )
-
-
-##### FUNÇÃO PARA MAPEAR MENSAGENS #####
-def mapeia_mensagens(mensagem):
-    if '[' in str(mensagem):
-        resultado = re.search(r'\[[^\]]+\]', mensagem)
-
-        return resultado.group() if resultado else None
-    elif '(s' in str(mensagem):
-        resultado = re.search(r'\([^\)]+\)', mensagem)
-
-        return resultado.group() if resultado else None
-    elif ('Falar com atendente' in str(mensagem)) or ('Falar com suporte' in str(mensagem)) or ('Ver atualização' in str(mensagem)) or ('Receber proposta' in str(mensagem)):
-        return 'Disparos'
-    elif ('Olá! Gostaria de fazer' in str(mensagem)) or ('Olá, quero antecipar' in str(mensagem)):
-        return '(site)'
-    else:
-        return 'Orgânico'
-    
-
-##### FUNÇÃO PARA GERAR OS CARDS #####
-def metric_card(label, value):
-    st.markdown(
-        f"""
-        <div style="
-            background-color: #262730;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 15px;
-            height: auto;
-        ">
-            <p style="color: white; font-weight: bold; font-size: clamp(0.5rem, 1.2vw, 0.9rem)">{label}</p>
-            <h3 style="color: white; font-size: clamp(0.5rem, 4vw, 1.5rem)">{value}</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-##### FUNÇÃO PARA OBTER AS DATAS #####
-def get_datas(df, coluna):
-    # Remove linhas com Data Mensagem vazia
-    df = df.dropna(subset=[coluna])
-
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = df[coluna].min()
-    maior_data = date.today()
-    
-    return menor_data, maior_data
-
-
-##### FUNÇÃO PARA OBTER O COMPRIMENTO DO NOME #####
-def tamanho_nome(nome):
-    if isinstance(nome, str):
-        return len(nome)
-    return 0
-
-##### FUNÇÃO PARA LIMPAR O NOME #####
-def limpar_nome(nome):
-    if pd.isna(nome):
-        return nome
-
-    # Remove acentos
-    nome = unicodedata.normalize('NFKD', nome)
-    nome = nome.encode('ASCII', 'ignore').decode('ASCII')
-
-    # Remove caracteres especiais (mantém letras e espaço)
-    nome = re.sub(r'[^A-Za-z\s]', '', nome)
-
-    # Remove espaços duplicados
-    nome = re.sub(r'\s+', ' ', nome).strip()
-
-    return nome
-
-##### FUNÇÃO PARA MAPEAR AS CAMPANHAS #####
-def mapeia_campanha(valor):
-    return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
-
+if "authenticated" not in st.session_state:
+    st.error("Acesso negado. Faça login.")
+    st.stop()
 
 ##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao()
+dados, df_crm, df_digisac, df_corban = carregar_dados()
 
-conectar.conectar_postgres_aws()
-conectar.conectar_postgres()
-
-conn_postgres_aws = conectar.obter_conexao_postgres_aws()
-conn_postgres     = conectar.obter_conexao_postgres()
-
-consulta = QuerysSQL()
-
-corban              = consulta.get_teste_corban_propostas()
-crm_autoatendimento = consulta.get_teste_crm_autoatendimento()
-crm_propostas       = consulta.get_teste_crm_propostas()
-crm_clientes        = consulta.get_teste_crm_clientes()
-crm_consultas       = consulta.get_teste_crm_consultas()
-crm_bancos          = consulta.get_teste_crm_bancos()
-campanhas           = consulta.get_campanhas_meta()
-
-df_corban              = pd.read_sql_query(corban             , conn_postgres    )
-df_crm_autoatendimento = pd.read_sql_query(crm_autoatendimento, conn_postgres_aws)
-df_crm_propostas       = pd.read_sql_query(crm_propostas      , conn_postgres_aws)
-df_crm_clientes        = pd.read_sql_query(crm_clientes       , conn_postgres_aws)
-df_crm_consultas       = pd.read_sql_query(crm_consultas      , conn_postgres_aws)
-df_crm_bancos          = pd.read_sql_query(crm_bancos         , conn_postgres_aws)
-custo_campanhas        = pd.read_sql_query(campanhas          , conn_postgres    )
-
-df_crm_a_p    = pd.merge(df_crm_autoatendimento, df_crm_propostas, on      = 'clienteId' ,                how='left')
-df_crm_ap_cs  = pd.merge(df_crm_a_p            , df_crm_consultas, left_on = 'consultaId', right_on='id', how='left')
-df_crm_apcs_c = pd.merge(df_crm_ap_cs          , df_crm_clientes , left_on = 'clienteId' , right_on='id', how='left')
-df_crm        = pd.merge(df_crm_apcs_c         , df_crm_bancos   , left_on = 'bancoId'   , right_on='id', how='left')
-
-df_crm['valor_parcela'] = df_crm['valorBruto'].astype(float) / df_crm['prazo']
-
-custo_campanhas['nome'] = custo_campanhas['nome'].apply(mapeia_campanha)
-
-# Remove telefone inválido
-# df_corban = df_corban[df_corban['numero_corban'] != '99999999999']
-
-# Realiza merge entre as bases
-# df_crm_corban = pd.merge(df_crm, df_corban, left_on=['cpf'], right_on=['cpf_corban'], how='outer')    #left_on=['cpf'], right_on=['cpf_corban'], how='outer')
-df_crm_corban = pd.merge(df_crm, df_corban, left_on=['numero'], right_on=['numero_corban'], how='outer')    #left_on=['cpf'], right_on=['cpf_corban'], how='outer')
-df_crm_corban
-
-df_crm_corban['nome_x'            ] = np.where(df_crm_corban['nome_x'            ].isna(), df_crm_corban['nome_y'          ], df_crm_corban['nome_x'            ])
-df_crm_corban['cpf'               ] = np.where(df_crm_corban['cpf'               ].isna(), df_crm_corban['cpf_corban'      ], df_crm_corban['cpf'               ])
-df_crm_corban['nome_banco_x'      ] = np.where(df_crm_corban['nome_banco_x'      ].isna(), df_crm_corban['nome_banco_y'    ], df_crm_corban['nome_banco_x'      ])
-df_crm_corban['dataPagamento'     ] = np.where(df_crm_corban['dataPagamento'     ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['dataPagamento'     ])
-df_crm_corban['valorBruto'        ] = np.where(df_crm_corban['valorBruto'        ].isna(), df_crm_corban['valor_financiado'], df_crm_corban['valorBruto'        ])
-df_crm_corban['valorLiberado'     ] = np.where(df_crm_corban['valorLiberado'     ].isna(), df_crm_corban['valor_liberado'  ], df_crm_corban['valorLiberado'     ])
-df_crm_corban['valor_parcela_x'   ] = np.where(df_crm_corban['valor_parcela_x'   ].isna(), df_crm_corban['valor_parcela_y' ], df_crm_corban['valor_parcela_x'   ])
-df_crm_corban['prazo_x'           ] = np.where(df_crm_corban['prazo_x'           ].isna(), df_crm_corban['prazo_y'         ], df_crm_corban['prazo_x'           ])
-df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['valorTotalComissao'].isna(), df_crm_corban['valor_comissao'  ], df_crm_corban['valorTotalComissao'])
-df_crm_corban['createdAt'         ] = np.where(df_crm_corban['createdAt'         ].isna(), df_crm_corban['liberacao'       ], df_crm_corban['createdAt'         ])
-df_crm_corban['numero'            ] = np.where(df_crm_corban['numero'            ].isna(), df_crm_corban['numero_corban'   ], df_crm_corban['numero'            ])
-df_crm_corban['mensagemInicial'   ] = np.where(df_crm_corban['mensagemInicial'   ].isna(), 'Não Identificado'               , df_crm_corban['mensagemInicial'   ])
-
-df_crm_corban['createdAt'] = (
-    pd.to_datetime(df_crm_corban['createdAt'], utc=True)
-    .dt.tz_localize(None)
-)
-
-df_crm_corban['dataPagamento'] = (
-    pd.to_datetime(df_crm_corban['dataPagamento'], utc=True)
-    .dt.tz_localize(None)
-)
-
-df_crm_corban = df_crm_corban.sort_values(['cpf','numero','createdAt','dataPagamento'], ascending=[True,True,False,False])
-
-mask = df_crm_corban['createdAt'] > df_crm_corban['dataPagamento']
-
-df_crm_corban.loc[mask, 'nome_banco_x'      ] = None
-df_crm_corban.loc[mask, 'valorBruto'        ] = None
-df_crm_corban.loc[mask, 'valorLiberado'     ] = None
-df_crm_corban.loc[mask, 'valor_parcela_x'   ] = None
-df_crm_corban.loc[mask, 'prazo_x'           ] = None
-df_crm_corban.loc[mask, 'valorTotalComissao'] = None
-df_crm_corban.loc[mask, 'dataPagamento'     ] = pd.NaT
-
-df_crm_corban['_chave_dedupe'] = df_crm_corban['dataPagamento'].fillna(df_crm_corban['createdAt'])
-
-df_crm_corban = df_crm_corban.drop_duplicates(subset='_chave_dedupe').drop(columns='_chave_dedupe')
-
-df_crm_corban = df_crm_corban[['numero', 'cpf', 'nome_x', 'createdAt', 'mensagemInicial', 'nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao']]
-
-df_crm_corban = df_crm_corban.rename(
-    columns={
-        'nome_x': 'nome', 
-        'nome_banco_x': 'nome_banco', 
-        'valor_parcela_x': 'valor_parcela', 
-        'prazo_x': 'prazo'
-    }
-)
-
-# df_crm_corban = df_crm_corban.drop_duplicates(subset=['numero', 'createdAt', 'nome_banco'])
-
-df_crm_corban['valorTotalComissao'] = np.where(df_crm_corban['dataPagamento'].isna(), 0, df_crm_corban['valorTotalComissao'])
-
-df_crm_corban = formatar_cpf(df_crm_corban, 'cpf')
-df_crm_corban = formatar_telefone(df_crm_corban, 'numero')
-
-df_crm_corban = df_crm_corban.rename(columns={
-    'cpf':'CPF',
-    'nome':'Nome',
-    'createdAt':'Data da Mensagem',
-    'mensagemInicial':'Mensagem Inicial',
-    'nome_banco':'Banco',
-    'dataPagamento':'Data da Liberação',
-    'valorBruto':'Financiado',
-    'valorLiberado':'Liberado',
-    'valor_parcela':'Parcela',
-    'prazo':'Prazo',
-    'valorTotalComissao': 'Comissão'
-})
-
-df_crm_corban['Data da Mensagem'] = (
-    pd.to_datetime(df_crm_corban['Data da Mensagem'], errors='coerce', utc=True)
-    .dt.tz_localize(None)
-    .dt.date
-)
-
-df_crm_corban['Data da Liberação'] = (
-    pd.to_datetime(df_crm_corban['Data da Liberação'], errors='coerce', utc=True)
-    .dt.tz_localize(None)
-    .dt.date
-)
-
-df_crm_corban['mensagens'] = df_crm_corban['Mensagem Inicial'].apply(mapeia_mensagens)
-dados_filtrados = df_crm_corban.copy()
-
-# dados_filtrados = dados_filtrados.drop_duplicates()
-
-# dados_filtrados['mensagens'] = dados_filtrados['Mensagem Inicial'].apply(mapeia_mensagens)
 
 ##### ÁREA DO DASHBOARD #####
 
@@ -270,130 +37,218 @@ dados_filtrados = df_crm_corban.copy()
 with st.sidebar:
     st.title('Filtros')
 
-    ##### FILTRO DE MENSAGENS INICIAIS #####
-    mensagem_inicial = df_crm_corban['mensagens'].dropna().unique().tolist()
-    mensagem_inicial = [str(x).strip() for x in mensagem_inicial if x is not None]
-    mensagem_inicial = sorted(mensagem_inicial)
-    
-    if "filtro_mensagem" not in st.session_state:
-        st.session_state.filtro_mensagem = []
+    ##### FILTRO DE CPF #####
+    if "filtro_cpf" not in st.session_state:
+        st.session_state.filtro_cpf = 'Todos'
 
-    selectbox_mensagem = st.multiselect(
-        'Selecione a Mensagem',
-        mensagem_inicial,
-        key="filtro_mensagem",
+    lista_cpf = ["Todos", "Sem CPF", "Com CPF"]
+
+    selectbox_cpf = st.selectbox(
+        'Selecione COM ou SEM CPF',
+        lista_cpf,
+        key="filtro_cpf"
+    )
+
+    ##### FILTRO DE BANCOS #####
+    banco_consulta = dados['Banco'].dropna().unique().tolist()
+    banco_consulta = [str(x).strip() for x in banco_consulta if x is not None]
+    banco_consulta = sorted(banco_consulta)
+
+    if "filtro_banco" not in st.session_state:
+        st.session_state.filtro_banco = []
+
+    selectbox_banco = st.multiselect(
+        'Selecione o Banco',
+        banco_consulta,
+        key="filtro_banco",
         placeholder='Selecionar'
     )
 
-    if len(selectbox_mensagem) != 0:
-        dados_filtrados['mensagens'] = dados_filtrados['mensagens'].astype(str).str.strip()
-        filtros = [str(x).strip() for x in selectbox_mensagem]
-        dados_filtrados = dados_filtrados[dados_filtrados['mensagens'].isin(filtros)]
-        
-        custo_campanhas = custo_campanhas[custo_campanhas['nome'].isin(filtros)]
-        
+    ##### FILTRO DE ERROS CONSULTA #####
+    erros_consulta = dados['Retorno Consulta'].dropna().unique().tolist()
+    erros_consulta = [str(x).strip() for x in erros_consulta if x is not None]
+    erros_consulta = sorted(erros_consulta)
 
-    ##### FILTRO DE INTERVALO DE DATA MENSAGEM #####
-    dados_filtrados['Data da Mensagem'] = (
-        pd.to_datetime(dados_filtrados['Data da Mensagem'], errors='coerce', utc=True)
-        .dt.tz_localize(None)
-        .dt.date
+    if "filtro_erros_consulta" not in st.session_state:
+        st.session_state.filtro_erros_consulta = []
+    
+    selectbox_erros_consulta = st.multiselect(
+        'Selecione os Retornos Consulta',
+        erros_consulta,
+        key="filtro_erros_consulta",
+        placeholder='Selecionar'
     )
 
-    menor_data_mensagem, maior_data_mensagem = get_datas(df_crm_corban, 'Data da Mensagem')
-    if "filtro_periodo_mensagem" not in st.session_state:
-        st.session_state.filtro_periodo_mensagem = (menor_data_mensagem, date.today())
+    ##### FILTRO DE ERROS DIGISAC #####
+    erros_digisac = dados['Retorno Digisac'].dropna().unique().tolist()
+    erros_digisac = sorted(erros_digisac)
 
-    if not pd.isnull(menor_data_mensagem):
-        intervalo_mensagem = st.date_input(
-            "Selecione a data da Mensagem:",
+    if "filtro_erros_digisac" not in st.session_state:
+        st.session_state.filtro_erros_digisac = []
+
+    selectbox_erros_digisac = st.multiselect(
+        'Selecione os Retornos Digisac',
+        erros_digisac,
+        key="filtro_erros_digisac",
+        placeholder = 'Selecionar'
+    )
+
+    ##### FILTRO DE STATUS CORBAN #####
+    status_corban = dados['Status Corban'].dropna().unique().tolist()
+    status_corban = sorted(status_corban)
+
+    if "filtro_status_corban" not in st.session_state:
+        st.session_state.filtro_status_corban = []
+
+    selectbox_status_corban = st.multiselect(
+        'Selecione os Status Corban',
+        status_corban,
+        key="filtro_status_corban",
+        placeholder='Selecionar'
+    )
+
+    dados_filtrados = dados.copy()
+
+    # CPF
+    if selectbox_cpf == 'Sem CPF':
+        dados_filtrados = dados_filtrados[dados_filtrados['CPF'].isna()]
+    elif selectbox_cpf == 'Com CPF':
+        dados_filtrados = dados_filtrados[dados_filtrados['CPF'].notna()]
+
+    # Banco
+    if len(selectbox_banco) != 0:
+        dados_filtrados['Banco'] = dados_filtrados['Banco'].astype(str).str.strip()
+        filtros = [str(x).strip() for x in selectbox_banco]
+        dados_filtrados = dados_filtrados[dados_filtrados['Banco'].isin(filtros)]
+
+    # Retorno Consulta
+    if len(selectbox_erros_consulta) != 0:
+        dados_filtrados['Retorno Consulta'] = dados_filtrados['Retorno Consulta'].astype(str).str.strip()
+        filtros = [str(x).strip() for x in selectbox_erros_consulta]
+        dados_filtrados = dados_filtrados[dados_filtrados['Retorno Consulta'].isin(filtros)]
+
+    # Retorno Digisac
+    if len(selectbox_erros_digisac) != 0:
+        dados_filtrados = dados_filtrados[dados_filtrados['Retorno Digisac'].isin(selectbox_erros_digisac)]
+
+    # Status Corban
+    if len(selectbox_status_corban) != 0:
+        dados_filtrados = dados_filtrados[dados_filtrados['Status Corban'].isin(selectbox_status_corban)]
+    
+    ##### FILTRO DE INTERVALO DE DATA CONSULTA #####
+    menor_data_consulta, maior_data_consulta = tratamentos.get_datas(dados, 'Data Consulta')
+    if "filtro_periodo_consulta" not in st.session_state:
+        st.session_state.filtro_periodo_consulta = (menor_data_consulta, date.today())
+
+    if not pd.isnull(menor_data_consulta):
+        intervalo_consulta = st.date_input(
+            "Selecione a data da Consulta:",
             value=(),
-            key="filtro_periodo_mensagem"
+            key="filtro_periodo_consulta"
         )
         
         # Se o usuário selecionou apenas uma data, define fim como hoje
-        if len(intervalo_mensagem) == 2:
-            inicio_mensagem, fim_mensagem = intervalo_mensagem
+        if len(intervalo_consulta) == 2:
+            inicio_consulta, fim_consulta = intervalo_consulta
             
-        elif len(intervalo_mensagem) == 1:
+        elif len(intervalo_consulta) == 1:
             # Usuário selecionou apenas uma data
-            inicio_mensagem = intervalo_mensagem[0]
-            fim_mensagem = date.today()
+            inicio_consulta = intervalo_consulta[0]
+            fim_consulta = date.today()
             
         # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
         try:
-            
-            if (inicio_mensagem, fim_mensagem) != (menor_data_mensagem, maior_data_mensagem):
+
+            if (inicio_consulta, fim_consulta) != (menor_data_consulta, maior_data_consulta):
                 # Filtra as linhas de consulta dentro do intervalo
                 dados_filtrados = dados_filtrados[
-                    (dados_filtrados['Data da Mensagem'] >= inicio_mensagem) &
-                    (dados_filtrados['Data da Mensagem'] <= fim_mensagem)
-                ]
-                custo_campanhas = custo_campanhas[
-                    (custo_campanhas['data'] >= inicio_mensagem) &
-                    (custo_campanhas['data'] <= fim_mensagem)
+                    (dados_filtrados['Data Consulta'] >= inicio_consulta) &
+                    (dados_filtrados['Data Consulta'] <= fim_consulta)
                 ]
                 
         except:
-            
             dados_filtrados = dados_filtrados[
-                dados_filtrados['Data da Mensagem'].isna()
-            ]
-            custo_campanhas = custo_campanhas[
-                custo_campanhas['data'].isna()
-            ]
+                    dados_filtrados['Data Consulta'].isna()
+                ]
+            
+    ##### FILTRO DE INTERVALO DE DATA DISPAROS #####
+    menor_data_disparos, maior_data_disparos = tratamentos.get_datas(dados, 'Data Disparo')
+    
+    if "filtro_periodo_disparos" not in st.session_state:
+        st.session_state.filtro_periodo_disparos = (menor_data_disparos, maior_data_disparos)
 
-    ##### FILTRO DE INTERVALO DE DATA LIBERAÇÃO #####
-    dados_filtrados['Data da Liberação'] = (
-        pd.to_datetime(dados_filtrados['Data da Liberação'], errors='coerce', utc=True)
-        .dt.tz_localize(None)
-        .dt.date
-    )
-    
-    menor_data_liberacao, maior_data_liberacao = get_datas(df_crm_corban, 'Data da Liberação')
-    if "filtro_periodo_liberacao" not in st.session_state:
-        st.session_state.filtro_periodo_liberacao = (menor_data_liberacao, date.today())
-    
-    if not pd.isnull(menor_data_liberacao):
-        intervalo_liberacao = st.date_input(
-            "Selecione a data da Liberação:",
+    if not pd.isnull(menor_data_disparos):
+        intervalo_disparos = st.date_input(
+            "Selecione a data do disparos:",
             value=(),
-            key="filtro_periodo_liberacao"
+            key="filtro_periodo_disparos"
         )
         
         # Se o usuário selecionou apenas uma data, define fim como hoje
-        if len(intervalo_liberacao) == 2:
-            inicio_liberacao, fim_liberacao = intervalo_liberacao
-            
-        elif len(intervalo_liberacao) == 1:
+        if len(intervalo_disparos) == 2:
+            inicio_disparos, fim_disparos = intervalo_disparos
+        elif len(intervalo_disparos) == 1:
             # Usuário selecionou apenas uma data
-            inicio_liberacao = intervalo_liberacao[0]
-            fim_liberacao = date.today()
+            inicio_disparos = intervalo_disparos[0]
+            fim_disparos = date.today()
         
-        # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
         try:
-            
-            if (inicio_liberacao, fim_liberacao) != (menor_data_liberacao, maior_data_liberacao):
-                
-                # Filtra as linhas de consulta dentro do intervalo
+            if (inicio_disparos, fim_disparos) != (menor_data_disparos, maior_data_disparos):
                 dados_filtrados = dados_filtrados[
-                    (dados_filtrados['Data da Liberação'] >= inicio_liberacao) &
-                    (dados_filtrados['Data da Liberação'] <= fim_liberacao)
+                    (dados_filtrados['Data Disparo'] >= inicio_disparos) &
+                    (dados_filtrados['Data Disparo'] <= fim_disparos)
                 ]
-                custo_campanhas = custo_campanhas[
-                    (custo_campanhas['data'] >= inicio_liberacao) &
-                    (custo_campanhas['data'] <= fim_liberacao)
+            else:
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Disparo'] >= inicio_disparos) &
+                    (dados_filtrados['Data Disparo'] <= fim_disparos) |
+                    (dados_filtrados['Data Disparo'].isna())
                 ]
-                
         except:
-            
             dados_filtrados = dados_filtrados[
-                dados_filtrados['Data da Liberação'].isna()
-            ]
-            custo_campanhas = custo_campanhas[
-                custo_campanhas['data'].isna()
-            ]
+                    (dados_filtrados['Data Disparo'].isna()) |
+                    (dados_filtrados['Data Disparo'].isnull())
+                ]
+
+    ##### FILTRO DE INTERVALO DE DATA CORBAN #####
+    menor_data_corban, maior_data_corban = tratamentos.get_datas(dados, 'Data Corban')
+    
+    if "filtro_periodo_corban" not in st.session_state:
+        st.session_state.filtro_periodo_corban = (menor_data_corban, maior_data_corban)
+
+    if not pd.isnull(menor_data_corban):
+        intervalo_corban = st.date_input(
+            "Selecione a data do Corban:",
+            value=(),
+            key="filtro_periodo_corban"
+        )
         
+        # Se o usuário selecionou apenas uma data, define fim como hoje
+        if len(intervalo_corban) == 2:
+            inicio_corban, fim_corban = intervalo_corban
+        elif len(intervalo_corban) == 1:
+            # Usuário selecionou apenas uma data
+            inicio_corban = intervalo_corban[0]
+            fim_corban = date.today()
+        
+        try:
+            if (inicio_corban, fim_corban) != (menor_data_corban, maior_data_corban):
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Corban'] >= inicio_corban) &
+                    (dados_filtrados['Data Corban'] <= fim_corban)
+                ]
+            else:
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Corban'] >= inicio_corban) &
+                    (dados_filtrados['Data Corban'] <= fim_corban) |
+                    (dados_filtrados['Data Corban'].isna())
+                ]
+        except:
+            dados_filtrados = dados_filtrados[
+                    (dados_filtrados['Data Corban'].isna()) |
+                    (dados_filtrados['Data Corban'].isnull())
+                ]
+
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):
         for key in list(st.session_state.keys()):
@@ -401,71 +256,20 @@ with st.sidebar:
                 del st.session_state[key]
         st.rerun()
 
-##### FORMATAÇÕES FINAIS DOS DADOS #####
-dados_filtrados['Financiado'] = dados_filtrados['Financiado'].astype(float).apply(formata_float)
-dados_filtrados['Liberado'  ] = dados_filtrados['Liberado'  ].apply(formata_float)
-dados_filtrados['Parcela'   ] = dados_filtrados['Parcela'   ].apply(formata_float)
-dados_filtrados['Comissão'  ] = dados_filtrados['Comissão'  ].apply(formata_float)
+dados_filtrados['Data Consulta'] = pd.to_datetime(dados_filtrados['Data Consulta'], errors='coerce')
+dados_filtrados['Data Disparo' ] = pd.to_datetime(dados_filtrados['Data Disparo' ], errors='coerce')
+dados_filtrados['Data Corban'  ] = pd.to_datetime(dados_filtrados['Data Corban'  ], errors='coerce')
 
-dados_filtrados['Data da Mensagem' ] = pd.to_datetime(dados_filtrados['Data da Mensagem' ]).dt.strftime('%d/%m/%Y')
-# dados_filtrados['Data da Liberação'] = pd.to_datetime(dados_filtrados['Data da Liberação']).dt.strftime('%d/%m/%Y')
+dados_filtrados['Data Consulta'] = dados_filtrados['Data Consulta'].dt.strftime('%d/%m/%Y')
+dados_filtrados['Data Disparo' ] = dados_filtrados['Data Disparo' ].dt.strftime('%d/%m/%Y')
+dados_filtrados['Data Corban'  ] = dados_filtrados['Data Corban'  ].dt.strftime('%d/%m/%Y')
 
-df_controle = dados_filtrados.copy()
-
-df_controle['Liberado'] = np.where(df_controle['Liberado'].empty, '0,00', df_controle['Liberado'])
-df_controle['Comissão'] = np.where(df_controle['Comissão'].empty, '0,00', df_controle['Comissão'])
-
-df_controle['Liberado'] = df_controle['Liberado'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False).astype(float)
-df_controle['Comissão'] = df_controle['Comissão'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False).astype(float)
-
-controle = df_controle.groupby(['mensagens', 'Data da Mensagem']).agg({'numero': 'count', 'Data da Liberação': 'count', 'Liberado': 'sum', 'Comissão': 'sum'}).reset_index()
-
-controle = controle.rename(columns={'mensagens': 'Campanhas', 'numero': 'leads', 'Data da Liberação': 'Pagos', 'Liberado': 'Valor de Produção', 'Comissão': 'Comissão Recebida'})
-
-custo_campanhas = custo_campanhas.rename(columns={'data': 'Data da Mensagem', 'nome': 'Campanhas', 'leads': 'Leads', 'valor': 'Investimento'})
-
-custo_campanhas['Data da Mensagem'] = pd.to_datetime(custo_campanhas['Data da Mensagem']).dt.strftime('%d/%m/%Y')
-
-controle = pd.merge(controle, custo_campanhas, on=['Data da Mensagem', 'Campanhas'], how='outer')
-
-controle = controle.groupby(['Campanhas']).sum().reset_index()
-
-controle = controle[['Campanhas', 'Leads', 'Pagos', 'Valor de Produção', 'Comissão Recebida', 'Investimento']]
-
-media = (
-    controle
-    .groupby('Campanhas', as_index=False)
-    .agg(
-        valor_total_produzido=('Valor de Produção', 'sum'),
-        valor_total_investido=('Investimento', 'sum'),
-        valor_total_comissao=('Comissão Recebida', 'sum'),
-        total_pago=('Pagos', 'sum'),
-        total_leads=('Leads', 'sum')
-    )
-)
-
-controle['Ticket Médio'] = (
-    media['valor_total_produzido'] / media['total_pago']
-)
-
-controle['CAC'] = (
-    controle['Investimento']
-    .div(controle['Pagos'])
-    .replace([np.inf, -np.inf], 0)
-    .fillna(0)
-)
-
-# mask_zero = (controle['Investimento'] == 0) & (controle['Comissão Recebida'] > 0)
-# mask_normal = controle['Investimento'] > 0
-
-controle['ROI'] = np.where(
-    controle['Investimento'] == 0,
-    1,
-    (media['valor_total_comissao'] - media['valor_total_investido']) /
-    media['valor_total_investido']
-)
-
-controle['ROI'] = np.where(controle['ROI'] >= 0, ['🟢 +' + formata_float(x) for x in controle['ROI']], ['🔴 ' + formata_float(x) for x in controle['ROI']])
+dados_csv = dados_filtrados[
+                    (dados_filtrados['Telefone'].notnull()) & 
+                    (dados_filtrados['Data Consulta'].notnull())
+                ].drop_duplicates(subset='Telefone')
+dados_csv['Telefone'] = '55' + dados_csv['Telefone'].astype(str)
+dados_csv = dados_csv[['Nome','Telefone']]
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
@@ -474,116 +278,87 @@ with st.container():
     with col_1a:
         st.image("image/logo_agnus.jpg", width=200)
     with col_2a:
-        st.title(":blue[Análise das Campanhas]")
-
-soma_leads = (
-    controle['Leads']
-    .astype(int)
-    .sum()
-)
-
-soma_investimento = (
-    controle['Investimento']
-    .astype(float)
-    .sum()
-)
-
-soma_pagos = (
-    controle['Pagos']
-    .astype(int)
-    .sum()
-)
-
-soma_liberado = (
-    controle['Valor de Produção']
-    .astype(float)
-    .sum()
-)
-
-soma_comissao = (
-    controle['Comissão Recebida']
-    .astype(float)
-    .sum()
-)
-
-soma_ticket = (
-    soma_liberado / soma_pagos
-)
-
-soma_ticket = 0.0 if pd.isna(soma_ticket) else soma_ticket
-
-if pd.isna(soma_pagos) or soma_pagos == 0:
-    soma_cac = 0.0
-else:
-    soma_cac = soma_investimento / soma_pagos
-
-if pd.isna(soma_investimento) or soma_investimento == 0:
-    soma_roi = 0.0
-else:
-    soma_roi = (soma_comissao - soma_investimento) / soma_investimento
-
-soma_roi = np.where(soma_roi >= 0, f"🟢 +{soma_roi:,.2f}".replace('.','|').replace(',','.').replace('|',','), f"🔴 {soma_roi:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
-controle['Valor de Produção'] = controle['Valor de Produção'].apply(formata_float)
-controle['Comissão Recebida'] = controle['Comissão Recebida'].apply(formata_float)
-controle['Ticket Médio'     ] = controle['Ticket Médio'     ].apply(formata_float)
-controle['Investimento'     ] = controle['Investimento'     ].apply(formata_float)
-controle['CAC'              ] = controle['CAC'              ].apply(formata_float)
-
+        st.title(":blue[Análise dos Clientes]")
 
 with st.container():
-    st.subheader(":blue[Controle de Tráfego]")
-    col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8 = st.columns((2, 2, 2, 2, 2, 2, 2, 2))
+    col_1a, col_1b, col_1c = st.columns((2, 2, 6))
     
     ##### ÁREA DOS CARDS #####
-    with col_1:
-        ##### CARD TOTAL LEADS #####
-        metric_card("Total Leads", f"{soma_leads}")
+    with col_1a:
+        
+        ##### CARD TOTAL DE CONSULTAS #####
+        tratamentos.metric_card("Consultas Realizadas", f"{format(int(len(dados_filtrados[(dados_filtrados['Data Consulta'].notna()) & (dados_filtrados['Data Consulta'].notnull())])), ',').replace(',', '.')}")
 
-    with col_2:
-        ##### CARD TOTAL INVESTIMENTO #####
-        metric_card("Total Investimento", f"R$ {soma_investimento:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
-    with col_3:
-        ##### CARD TOTAL PAGOS #####
-        metric_card("Total Pagos", f"{soma_pagos}")
-
-    with col_4:
-        ##### CARD TOTAL LIBERADO #####
-        metric_card("Total Liberado", f"R$ {soma_liberado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
-    with col_5:
-        ##### CARD TOTAL COMISSÃO #####
-        metric_card("Total Comissão", f"R$ {soma_comissao:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
-    with col_6:
-        ##### CARD TOTAL TICKET MÉDIO #####
-        metric_card("Total Ticket Médio", f"R$ {soma_ticket:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
-    with col_7:
-        ##### CARD TOTAL CAC #####
-        metric_card("Total CAC", f"R$ {soma_cac:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
-    with col_8:
-        ##### CARD TOTAL ROI #####
-        metric_card("Total ROI", f"{soma_roi}")
+    with col_1b:
+        ##### CARD TOTAL VISUALIZAÇÕES #####
+        tratamentos.metric_card("Visualizações na Tela", f"{format(int(len(dados_filtrados)), ',').replace(',', '.')}")
 
 
 ##### ÁREA DA TABELA #####
 with st.container():
-    st.dataframe(controle, width='stretch', height=500, hide_index=True)
-
-dados_filtrados = dados_filtrados[['numero','CPF','Nome','Data da Mensagem','Mensagem Inicial','Banco','Data da Liberação','Financiado','Liberado','Parcela','Prazo','Comissão']]
-
-dados_filtrados['Data da Liberação'] = (
-    pd.to_datetime(
-        dados_filtrados['Data da Liberação'],
-        errors='coerce'
-    )
-    .dt.strftime('%d/%m/%Y')
-)
-
-with st.container():
-    st.subheader(":blue[Controle de Interações]")
     st.dataframe(dados_filtrados, width='stretch', height=500, hide_index=True)
 
+with st.container():
+    col_1, col_2, col_3, col_4 = st.columns((1,1,1,7))
+    
+    with col_1:
+        if len(dados_csv) > 0:
+            visibilidade = False
+            valor_minimo = 1
+        else:
+            visibilidade = True   
+            valor_minimo = 0 
+        qtd = st.number_input("Linhas por arquivo", min_value=valor_minimo, value=len(dados_csv), step=100, disabled=visibilidade)
+    
+    with col_2:
+        ##### BOTÃO EXPORTAR TABELA #####
+        buffer_zip = io.BytesIO()
+        try:
+            partes = [dados_csv[i:i + qtd] for i in range(0, len(dados_csv), qtd)]
+        except:
+            partes = [dados_csv]
+
+
+        # Cria um ZIP em memória
+        with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for idx, parte in enumerate(partes, start=1):
+                csv_bytes = parte.to_csv(index=False, encoding="utf-8", sep=";").encode("utf-8")
+                zipf.writestr(f"parte_{idx}.csv", csv_bytes)
+
+        buffer_zip.seek(0)
+
+        st.write('')
+        st.write('')
+        
+        # Um único botão que gera e baixa
+        st.download_button(
+            label="⬇️ Baixar Digisac",
+            data=buffer_zip,
+            file_name="arquivos_divididos.zip",
+            mime="application/zip",
+            disabled=visibilidade
+        )
+
+    with col_3:
+        qtd_total = len(dados_filtrados)
+        if qtd_total > 0:
+            visibilidade_total = False
+        else:
+            visibilidade_total = True
+
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            dados_filtrados.to_excel(writer, index=False, sheet_name='Visualização')
+        buffer.seek(0)  # volta o ponteiro para o início
+
+
+        # --- Botão para download ---
+        st.write('')
+        st.write('')
+        st.download_button(
+            label="⬇️ Baixar Visualização",
+            data=buffer,
+            file_name="visualizacoes.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            disabled=visibilidade_total
+        )

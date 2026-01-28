@@ -9,9 +9,9 @@ def trata_df_final(df):
 
     renomear = {
                     'dataConsulta': 'Data Consulta',
-                    'cpf_aux5': 'CPF',
-                    'nome_aux3': 'Nome',
-                    'telefone_aux6': 'Telefone',
+                    'cpf_aux2': 'CPF',
+                    'nome_aux2': 'Nome',
+                    'telefone_aux3': 'Telefone',
                     'erros': 'Retorno Consulta',
                     'tabela': 'Tabelas',
                     'banco': 'Banco',

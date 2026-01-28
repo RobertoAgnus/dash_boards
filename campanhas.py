@@ -517,7 +517,9 @@ df_controle['Comissão'] = np.where(df_controle['Comissão'].empty, '0,00', df_c
 df_controle['Liberado'] = df_controle['Liberado'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False).astype(float)
 df_controle['Comissão'] = df_controle['Comissão'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False).astype(float)
 
-controle = df_controle.groupby(['mensagens', 'Data da Mensagem']).agg({'numero': 'count', 'Data da Liberação': 'count', 'Liberado': 'sum', 'Comissão': 'sum'}).reset_index()
+df_controle['valor_disparos'] = np.where(df_controle['mensagens'] == 'Disparos', 0.1, 0)
+
+controle = df_controle.groupby(['mensagens', 'Data da Mensagem']).agg({'numero': 'count', 'Data da Liberação': 'count', 'Liberado': 'sum', 'Comissão': 'sum', 'valor_disparos': 'sum'}).reset_index()
 
 controle = controle.rename(columns={'mensagens': 'Campanhas', 'numero': 'leads', 'Data da Liberação': 'Pagos', 'Liberado': 'Valor de Produção', 'Comissão': 'Comissão Recebida'})
 
@@ -527,11 +529,15 @@ custo_campanhas['Data da Mensagem'] = pd.to_datetime(custo_campanhas['Data da Me
 
 controle = pd.merge(controle, custo_campanhas, on=['Data da Mensagem', 'Campanhas'], how='outer')
 
+controle['Investimento'] = np.where(controle['Campanhas'] == 'Disparos', controle['valor_disparos'], controle['Investimento'])
+
 controle['Leads'] = np.where(controle['Leads'].isna(), controle['leads'], controle['Leads'])
 
 controle = controle.groupby(['Campanhas']).sum().reset_index()
 
 controle = controle[['Campanhas', 'Leads', 'Pagos', 'Valor de Produção', 'Comissão Recebida', 'Investimento']]
+
+controle
 
 media = (
     controle
@@ -768,12 +774,17 @@ df_long = df_grafico.melt(
 
 base = (
     alt.Chart(df_long)
+    .transform_calculate(
+        qtd_pagos="""
+        datum.Tipo === 'Leads' ? datum.Quantidade : null
+        """
+    )
     .transform_joinaggregate(
-        total='sum(Quantidade)',
+        producao='sum(qtd_pagos)',
         groupby=['Campanhas']
     )
     .transform_calculate(
-        percentual='datum.Quantidade / datum.total'
+        percentual="datum.Quantidade / datum.producao"
     )
 )
 
@@ -788,7 +799,7 @@ graf_leads = (
             "Campanhas",
             "Tipo",
             alt.Tooltip("Quantidade:Q", title="Quantidade", format=","),
-            alt.Tooltip("percentual:Q", title="Percentual", format=".1%")
+            alt.Tooltip("percentual:Q", title="Percentual", format=".2%")
         ]
     )
     .properties(
@@ -801,43 +812,66 @@ graf_leads = (
 
 df_fin = df_grafico.melt(
     id_vars="Campanhas",
-    value_vars=["valor_producao", "comissao_recebida"],
+    value_vars=["comissao_recebida", "valor_producao"],
     var_name="Tipo",
     value_name="Valor"
 )
 
 base = (
     alt.Chart(df_fin)
+    .transform_calculate(
+        valor_producao_calc="""
+        datum.Tipo === 'valor_producao' ? datum.Valor : null
+        """
+    )
     .transform_joinaggregate(
-        total='sum(Valor)',
+        producao='sum(valor_producao_calc)',
         groupby=['Campanhas']
     )
     .transform_calculate(
-        percentual='datum.Valor / datum.total'
+        percentual="datum.Valor / datum.producao"
     )
 )
 
 graf_fin = (
-    base
+    alt.Chart(df_fin)
+    .transform_joinaggregate(
+        producao='sum(Valor)',
+        groupby=['Campanhas']
+    )
+    .transform_calculate(
+        percentual="""
+        datum.Tipo === 'valor_producao'
+            ? 1
+            : datum.Valor / datum.producao
+        """,
+        ordem_stack="""
+        datum.Tipo === 'valor_producao' ? 0 : 1
+        """
+    )
     .mark_bar()
     .encode(
         x=alt.X("Valor:Q", stack=True, title="Valor (R$)"),
         y=alt.Y("Campanhas:N", sort="-x"),
-        color=alt.Color("Tipo:N"),
+        color=alt.Color("Tipo:N", 
+                        title="Tipo",
+                        sort=["valor_producao", "comissao_recebida"]
+        ),
+        # 🔥 CONTROLE REAL DO STACK
+        order=alt.Order("ordem_stack:Q", sort="ascending"),
         tooltip=[
             "Campanhas",
             "Tipo",
-            alt.Tooltip("Valor:Q", title="Valor", format=","),
-            alt.Tooltip("percentual:Q", title="Percentual", format=".1%")
+            alt.Tooltip("Valor:Q", format=",.2f"),
+            alt.Tooltip("percentual:Q", format=".1%")
         ]
     )
     .properties(
         height=350,
-        title="Produção x Comissão"
+        title="Produção x Comissão (% sobre Produção)"
     )
-    .add_params(campanha_select)
-    .transform_filter(campanha_select)
 )
+
 
 dashboard = alt.vconcat(
     graf_producao,

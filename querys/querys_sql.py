@@ -129,11 +129,14 @@ class QuerysSQL:
         return query
     
     def obtem_telefones_api_corban(self):
-        query = """select 
-                        concat(tc.ddd, tc.numero) as "telefoneAPI", 
-                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF"
-                    from unificados.telefones tc 
-                    left join unificados.clientes cc on tc.cliente_id = cc.cliente_id;"""
+        query = """
+                select 
+                    cc.cpf as cpf_telefone_corban, 
+                    tc.telefone as telefone_corban 
+                from unificados.telefones tc
+                right join unificados.clientes cc 
+                    on cc.cliente_id = tc.cliente_id_corban;
+                """
         return query
     
     ##### COMISSÕES CORBAN #####
@@ -201,17 +204,22 @@ class QuerysSQL:
         return query
     
     def get_corban(self):
-        query = f"""select 
-                        ac.status_api,
-                        cc.cliente_cpf as cpf_corban,
-                        cc.cliente_nome as nome_corban,
-                        concat(tc.ddd,tc.numero) as telefone_propostas,
-                        ac.data_atualizacao_api 
-                    from unificados.api ac
-                    left join unificados.contrato pc on ac.proposta_id = pc.proposta_id 
-                    left join unificados.clientes cc on pc.cliente_id = cc.cliente_id
-                    left join unificados.telefones tc on cc.cliente_id = tc.cliente_id
-                    where pc.produto_id = 13;"""
+        query = f"""
+                select 
+                    ac.status_api,
+                    cc.cpf as cpf_corban,
+                    cc.nome as nome_corban,
+                    tc.telefone as telefone_propostas,
+                    ac.data_atualizacao_api 
+                from unificados.api ac
+                left join unificados.contrato pc 
+                    on ac.proposta_id_corban = pc.proposta_id_corban 
+                left join unificados.clientes cc 
+                    on pc.cliente_id_corban = cc.cliente_id
+                left join unificados.telefones tc 
+                    on cc.cliente_id = tc.cliente_id_corban
+                where pc.produto_id = 13;
+                """
         return query
     
     def get_telefones_corban(self):
@@ -409,39 +417,6 @@ class QuerysSQL:
                         where m.campo_personalizado = 'CPF_aprovado'
                             and m.dt_mensagem >= '2026-01-05 00:00:00.000';
                         """
-        # query_corban = f"""
-        #                 select
-        #                     c.nome,
-        #                     LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
-        #                     CASE
-        #                         WHEN LENGTH(t.telefone) < 11
-        #                         THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
-        #                         ELSE t.telefone
-        #                     END AS numero_corban,
-        #                     dt.pagamento as liberacao,
-        #                     ct.valor_financiado,
-        #                     ct.valor_liberado,
-        #                     ct.valor_parcela,
-        #                     ct.prazo,
-        #                     ct.banco_nome as nome_banco,
-        #                     cc.valor as valor_comissao,
-        #                     ct.tabela_id
-        #                 from unificados.clientes c 
-        #                 left join unificados.telefones t 
-        #                     on c.id = t.cliente_id
-        #                 left join unificados.contrato ct
-        #                     on c.id = ct.cliente_id 
-        #                 left join unificados.propostas p
-        #                     on ct.proposta_id_corban = cast(p.proposta_id as varchar)
-        #                 left join unificados.api a
-        #                     on ct.proposta_id_corban = a.proposta_id_corban
-        #                 left join unificados.comissoes cc
-        #                     on ct.proposta_id_corban = cc.proposta_id_corban
-        #                 left join unificados.datas dt
-        #                     on ct.proposta_id_corban = dt.proposta_id_corban
-        #                 where (a.status_api in ('APROVADA')
-        #                     or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
-        #                 """
         query_corban = """
                         select
                             c.nome,
@@ -502,7 +477,6 @@ class QuerysSQL:
                         on aa."clienteId" = c.id;
                 """
         return query_digisac, query_corban, query_crm
-        # return query
         
     def get_telefones(self):
         query_crm = """
