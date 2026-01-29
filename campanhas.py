@@ -49,8 +49,8 @@ def metric_card(label, value):
             margin-bottom: 15px;
             height: auto;
         ">
-            <p style="color: white; font-weight: bold; font-size: clamp(0.5rem, 1.2vw, 0.9rem)">{label}</p>
-            <h3 style="color: white; font-size: clamp(0.5rem, 4vw, 1.5rem)">{value}</h3>
+            <p style="color: white; font-weight: bold; font-size: 1vw">{label}</p>
+            <h3 style="color: white; font-size: 1.5vw">{value}</h3>
         </div>
         """,
         unsafe_allow_html=True
@@ -638,7 +638,8 @@ controle['CAC'              ] = controle['CAC'              ].apply(regras.forma
 
 with st.container():
     st.subheader(":blue[Controle de Tráfego]")
-    col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8 = st.columns((2, 2, 2, 2, 2, 2, 2, 2))
+    col_1, col_2, col_3, col_4 = st.columns((4, 4, 4, 4))
+    # col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8 = st.columns((4, 4, 4, 4, 4, 4, 4, 4))
     
     ##### ÁREA DOS CARDS #####
     with col_1:
@@ -646,20 +647,23 @@ with st.container():
         metric_card("Total Leads", f"{soma_leads}")
 
     with col_2:
-        ##### CARD TOTAL INVESTIMENTO #####
-        metric_card("Total Investimento", f"R$ {soma_investimento:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
-    with col_3:
         ##### CARD TOTAL PAGOS #####
         metric_card("Total Pagos", f"{soma_pagos}")
 
-    with col_4:
+    with col_3:
         ##### CARD TOTAL LIBERADO #####
         metric_card("Total Liberado", f"R$ {soma_liberado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
 
-    with col_5:
+    with col_4:
         ##### CARD TOTAL COMISSÃO #####
         metric_card("Total Comissão", f"R$ {soma_comissao:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+
+with st.container():
+    col_5, col_6, col_7, col_8 = st.columns((4, 4, 4, 4))
+
+    with col_5:
+        ##### CARD TOTAL INVESTIMENTO #####
+        metric_card("Total Investimento", f"R$ {soma_investimento:,.2f}".replace('.','|').replace(',','.').replace('|',','))
 
     with col_6:
         ##### CARD TOTAL TICKET MÉDIO #####
