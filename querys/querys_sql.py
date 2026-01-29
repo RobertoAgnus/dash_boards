@@ -193,13 +193,24 @@ class QuerysSQL:
 
 
     def get_digisac(self):
-        query = f"""select
-                        cpf as cpf_digisac,
-                        nome_interno,
-                        telefone as telefone_digisac,
-                        data,
-                        falha
-                    from "extracoes".digisac
+        query = f"""select distinct
+                        case 
+                            when d.cpf = '' then c.cpf
+                            when c.cpf is null then d.cpf
+                            else c.cpf
+                        end as cpf_digisac,
+                        case 
+                            when d.nome_interno = '' then c.nome_interno
+                            when c.nome_interno = '' then d.nome_interno
+                            when c.nome_interno is null then d.nome_interno
+                            else c.nome_interno 
+                        end as nome_interno,	
+                        d.telefone as telefone_digisac,
+                        d.data,
+                        d.falha
+                    from extracoes.digisac d 
+                    full outer join public.clientes c 
+                        on d.telefone = c.telefone
                     where data >= '2025-11-01';"""
         return query
     

@@ -5,10 +5,13 @@ import pandas as pd
 import altair as alt
 import streamlit as st
 from datetime import date
-from querys.connect import Conexao
+# from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from regras.formatadores import Regras
 from regras.tratamentos import Tratamentos
+
+from conexoes.database import Conexao
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -59,7 +62,7 @@ def metric_card(label, value):
 
 
 ##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao()
+conectar = Conexao('streamlit')
 
 conectar.conectar_postgres_aws()
 conectar.conectar_postgres()
@@ -536,8 +539,6 @@ controle['Leads'] = np.where(controle['Leads'].isna(), controle['leads'], contro
 controle = controle.groupby(['Campanhas']).sum().reset_index()
 
 controle = controle[['Campanhas', 'Leads', 'Pagos', 'Valor de Produção', 'Comissão Recebida', 'Investimento']]
-
-controle
 
 media = (
     controle
