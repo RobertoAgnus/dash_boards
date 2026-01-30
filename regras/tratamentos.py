@@ -23,10 +23,13 @@ class Tratamentos:
     def mapeia_mensagens(self, mensagem):
         if '[' in str(mensagem):
             resultado = re.search(r'\[[^\]]+\]', mensagem)
-
-            if (len(resultado.group()) < 10):
-                return resultado.group() if resultado else None
-            else:
+            
+            try:
+                if (len(resultado.group()) < 10):
+                    return resultado.group() if resultado else None
+                else:
+                    return "Orgânico"
+            except AttributeError:
                 return "Orgânico"
             
         elif '(' in str(mensagem):
