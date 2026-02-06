@@ -551,6 +551,51 @@ class QuerysSQL:
                     and t.percentual_valor_liberado > 0;
                 """
         return query
+    
+    ##### DISPAROS DIGISAC #####
+
+    def get_clientes_digisac(self):
+        query = """
+                select
+                    c.name,
+                    c.internal_name,
+                    c.number
+                from digisac.clientes c;
+                """
+        return query
+    
+    def get_tickets_gigisac(self):
+        query = """
+                select
+                    tk.id,
+                    tk.number,
+                    tk.dt_message
+                from digisac.tickets tk;
+                """
+        return query
+    
+    def get_tags_digisac(self):
+        query = """
+                select
+                    tg.ticket_id,
+                    tg.label
+                from digisac.tags tg;
+                """
+        return query
+    
+    def get_disparados_digisac(self):
+        query = """
+                select
+                    *
+                from digisac.disparados d;
+                """
+        return query
+    
+    def insert_disparos(self):
+        query = """
+
+                """
+        return query
 
     #####################################################################
     def get_campanhas_teste(self):

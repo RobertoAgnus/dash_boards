@@ -91,15 +91,16 @@ def navegacao():
     page_4        = st.Page("base_fgts.py"          , title="Base FGTS -> CLT"       )
     page_5        = st.Page("comissoes_corban.py"   , title="Comissões Corban"       )
     page_6        = st.Page("campanhas.py"          , title="Campanhas Publicitárias")
+    page_7        = st.Page("disparos_digisac.py"   , title="Lista DIGISAC"          )
     page_master   = st.Page("gerenciar_usuario.py"  , title="Gerenciar Usuário"      )
     page_user     = st.Page("alterar_senha.py"      , title="Alterar Senha"          )
-    teste         = st.Page("teste.py"              , title="TESTE"                  )
 
     # Nav do usuário master
     if st.session_state.master:
         pg = st.navigation([
             main_page,
             page_6,
+            page_7,
             page_master,
         ])
     else:
