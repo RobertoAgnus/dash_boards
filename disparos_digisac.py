@@ -214,48 +214,48 @@ with st.sidebar:
                 dados_filtrados['dt_message'].isna()
             ]
 
-    # ##### FILTRO DE INTERVALO DE DATA DISPAROS #####
-    # dados_filtrados['dt_disparo'] = (
-    #     pd.to_datetime(dados_filtrados['dt_disparo'], errors='coerce', utc=True)
-    #     .dt.tz_localize(None)
-    #     .dt.date
-    # )
+    ##### FILTRO DE INTERVALO DE DATA DISPAROS #####
+    dados_filtrados['dt_disparo'] = (
+        pd.to_datetime(dados_filtrados['dt_disparo'], errors='coerce', utc=True)
+        .dt.tz_localize(None)
+        .dt.date
+    )
 
-    # menor_data_disparo, maior_data_disparo = tratamentos.get_datas(df, 'dt_disparo')
-    # if "filtro_periodo_disparo" not in st.session_state:
-    #     st.session_state.filtro_periodo_disparo = (menor_data_disparo, date.today())
+    menor_data_disparo, maior_data_disparo = tratamentos.get_datas(df, 'dt_disparo')
+    if "filtro_periodo_disparo" not in st.session_state:
+        st.session_state.filtro_periodo_disparo = (menor_data_disparo, date.today())
 
-    # if not pd.isnull(menor_data_disparo):
-    #     intervalo_disparo = st.date_input(
-    #         "Data do Disparo:",
-    #         value=(),
-    #         key="filtro_periodo_disparo"
-    #     )
+    if not pd.isnull(menor_data_disparo):
+        intervalo_disparo = st.date_input(
+            "Data do Disparo:",
+            value=(),
+            key="filtro_periodo_disparo"
+        )
         
-    #     # Se o usuário selecionou apenas uma data, define fim como hoje
-    #     if len(intervalo_disparo) == 2:
-    #         inicio_disparo, fim_disparo = intervalo_disparo
+        # Se o usuário selecionou apenas uma data, define fim como hoje
+        if len(intervalo_disparo) == 2:
+            inicio_disparo, fim_disparo = intervalo_disparo
             
-    #     elif len(intervalo_disparo) == 1:
-    #         # Usuário selecionou apenas uma data
-    #         inicio_disparo = intervalo_disparo[0]
-    #         fim_disparo = date.today()
+        elif len(intervalo_disparo) == 1:
+            # Usuário selecionou apenas uma data
+            inicio_disparo = intervalo_disparo[0]
+            fim_disparo = date.today()
             
-    #     # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
-    #     try:
+        # Se o usuário não alterou o intervalo, mantém todas as linhas (inclusive NaT)
+        try:
             
-    #         if (inicio_disparo, fim_disparo) != (menor_data_disparo, maior_data_disparo):
-    #             # Filtra as linhas de consulta dentro do intervalo
-    #             dados_filtrados = dados_filtrados[
-    #                 (dados_filtrados['dt_disparo'] >= inicio_disparo) &
-    #                 (dados_filtrados['dt_disparo'] <= fim_disparo)
-    #             ]
+            if (inicio_disparo, fim_disparo) != (menor_data_disparo, maior_data_disparo):
+                # Filtra as linhas de consulta dentro do intervalo
+                dados_filtrados = dados_filtrados[
+                    (dados_filtrados['dt_disparo'] >= inicio_disparo) &
+                    (dados_filtrados['dt_disparo'] <= fim_disparo)
+                ]
                 
-    #     except:
+        except:
             
-    #         dados_filtrados = dados_filtrados[
-    #             dados_filtrados['dt_disparo'].isna()
-    #         ]
+            dados_filtrados = dados_filtrados[
+                dados_filtrados['dt_disparo'].isna()
+            ]
 
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):

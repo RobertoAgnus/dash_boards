@@ -15,7 +15,7 @@ class Disparados(Base):
     dt_disparo   = Column(DateTime())
     tag          = Column(String)
 
-conexao = Conexao()
+conexao = Conexao('streamlit')
 
 engine = conexao.engine_postgres
 

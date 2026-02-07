@@ -98,7 +98,7 @@ def navegacao():
     # Nav do usuário master
     if st.session_state.master:
         pg = st.navigation([
-            main_page,
+            # main_page,
             page_6,
             page_7,
             page_master,
@@ -106,6 +106,7 @@ def navegacao():
     else:
         pg = st.navigation([
             # main_page,
+            page_7,
             page_user
         ])
 
