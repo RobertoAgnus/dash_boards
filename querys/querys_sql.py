@@ -567,7 +567,7 @@ class QuerysSQL:
     def get_tickets_gigisac(self):
         query = """
                 select
-                    tk.id,
+                    tk.id as ticket_id,
                     tk.number,
                     tk.dt_message
                 from digisac.tickets tk;

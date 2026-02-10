@@ -74,18 +74,21 @@ conn_postgres = conectar.obter_conexao_postgres()
 consulta = QuerysSQL()
 
 clientes = consulta.get_clientes_digisac()
-tickets = consulta.get_tickets_gigisac()
-tags = consulta.get_tags_digisac()
+tickets  = consulta.get_tickets_gigisac()
+tags     = consulta.get_tags_digisac()
 disparos = consulta.get_disparados_digisac()
+falhas   = consulta.get_falhas_digisac()
 
 df_clientes = pd.read_sql_query(clientes, conn_postgres)
-df_tickets = pd.read_sql_query(tickets, conn_postgres)
-df_tags = pd.read_sql_query(tags, conn_postgres)
+df_tickets  = pd.read_sql_query(tickets , conn_postgres)
+df_tags     = pd.read_sql_query(tags    , conn_postgres)
 df_disparos = pd.read_sql_query(disparos, conn_postgres)
+df_falhas   = pd.read_sql_query(falhas  , conn_postgres)
 
-df_01 = pd.merge(df_clientes, df_tickets, on='number', how='left')
-df_02 = pd.merge(df_01, df_tags, left_on='id', right_on='ticket_id', how='left')
-df = pd.merge(df_02, df_disparos, on='number', how='left')
+df_01 = pd.merge(df_clientes, df_tickets , on='number'   , how='left')
+df_02 = pd.merge(df_01      , df_tags    , on='ticket_id', how='left')
+df_03 = pd.merge(df_02      , df_disparos, on='number'   , how='left')
+df    = pd.merge(df_03      , df_falhas  , on='number'   , how='left')
 
 # =============== DATAS =================
 # Data Atual
@@ -149,6 +152,26 @@ with st.sidebar:
         dados_filtrados['label'] = dados_filtrados['label'].astype(str).str.strip()
         filtros = [str(x).strip() for x in selectbox_tag]
         dados_filtrados = dados_filtrados[dados_filtrados['label'].isin(filtros)]
+
+    ##### FILTRO DE FALHAS #####
+    consulta_falha = df['falha'].dropna().unique().tolist()
+    consulta_falha = [str(x).strip() for x in consulta_falha if x is not None]
+    consulta_falha = sorted(consulta_falha)
+    
+    if "filtro_falha" not in st.session_state:
+        st.session_state.filtro_falha = []
+
+    selectbox_falha = st.multiselect(
+        'Selecione a falha',
+        consulta_falha,
+        key="filtro_falha",
+        placeholder='Selecionar'
+    )
+    
+    if len(selectbox_falha) != 0:
+        dados_filtrados['falha'] = dados_filtrados['falha'].astype(str).str.strip()
+        filtros = [str(x).strip() for x in selectbox_falha]
+        dados_filtrados = dados_filtrados[dados_filtrados['falha'].isin(filtros)]
 
     ##### FILTRO DE DISPAROS #####
     qtd_disparos = df['qtd_disparos'].dropna().unique().tolist()
@@ -269,11 +292,21 @@ with st.sidebar:
         st.rerun()
 
 
-dados_filtrados = dados_filtrados[['name', 'number', 'dt_message', 'label', 'qtd_disparos', 'dt_disparo']]
+dados_filtrados = dados_filtrados[['name', 'number', 'dt_message', 'label', 'falha', 'qtd_disparos', 'dt_disparo']]
 
 df_exibir = dados_filtrados.copy()
 
-df_exibir = df_exibir.rename(columns={'name': 'Nome', 'number': 'Telefone', 'dt_message': 'Data da Mensagem', 'label': 'TAG', 'qtd_disparos': 'Disparos', 'dt_disparo': 'Último Disparo'})
+df_exibir = df_exibir.rename(
+    columns={
+        'name'        : 'Nome'            , 
+        'number'      : 'Telefone'        , 
+        'dt_message'  : 'Data da Mensagem', 
+        'label'       : 'TAG'             , 
+        'falha'       : 'Falha'           ,
+        'qtd_disparos': 'Disparos'        , 
+        'dt_disparo'  : 'Último Disparo'
+    }
+)
 
 dados_csv = dados_filtrados[['name', 'number']]
 dados_csv = dados_csv.rename(columns={'name': 'Nome', 'number': 'Telefone'})
