@@ -590,6 +590,15 @@ class QuerysSQL:
                 from digisac.disparados d;
                 """
         return query
+
+    def get_falhas_digisac(self):
+        query = """
+                select
+                    f.numero as number,
+                    f.falha
+                from digisac.falhas f;
+                """
+        return query
     
     def insert_disparos(self):
         query = """

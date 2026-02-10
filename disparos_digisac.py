@@ -179,9 +179,11 @@ with st.sidebar:
     )
 
     menor_data_mensagem, maior_data_mensagem = tratamentos.get_datas(df, 'dt_message')
+    menor_data_mensagem = pd.to_datetime(menor_data_mensagem).date()
+
     if "filtro_periodo_mensagem" not in st.session_state:
         st.session_state.filtro_periodo_mensagem = (menor_data_mensagem, date.today())
-
+    
     if not pd.isnull(menor_data_mensagem):
         intervalo_mensagem = st.date_input(
             "Data da TAG:",
@@ -220,11 +222,13 @@ with st.sidebar:
         .dt.tz_localize(None)
         .dt.date
     )
-
+    
     menor_data_disparo, maior_data_disparo = tratamentos.get_datas(df, 'dt_disparo')
+    menor_data_disparo = pd.to_datetime(menor_data_disparo).date()
+
     if "filtro_periodo_disparo" not in st.session_state:
         st.session_state.filtro_periodo_disparo = (menor_data_disparo, date.today())
-
+    
     if not pd.isnull(menor_data_disparo):
         intervalo_disparo = st.date_input(
             "Data do Disparo:",
