@@ -68,8 +68,10 @@ def metric_card(label, value):
 conectar = Conexao('streamlit')
 
 conectar.conectar_postgres()
+conectar.conectar_postgres_aws()
 
-conn_postgres = conectar.obter_conexao_postgres()
+conn_postgres     = conectar.obter_conexao_postgres()
+conn_postgres_aws = conectar.obter_conexao_postgres_aws()
 
 consulta = QuerysSQL()
 
@@ -81,13 +83,13 @@ falhas   = consulta.get_falhas_digisac()
 corban   = consulta.get_corban()
 crm      = consulta.get_crm()
 
-df_clientes = pd.read_sql_query(clientes, conn_postgres)
-df_tickets  = pd.read_sql_query(tickets , conn_postgres)
-df_tags     = pd.read_sql_query(tags    , conn_postgres)
-df_disparos = pd.read_sql_query(disparos, conn_postgres)
-df_falhas   = pd.read_sql_query(falhas  , conn_postgres)
-df_corban   = pd.read_sql_query(corban  , conn_postgres)
-df_crm      = pd.read_sql_query(crm     , conn_postgres)
+df_clientes = pd.read_sql_query(clientes, conn_postgres    )
+df_tickets  = pd.read_sql_query(tickets , conn_postgres    )
+df_tags     = pd.read_sql_query(tags    , conn_postgres    )
+df_disparos = pd.read_sql_query(disparos, conn_postgres    )
+df_falhas   = pd.read_sql_query(falhas  , conn_postgres    )
+df_corban   = pd.read_sql_query(corban  , conn_postgres    )
+df_crm      = pd.read_sql_query(crm     , conn_postgres_aws)
 
 df_01 = pd.merge(df_clientes, df_tickets , on='number'   , how='left')
 df_02 = pd.merge(df_01      , df_tags    , on='ticket_id', how='left')
