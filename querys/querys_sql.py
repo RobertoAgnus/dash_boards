@@ -600,6 +600,48 @@ class QuerysSQL:
                 """
         return query
     
+    def get_corban(self):
+        query = """
+                select distinct
+                    t.telefone as number,
+                    dt.pagamento as pagamento_corban
+                from unificados.propostas p
+                left join unificados.contrato ct
+                    on p.proposta_id = cast(ct.proposta_id_corban  as integer)
+                left join unificados.api a
+                    on ct.proposta_id_corban = a.proposta_id_corban
+                left join unificados.datas dt
+                    on ct.proposta_id_corban = dt.proposta_id_corban
+                left join unificados.clientes c
+                    on ct.cliente_id_corban = c.cliente_id
+                left join unificados.telefones t 
+                    on c.cliente_id = t.cliente_id_corban 
+                where (a.status_api in ('APROVADA')
+                    or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'))
+                    and dt.pagamento is not null;
+                """
+        return query
+    
+    def get_crm(self):
+        query = """
+                select distinct
+                    aa.telefone as number,
+                    p."dataPagamento" as pagamento_crm
+                from public."AutoAtendimento" aa 
+                left join public."Consultas" cs 
+                    on aa."simulacaoFgtsId" = cs.id or aa."simulacaoCltId" = cs.id
+                left join public."Propostas" p 
+                    on cs.id = p."consultaId" 
+                left join public."Tabelas" t 
+                    on cs."tabelaId" = t.id 
+                left join public."Bancos" b 
+                    on cs."bancoId" = b.id
+                left join public."Clientes" c 
+                    on aa."clienteId" = c.id 
+                where p."dataPagamento" is not null ;
+                """
+        return query
+    
     def insert_disparos(self):
         query = """
 
