@@ -23,7 +23,7 @@ class Tratamentos:
     def mapeia_mensagens(self, mensagem):
         if '[' in str(mensagem):
             resultado = re.search(r'\[[^\]]+\]', mensagem)
-            
+
             try:
                 if (len(resultado.group()) < 10):
                     return resultado.group() if resultado else None
@@ -35,12 +35,15 @@ class Tratamentos:
         elif '(' in str(mensagem):
             resultado = re.search(r'\([^\)]+\)', mensagem)
             
-            if (len(resultado.group()) < 9) and (len(resultado.group()) > 3):
-                if re.search(r"[^\(0-9R$\)]", resultado.group()):
-                    return resultado.group() if resultado else None
+            try:
+                if (len(resultado.group()) < 9) and (len(resultado.group()) > 3):
+                    if re.search(r"[^\(0-9R$\)]", resultado.group()):
+                        return resultado.group() if resultado else None
+                    else:
+                        return "Orgânico"
                 else:
                     return "Orgânico"
-            else:
+            except AttributeError:
                 return "Orgânico"
         elif ("Olá! Gostaria" in str(mensagem)) |\
             ("Olá! Quero" in str(mensagem)) |\

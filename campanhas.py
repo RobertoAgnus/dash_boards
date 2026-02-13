@@ -86,7 +86,6 @@ df_fones_crm    = pd.read_sql_query(fones_crm, conn_postgres_aws)
 df_comissoes    = pd.read_sql_query(comissoes_corban, conn_postgres)
 df_tabelas      = pd.read_sql_query(tabelas_comissoes, conn_postgres)
 
-
 # ============= TRATAMENTOS =============
 df_corban = pd.merge(df_corban, df_fones_crm, on='cpf_corban', how='left')
 df_corban = pd.merge(df_corban, df_comissoes, on='proposta_id', how='left')

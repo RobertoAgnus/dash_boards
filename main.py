@@ -92,6 +92,7 @@ def navegacao():
     page_5        = st.Page("comissoes_corban.py"   , title="Comissões Corban"       )
     page_6        = st.Page("campanhas.py"          , title="Campanhas Publicitárias")
     page_7        = st.Page("disparos_digisac.py"   , title="Lista DIGISAC"          )
+    page_8        = st.Page("acompanhamento.py"     , title="Acompanhamento"         )
     page_master   = st.Page("gerenciar_usuario.py"  , title="Gerenciar Usuário"      )
     page_user     = st.Page("alterar_senha.py"      , title="Alterar Senha"          )
 
@@ -101,6 +102,7 @@ def navegacao():
             # main_page,
             page_6,
             page_7,
+            page_8,
             page_master,
         ])
     else:

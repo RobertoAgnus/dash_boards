@@ -647,6 +647,58 @@ class QuerysSQL:
 
                 """
         return query
+    
+    ##### ACOMPANHAMENTO #####
+    def get_acompanhamento(self):
+        query_digisac = """
+                        select distinct
+                            tk.number as telefone,
+                            tk.dt_message,
+                            tg.label as situacao,
+                            f.falha
+                        from digisac.tickets tk 
+                        left join digisac.tags tg
+                            on tk.id = tg.ticket_id
+                        left join digisac.falhas f 
+                            on f.numero = tk.number
+                        where tg.label not like '%facta';
+                        """
+        query_corban = """
+                        select distinct
+                            t.telefone ,
+                            dt.inclusao as dt_inclusao,
+                            dt.pagamento as dt_pagamento,
+                            ct.valor_liberado ,
+                            a.status_api as status,
+                            p.status_nome as substatus
+                        from unificados.contrato ct 
+                        left join unificados.api a 
+                            on ct.proposta_id_corban = a.proposta_id_corban 
+                        left join unificados.datas dt
+                            on ct.proposta_id_corban = dt.proposta_id_corban 
+                        left join unificados.telefones t  
+                            on ct.cliente_id_corban = t.cliente_id_corban 
+                        left join unificados.propostas p 
+                            on ct.proposta_id_corban = cast(p.proposta_id as varchar);
+                        """
+        query_crm = """
+                    select distinct
+                        t.numero as telefone,
+                        p."dataInclusao" as dt_inclusao,
+                        p."dataPagamento" as dt_pagamento,
+                        p."valorLiberado" as valor_liberado,
+                        sb.nome as status,
+                        NULL as substatus
+                    from public."Propostas" p 
+                    left join public."Consultas" cs 
+                        on p."consultaId" = cs.id 
+                    left join public."StatusBanco" sb 
+                        on p."statusBancoId" = sb.id
+                    left join public."Telefones" t  
+                        on p."clienteId" = t."clienteId" 
+                    where cs."usuarioId" = '29';
+                    """
+        return query_digisac, query_corban, query_crm
 
     #####################################################################
     def get_campanhas_teste(self):
