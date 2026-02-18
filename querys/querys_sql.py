@@ -653,24 +653,25 @@ class QuerysSQL:
         query_digisac = """
                         select distinct
                             tk.number as telefone,
-                            tk.dt_message,
-                            tg.label as situacao,
-                            f.falha
+                            cast(tk.dt_message as timestamp),
+                            dp.name as departamento
                         from digisac.tickets tk 
                         left join digisac.tags tg
                             on tk.id = tg.ticket_id
                         left join digisac.falhas f 
                             on f.numero = tk.number
+                        left join digisac.departamentos dp
+                            on tk."departmentId" = dp.id
                         where tg.label not like '%facta';
                         """
         query_corban = """
                         select distinct
-                            t.telefone ,
-                            dt.inclusao as dt_inclusao,
-                            dt.pagamento as dt_pagamento,
-                            ct.valor_liberado ,
-                            a.status_api as status,
-                            p.status_nome as substatus
+                            t.telefone,
+                            dt.inclusao as dt_inclusao_corban,
+                            dt.pagamento as dt_pagamento_corban,
+                            ct.valor_liberado as valor_liberado_corban,
+                            a.status_api as status_corban,
+                            p.status_nome as substatus_corban
                         from unificados.contrato ct 
                         left join unificados.api a 
                             on ct.proposta_id_corban = a.proposta_id_corban 
@@ -684,11 +685,11 @@ class QuerysSQL:
         query_crm = """
                     select distinct
                         t.numero as telefone,
-                        p."dataInclusao" as dt_inclusao,
-                        p."dataPagamento" as dt_pagamento,
-                        p."valorLiberado" as valor_liberado,
-                        sb.nome as status,
-                        NULL as substatus
+                        p."dataInclusao" as dt_inclusao_crm,
+                        p."dataPagamento" as dt_pagamento_crm,
+                        p."valorLiberado" as valor_liberado_crm,
+                        sb.nome as status_crm,
+                        NULL as substatus_crm
                     from public."Propostas" p 
                     left join public."Consultas" cs 
                         on p."consultaId" = cs.id 
