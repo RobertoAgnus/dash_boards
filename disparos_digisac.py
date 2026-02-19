@@ -5,7 +5,7 @@ import pandas as pd
 import altair as alt
 import streamlit as st
 from datetime import date
-# from querys.connect import Conexao
+from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from querys.gravar_bd import GravarBandoDados
 from regras.formatadores import Regras
@@ -14,7 +14,7 @@ from io import BytesIO
 import io
 import zipfile
 
-from conexoes.database import Conexao
+# from conexoes.database import Conexao
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -65,7 +65,7 @@ def metric_card(label, value):
 # =======================================
 
 ##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao('streamlit')
+conectar = Conexao()
 
 conectar.conectar_postgres()
 conectar.conectar_postgres_aws()

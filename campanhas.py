@@ -5,12 +5,12 @@ import pandas as pd
 import altair as alt
 import streamlit as st
 from datetime import date
-# from querys.connect import Conexao
+from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from regras.formatadores import Regras
 from regras.tratamentos import Tratamentos
 
-from conexoes.database import Conexao
+# from conexoes.database import Conexao
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -62,7 +62,7 @@ def metric_card(label, value):
 
 
 ##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao('streamlit')
+conectar = Conexao()
 
 conectar.conectar_postgres_aws()
 conectar.conectar_postgres()
