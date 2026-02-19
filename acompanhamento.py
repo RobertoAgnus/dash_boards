@@ -72,9 +72,9 @@ consulta = QuerysSQL()
 
 digisac, corban, crm = consulta.get_acompanhamento()
 
-df_digisac = pd.read_sql(digisac, conn_postgres)
-df_corban  = pd.read_sql(corban, conn_postgres)
-df_crm     = pd.read_sql(crm, conn_postgres_aws)
+df_digisac = pd.read_sql_query(digisac, conn_postgres)
+df_corban  = pd.read_sql_query(corban, conn_postgres)
+df_crm     = pd.read_sql_query(crm, conn_postgres_aws)
 
 # ============= TRATAMENTOS =============
 df_01 = pd.merge(df_digisac, df_corban, on='telefone', how='left')
