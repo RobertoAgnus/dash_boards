@@ -47,6 +47,7 @@ def metric_card(label, value):
             text-align: center;
             margin-bottom: 15px;
             height: auto;
+            weight: auto;
         ">
             <p style="color: white; font-weight: bold; font-size: 1vw">{label}</p>
             <h3 style="color: white; font-size: 1.5vw">{value}</h3>
@@ -103,7 +104,86 @@ df['dt_message'         ] = df['dt_message'         ].dt.to_pydatetime()
 # ==========================================================================
 # ==========================================================================
 
-df
+# ==========================================================================
+# ==================== TRATAMENTO DATAS MAIS PROVÁVEIS =====================
+# ==========================================================================
+
+mask_corban = df["dt_message"].gt(df["dt_inclusao_corban"])
+mask_crm    = df["dt_message"].gt(df["dt_inclusao_crm"])
+
+# ---- CORBAN ----
+cols_corban_nat = ["dt_inclusao_corban", "dt_pagamento_corban"]
+cols_corban_none = ["valor_liberado_corban", "status_corban", "substatus_corban"]
+
+df.loc[mask_corban, cols_corban_nat] = pd.NaT
+df.loc[mask_corban, cols_corban_none] = None
+
+# ---- CRM ----
+cols_crm_nat = ["dt_inclusao_crm", "dt_pagamento_crm"]
+cols_crm_none = ["valor_liberado_crm", "status_crm", "substatus_crm"]
+
+df.loc[mask_crm, cols_crm_nat] = pd.NaT
+df.loc[mask_crm, cols_crm_none] = None
+
+df = df.drop_duplicates()
+
+# # Garantindo pagamentos mais prováveis para data da mensagem
+# cols_msg = ['cpf', 'numero', 'dataPagamento', 'valorLiberado']
+# # cols_ctt = ['cpf_corban', 'numero_corban', 'liberacao']
+
+# df_valid = df[
+#     df['createdAt'].notna() &
+#     df['dataPagamento'].notna() &
+#     (df['createdAt'] <= df['dataPagamento'])
+# ].copy()
+
+# df_valid['delta'] = (
+#     df_valid['dataPagamento'] - df_valid['createdAt']
+# ).dt.total_seconds()
+
+# # escolhe o contrato mais próximo para cada mensagem
+# idx_msg = (
+#     df_valid
+#     .sort_values('delta', ascending=True)
+#     .groupby(cols_msg, as_index=False)
+#     .head(1)
+#     .index
+# )
+
+# df_match = df_valid.loc[idx_msg].drop(columns='delta')
+
+# contratos_usados = df_match['createdAt'].unique()
+
+# df_contrato_orfao = df[
+#     df['dataPagamento'].notna() &
+#     ~df['createdAt'].isin(contratos_usados)
+# ].copy()
+
+# # zera colunas do sistema X
+# for col in ['nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao', 'codigo']:
+#     if col in df_contrato_orfao:
+#         df_contrato_orfao[col] = None
+
+# df_tratado = pd.concat(
+#     [df_match, df_contrato_orfao],
+#     ignore_index=True
+# )
+
+# mensagens_usadas = df_tratado['createdAt'].unique()
+
+# df_msg_orfao = df[
+#     df['createdAt'].notna() &
+#     ~df['createdAt'].isin(mensagens_usadas)
+# ].copy()
+
+# df_crm_corban = pd.concat(
+#     [df_msg_orfao, df_tratado],
+#     ignore_index=True
+# )
+
+
+# ==========================================================================
+# ==========================================================================
 
 dados_filtrados = df.copy()
 
@@ -271,37 +351,43 @@ with st.sidebar:
                 del st.session_state[key]
         st.rerun()
 
-dados_filtrados
-
+leads = dados_filtrados.drop_duplicates(subset=['telefone']).copy()
 total_leads = (
-    len(dados_filtrados["dt_message"])
+    len(leads["telefone"])
 )
 
 df_departamento = dados_filtrados[['telefone', 'departamento']]
-total_finalizacao = (
+df_departamento = df_departamento.drop_duplicates()
+total_departamento = (
     df_departamento.groupby(['departamento']).count()
-)
+).reset_index()
 
+digitado_corban = dados_filtrados[['telefone','valor_liberado_corban']]
+digitado_corban = digitado_corban.drop_duplicates()
 corban_digitado = (
-    dados_filtrados['valor_liberado_corban']
+    digitado_corban['valor_liberado_corban']
     .astype(float)
     .sum()
 )
 
 df_corban_pago = dados_filtrados[dados_filtrados['dt_pagamento_corban'].notna()]
+df_corban_pago = df_corban_pago.drop_duplicates(subset=['telefone', 'valor_liberado_corban'])
 corban_pago = (
     df_corban_pago['valor_liberado_corban']
     .astype(float)
     .sum()
 )
 
+digitado_crm = dados_filtrados[['telefone', 'valor_liberado_crm']]
+digitado_crm = digitado_crm.drop_duplicates()
 crm_digitado = (
-    dados_filtrados['valor_liberado_crm']
+    digitado_crm['valor_liberado_crm']
     .astype(float)
     .sum()
 )
 
 df_crm_pago = dados_filtrados[dados_filtrados['dt_pagamento_crm'].notna()]
+df_crm_pago = df_crm_pago.drop_duplicates(subset=['telefone', 'valor_liberado_crm'])
 crm_pago = (
     df_crm_pago['valor_liberado_crm']
     .astype(float)
@@ -312,14 +398,88 @@ total_digitado = corban_digitado + crm_digitado
 
 total_pago = corban_pago + crm_pago
 
-total_leads
-total_finalizacao
-corban_digitado
-corban_pago
-crm_digitado
-crm_pago
-total_digitado
-total_pago
+departamento_01 = total_departamento[total_departamento['departamento'] == 'Finalização']
+departamento_02 = total_departamento[total_departamento['departamento'] == 'Recepção']
+departamento_03 = total_departamento[total_departamento['departamento'] == 'Formalização']
+departamento_04 = total_departamento[total_departamento['departamento'] == 'FGTS']
+departamento_05 = total_departamento[total_departamento['departamento'] == 'Auditoria/Qualidade']
+departamento_06 = total_departamento[total_departamento['departamento'] == 'Chatbot_CLT']
+departamento_07 = total_departamento[total_departamento['departamento'] == 'Chatbot_FGTS']
+departamento_08 = total_departamento[total_departamento['departamento'] == 'Falcons']
+departamento_09 = total_departamento[total_departamento['departamento'] == 'Tigers']
+
+# ==========================================================================
+# ======================== TRATAMENTO DOS GRÁFICOS =========================
+# ==========================================================================
+
+# df_grafico = total_departamento.copy()
+mask_corban = dados_filtrados['dt_pagamento_corban'].notna()
+mask_crm    = dados_filtrados['dt_pagamento_crm'].notna()
+
+df_grafico = (
+    dados_filtrados
+    .groupby('departamento', as_index=False)
+    .agg(
+        total_digitado_corban=('valor_liberado_corban', 'sum'),
+        total_digitado_crm=('valor_liberado_crm', 'sum'),
+        total_pago_corban=(
+            'valor_liberado_corban',
+            lambda x: x[mask_corban.loc[x.index]].sum()
+        ),
+        total_pago_crm=(
+            'valor_liberado_crm',
+            lambda x: x[mask_crm.loc[x.index]].sum()
+        ),
+        total_leads=('telefone', 'count')
+    )
+)
+
+df_grafico = df_grafico.rename(columns={'telefone': 'contagem'})
+
+# df_grafico['contagem'] = df_grafico['contagem'].astype(int)
+
+# st.bar_chart(df_grafico, x="departamento", y="contagem")
+
+departamento_select = alt.selection_point(
+    fields=["departamento"],
+    empty="all"
+)
+
+graf_departamento = (
+    alt.Chart(df_grafico)
+    .mark_bar()
+    .encode(
+        y=alt.Y(
+            "departamento:N",
+            sort="-x",
+            title="Departamentos"
+        ),
+        x=alt.X(
+            "total_leads:Q",
+            title="TOTAL"
+        ),
+        color=alt.condition(
+            departamento_select,
+            alt.value("#1f77b4"),
+            alt.value("#d3d3d3")
+        ),
+        tooltip=[
+            "total_leads",
+            alt.Tooltip("total_digitado_corban:Q", format=",.2f"),
+            alt.Tooltip("total_pago_corban:Q", format=",.2f"),
+            alt.Tooltip("total_digitado_crm:Q", format=",.2f"),
+            alt.Tooltip("total_pago_crm:Q", format=",.2f")
+        ]
+    )
+    .add_params(departamento_select)
+    .properties(
+        height=400,
+        title="Total de Leads"
+    )
+)
+
+# ==========================================================================
+# ==========================================================================
 
 ##### TÍTULO DO DASHBOARD #####
 with st.container():
@@ -329,3 +489,49 @@ with st.container():
         st.image("image/logo_agnus.jpg", width=200)
     with col_2a:
         st.title(":blue[Acompanhamento]")
+
+##### ÁREA DOS CARDS #####
+with st.container():
+    st.subheader(":blue[Quantidade de Leads]")
+    col_1, col_2, col_3, col_4, col_5 = st.columns(5)
+
+    with col_1:
+        metric_card("Total Leads", f"{total_leads}")
+        metric_card("Auditoria/Qualidade", f"{departamento_05['telefone'].sum()}")
+        
+    with col_2:
+        metric_card("Finalização", f"{departamento_01['telefone'].sum()}")
+        metric_card("Chatbot_CLT", f"{departamento_06['telefone'].sum()}")
+
+    with col_3:
+        metric_card("Recepção", f"{departamento_02['telefone'].sum()}")
+        metric_card("Chatbot_FGTS", f"{departamento_07['telefone'].sum()}")
+
+    with col_4:
+        metric_card("Formalização", f"{departamento_03['telefone'].sum()}")
+        metric_card("Falcons", f"{departamento_08['telefone'].sum()}")
+
+    with col_5:
+        metric_card("FGTS", f"{departamento_04['telefone'].sum()}")
+        metric_card("Tigers", f"{departamento_09['telefone'].sum()}")
+
+    
+with st.container():
+    st.subheader(":blue[Valores negociados]")
+    col_1, col_2, col_3 = st.columns(3)
+
+    with col_1:
+        metric_card("CORBAN digitado", f"R$ {corban_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+        metric_card("CORBAN pago", f"R$ {corban_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+
+    with col_2:
+        metric_card("CONSIG digitado", f"R$ {crm_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+        metric_card("CONSIG pago", f"R$ {crm_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+
+    with col_3:
+        metric_card("Total digitado", f"R$ {total_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+        metric_card("Total pago", f"R$ {total_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+
+with st.container():
+    st.subheader(":blue[Quantidade de Leads x Departamentos]")
+    st.altair_chart(graf_departamento, use_container_width=True)
