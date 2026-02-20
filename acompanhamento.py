@@ -8,8 +8,6 @@ from querys.querys_sql import QuerysSQL
 from regras.formatadores import Regras
 from regras.tratamentos import Tratamentos
 
-# from conexoes.database import Conexao
-
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -49,8 +47,8 @@ def metric_card(label, value):
             height: auto;
             weight: auto;
         ">
-            <p style="color: white; font-weight: bold; font-size: 1vw">{label}</p>
-            <h3 style="color: white; font-size: 1.5vw">{value}</h3>
+            <p style="color: white; font-weight: bold; font-size: 0.7vw">{label}</p>
+            <h3 style="color: white; font-size: 1.2vw">{value}</h3>
         </div>
         """,
         unsafe_allow_html=True
@@ -101,8 +99,6 @@ df['dt_pagamento_crm'   ] = df['dt_pagamento_crm'   ].dt.to_pydatetime()
 
 df['dt_message'         ] = df['dt_message'         ].dt.to_pydatetime()
 
-# ==========================================================================
-# ==========================================================================
 
 # ==========================================================================
 # ==================== TRATAMENTO DATAS MAIS PROVÁVEIS =====================
@@ -126,61 +122,6 @@ df.loc[mask_crm, cols_crm_nat] = pd.NaT
 df.loc[mask_crm, cols_crm_none] = None
 
 df = df.drop_duplicates()
-
-# # Garantindo pagamentos mais prováveis para data da mensagem
-# cols_msg = ['cpf', 'numero', 'dataPagamento', 'valorLiberado']
-# # cols_ctt = ['cpf_corban', 'numero_corban', 'liberacao']
-
-# df_valid = df[
-#     df['createdAt'].notna() &
-#     df['dataPagamento'].notna() &
-#     (df['createdAt'] <= df['dataPagamento'])
-# ].copy()
-
-# df_valid['delta'] = (
-#     df_valid['dataPagamento'] - df_valid['createdAt']
-# ).dt.total_seconds()
-
-# # escolhe o contrato mais próximo para cada mensagem
-# idx_msg = (
-#     df_valid
-#     .sort_values('delta', ascending=True)
-#     .groupby(cols_msg, as_index=False)
-#     .head(1)
-#     .index
-# )
-
-# df_match = df_valid.loc[idx_msg].drop(columns='delta')
-
-# contratos_usados = df_match['createdAt'].unique()
-
-# df_contrato_orfao = df[
-#     df['dataPagamento'].notna() &
-#     ~df['createdAt'].isin(contratos_usados)
-# ].copy()
-
-# # zera colunas do sistema X
-# for col in ['nome_banco_x', 'dataPagamento', 'valorBruto', 'valorLiberado', 'valor_parcela_x', 'prazo_x', 'valorTotalComissao', 'codigo']:
-#     if col in df_contrato_orfao:
-#         df_contrato_orfao[col] = None
-
-# df_tratado = pd.concat(
-#     [df_match, df_contrato_orfao],
-#     ignore_index=True
-# )
-
-# mensagens_usadas = df_tratado['createdAt'].unique()
-
-# df_msg_orfao = df[
-#     df['createdAt'].notna() &
-#     ~df['createdAt'].isin(mensagens_usadas)
-# ].copy()
-
-# df_crm_corban = pd.concat(
-#     [df_msg_orfao, df_tratado],
-#     ignore_index=True
-# )
-
 
 # ==========================================================================
 # ==========================================================================
@@ -295,114 +236,6 @@ with st.sidebar:
             else:
                 st.warning("A data inicial não pode ser maior que a data final.")
 
-    # ##### FILTRO DE INTERVALO DATA/HORA INCLUSÃO #####
-    # df['dt_inclusao_corban'] = (
-    #     pd.to_datetime(df['dt_inclusao_corban'], utc=True)
-    #     .dt.tz_localize(None)
-    # )
-    # df['dt_inclusao_crm'] = (
-    #     pd.to_datetime(df['dt_inclusao_crm'], utc=True)
-    #     .dt.tz_localize(None)
-    # )
-
-    # # Inicializa session_state como None
-    # if "filtro_dt_inicio_inclusao" not in st.session_state:
-    #     st.session_state.filtro_dt_inicio_inclusao = None
-
-    # if "filtro_dt_fim_inclusao" not in st.session_state:
-    #     st.session_state.filtro_dt_fim_inclusao = None
-
-    # with st.container():
-    #     st.write("Data da Inclusão")
-
-    #     col1, col2 = st.columns(2)
-
-    #     with col1:
-    #         dt_inicio = st.datetime_input(
-    #             "Início:",
-    #             value=st.session_state.filtro_dt_inicio_inclusao,
-    #             key="filtro_dt_inicio_inclusao"
-    #         )
-
-    #     with col2:
-    #         dt_fim = st.datetime_input(
-    #             "Fim:",
-    #             value=st.session_state.filtro_dt_fim_inclusao,
-    #             key="filtro_dt_fim_inclusao"
-    #         )
-
-    #     # Aplica filtro somente se ambos forem definidos
-    #     if dt_inicio and dt_fim:
-
-    #         if dt_inicio <= dt_fim:
-    #             dados_filtrados = dados_filtrados[(dados_filtrados['dt_inclusao_corban'].notna()) | (dados_filtrados['dt_inclusao_crm'].notna())]
-    #             dados_filtrados = dados_filtrados[
-    #                 (dados_filtrados['dt_inclusao_corban'] >= dt_inicio) &
-    #                 (dados_filtrados['dt_inclusao_corban'] <= dt_fim) |
-    #                 (dados_filtrados['dt_inclusao_corban'].isna())
-    #             ]
-    #             dados_filtrados = dados_filtrados[
-    #                 (dados_filtrados['dt_inclusao_crm'] >= dt_inicio) &
-    #                 (dados_filtrados['dt_inclusao_crm'] <= dt_fim) |
-    #                 (dados_filtrados['dt_inclusao_crm'].isna())
-    #             ]
-    #         else:
-    #             st.warning("A data inicial não pode ser maior que a data final.")
-
-    # ##### FILTRO DE INTERVALO DATA/HORA PAGAMENTO #####
-    # df['dt_pagamento_corban'] = (
-    #     pd.to_datetime(df['dt_pagamento_corban'], utc=True)
-    #     .dt.tz_localize(None)
-    # )
-    # df['dt_pagamento_crm'] = (
-    #     pd.to_datetime(df['dt_pagamento_crm'], utc=True)
-    #     .dt.tz_localize(None)
-    # )
-
-    # # Inicializa session_state como None
-    # if "filtro_dt_inicio_pagamento" not in st.session_state:
-    #     st.session_state.filtro_dt_inicio_pagamento = None
-
-    # if "filtro_dt_fim_pagamento" not in st.session_state:
-    #     st.session_state.filtro_dt_fim_pagamento = None
-
-    # with st.container():
-    #     st.write("Data do Pagamento")
-
-    #     col1, col2 = st.columns(2)
-
-    #     with col1:
-    #         dt_inicio = st.datetime_input(
-    #             "Início:",
-    #             value=st.session_state.filtro_dt_inicio_pagamento,
-    #             key="filtro_dt_inicio_pagamento"
-    #         )
-
-    #     with col2:
-    #         dt_fim = st.datetime_input(
-    #             "Fim:",
-    #             value=st.session_state.filtro_dt_fim_pagamento,
-    #             key="filtro_dt_fim_pagamento"
-    #         )
-
-    #     # Aplica filtro somente se ambos forem definidos
-    #     if dt_inicio and dt_fim:
-
-    #         if dt_inicio <= dt_fim:
-    #             dados_filtrados = dados_filtrados[(dados_filtrados['dt_pagamento_corban'].notna()) | (dados_filtrados['dt_pagamento_crm'].notna())]
-    #             dados_filtrados = dados_filtrados[
-    #                 (dados_filtrados['dt_pagamento_corban'] >= dt_inicio) &
-    #                 (dados_filtrados['dt_pagamento_corban'] <= dt_fim) |
-    #                 (dados_filtrados['dt_pagamento_corban'].isna())
-    #             ]
-    #             dados_filtrados = dados_filtrados[
-    #                 (dados_filtrados['dt_pagamento_crm'] >= dt_inicio) &
-    #                 (dados_filtrados['dt_pagamento_crm'] <= dt_fim) |
-    #                 (dados_filtrados['dt_pagamento_crm'].isna())
-    #             ]
-    #         else:
-    #             st.warning("A data inicial não pode ser maior que a data final.")
-
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):
         for key in list(st.session_state.keys()):
@@ -489,8 +322,24 @@ df_grafico = (
             'valor_liberado_crm',
             lambda x: x[mask_crm.loc[x.index]].sum()
         ),
-        total_leads=('telefone', 'count')
+        total_leads=('telefone', 'count'),
+        total_leads_digitado_corban=('dt_inclusao_corban', 'count'),
+        total_leads_digitado_crm=('dt_inclusao_crm', 'count'),
+        total_leads_pagos_corban=('dt_pagamento_corban', 'count'),
+        total_leads_pagos_crm=('dt_pagamento_crm', 'count')
     )
+)
+
+# Nova coluna com soma dos digitados
+df_grafico['total_digitado'] = (
+    df_grafico['total_digitado_corban'] +
+    df_grafico['total_digitado_crm']
+)
+
+# Nova coluna com soma dos pagos
+df_grafico['total_pago'] = (
+    df_grafico['total_pago_corban'] +
+    df_grafico['total_pago_crm']
 )
 
 df_grafico = df_grafico.rename(columns={'telefone': 'contagem'})
@@ -515,7 +364,7 @@ graf_departamento = (
         ),
         x=alt.X(
             "total_leads:Q",
-            title="TOTAL"
+            title="Total de Leads"
         ),
         color=alt.condition(
             departamento_select,
@@ -524,9 +373,13 @@ graf_departamento = (
         ),
         tooltip=[
             "total_leads",
+            "total_leads_digitado_corban",
             alt.Tooltip("total_digitado_corban:Q", format=",.2f"),
+            "total_leads_pagos_corban",
             alt.Tooltip("total_pago_corban:Q", format=",.2f"),
+            "total_leads_digitado_crm",
             alt.Tooltip("total_digitado_crm:Q", format=",.2f"),
+            "total_leads_pagos_crm",
             alt.Tooltip("total_pago_crm:Q", format=",.2f")
         ]
     )
@@ -536,6 +389,81 @@ graf_departamento = (
         title="Total de Leads"
     )
 )
+
+graf_departamento_02 = (
+    alt.Chart(df_grafico)
+    .mark_bar()
+    .encode(
+        y=alt.Y(
+            "departamento:N",
+            sort="-x",
+            title="Departamentos"
+        ),
+        x=alt.X(
+            "total_digitado:Q",
+            title="Total de Digitado"
+        ),
+        color=alt.condition(
+            departamento_select,
+            alt.value("#1f77b4"),
+            alt.value("#d3d3d3")
+        ),
+        tooltip=[
+            "total_leads",
+            "total_leads_digitado_corban",
+            alt.Tooltip("total_digitado_corban:Q", format=",.2f"),
+            "total_leads_pagos_corban",
+            alt.Tooltip("total_pago_corban:Q", format=",.2f"),
+            "total_leads_digitado_crm",
+            alt.Tooltip("total_digitado_crm:Q", format=",.2f"),
+            "total_leads_pagos_crm",
+            alt.Tooltip("total_pago_crm:Q", format=",.2f")
+        ]
+    )
+    .add_params(departamento_select)
+    .properties(
+        height=400,
+        title="Total Digitado"
+    )
+)
+
+graf_departamento_03 = (
+    alt.Chart(df_grafico)
+    .mark_bar()
+    .encode(
+        y=alt.Y(
+            "departamento:N",
+            sort="-x",
+            title="Departamentos"
+        ),
+        x=alt.X(
+            "total_pago:Q",
+            title="Total de Pagos"
+        ),
+        color=alt.condition(
+            departamento_select,
+            alt.value("#1f77b4"),
+            alt.value("#d3d3d3")
+        ),
+        tooltip=[
+            "total_leads",
+            "total_leads_digitado_corban",
+            alt.Tooltip("total_digitado_corban:Q", format=",.2f"),
+            "total_leads_pagos_corban",
+            alt.Tooltip("total_pago_corban:Q", format=",.2f"),
+            "total_leads_digitado_crm",
+            alt.Tooltip("total_digitado_crm:Q", format=",.2f"),
+            "total_leads_pagos_crm",
+            alt.Tooltip("total_pago_crm:Q", format=",.2f")
+        ]
+    )
+    .add_params(departamento_select)
+    .properties(
+        height=400,
+        title="Total Pago"
+    )
+)
+
 
 # ==========================================================================
 # ==========================================================================
@@ -552,45 +480,86 @@ with st.container():
 ##### ÁREA DOS CARDS #####
 with st.container():
     st.subheader(":blue[Quantidade de Leads]")
-    col_1, col_2, col_3, col_4, col_5 = st.columns(5)
+    # col_1, col_2, col_3, col_4, col_5 = st.columns(5)
+    col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8, col_9, col_10 = st.columns(10)
 
+    # with col_1:
+    #     metric_card("Total Leads", f"{total_leads}")
+    #     metric_card("Auditoria/Qualidade", f"{departamento_05['telefone'].sum()}")
+        
+    # with col_2:
+    #     metric_card("Finalização", f"{departamento_01['telefone'].sum()}")
+    #     metric_card("Chatbot_CLT", f"{departamento_06['telefone'].sum()}")
+
+    # with col_3:
+    #     metric_card("Recepção", f"{departamento_02['telefone'].sum()}")
+    #     metric_card("Chatbot_FGTS", f"{departamento_07['telefone'].sum()}")
+
+    # with col_4:
+    #     metric_card("Formalização", f"{departamento_03['telefone'].sum()}")
+    #     metric_card("Falcons", f"{departamento_08['telefone'].sum()}")
+
+    # with col_5:
+    #     metric_card("FGTS", f"{departamento_04['telefone'].sum()}")
+    #     metric_card("Tigers", f"{departamento_09['telefone'].sum()}")
     with col_1:
         metric_card("Total Leads", f"{total_leads}")
-        metric_card("Auditoria/Qualidade", f"{departamento_05['telefone'].sum()}")
-        
     with col_2:
-        metric_card("Finalização", f"{departamento_01['telefone'].sum()}")
-        metric_card("Chatbot_CLT", f"{departamento_06['telefone'].sum()}")
-
+        metric_card("Auditoria/Qualidade", f"{departamento_05['telefone'].sum()}")
     with col_3:
-        metric_card("Recepção", f"{departamento_02['telefone'].sum()}")
-        metric_card("Chatbot_FGTS", f"{departamento_07['telefone'].sum()}")
-
+        metric_card("Finalização", f"{departamento_01['telefone'].sum()}")
     with col_4:
-        metric_card("Formalização", f"{departamento_03['telefone'].sum()}")
-        metric_card("Falcons", f"{departamento_08['telefone'].sum()}")
-
+        metric_card("Chatbot_CLT", f"{departamento_06['telefone'].sum()}")
     with col_5:
+        metric_card("Recepção", f"{departamento_02['telefone'].sum()}")
+    with col_6:
+        metric_card("Chatbot_FGTS", f"{departamento_07['telefone'].sum()}")
+    with col_7:
+        metric_card("Formalização", f"{departamento_03['telefone'].sum()}")
+    with col_8:
+        metric_card("Falcons", f"{departamento_08['telefone'].sum()}")
+    with col_9:
         metric_card("FGTS", f"{departamento_04['telefone'].sum()}")
+    with col_10:
         metric_card("Tigers", f"{departamento_09['telefone'].sum()}")
-
     
 with st.container():
     st.subheader(":blue[Valores negociados]")
-    col_1, col_2, col_3 = st.columns(3)
+    # col_1, col_2, col_3 = st.columns(3)
+    col_1, col_2, col_3, col_4, col_5, col_6 = st.columns(6)
 
+    # with col_1:
+    #     metric_card("CORBAN digitado", f"R$ {corban_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+    #     metric_card("CORBAN pago", f"R$ {corban_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+
+    # with col_2:
+    #     metric_card("CONSIG digitado", f"R$ {crm_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+    #     metric_card("CONSIG pago", f"R$ {crm_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+
+    # with col_3:
+    #     metric_card("Total digitado", f"R$ {total_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+    #     metric_card("Total pago", f"R$ {total_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
     with col_1:
         metric_card("CORBAN digitado", f"R$ {corban_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-        metric_card("CORBAN pago", f"R$ {corban_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
     with col_2:
-        metric_card("CONSIG digitado", f"R$ {crm_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-        metric_card("CONSIG pago", f"R$ {crm_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
-
+        metric_card("CORBAN pago", f"R$ {corban_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
     with col_3:
+        metric_card("CONSIG digitado", f"R$ {crm_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+    with col_4:
+        metric_card("CONSIG pago", f"R$ {crm_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+    with col_5:
         metric_card("Total digitado", f"R$ {total_digitado:,.2f}".replace('.','|').replace(',','.').replace('|',','))
+    with col_6:
         metric_card("Total pago", f"R$ {total_pago:,.2f}".replace('.','|').replace(',','.').replace('|',','))
 
 with st.container():
     st.subheader(":blue[Quantidade de Leads x Departamentos]")
     st.altair_chart(graf_departamento, use_container_width=True)
+
+with st.container():
+    st.subheader(":blue[Total Valor Digitado x Departamentos]")
+    st.altair_chart(graf_departamento_02, use_container_width=True)
+
+with st.container():
+    st.subheader(":blue[Total Valor Pago x Departamentos]")
+    st.altair_chart(graf_departamento_03, use_container_width=True)
