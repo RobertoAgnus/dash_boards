@@ -372,15 +372,11 @@ graf_departamento = (
             alt.value("#d3d3d3")
         ),
         tooltip=[
-            "total_leads",
-            "total_leads_digitado_corban",
-            alt.Tooltip("total_digitado_corban:Q", format=",.2f"),
-            "total_leads_pagos_corban",
-            alt.Tooltip("total_pago_corban:Q", format=",.2f"),
-            "total_leads_digitado_crm",
-            alt.Tooltip("total_digitado_crm:Q", format=",.2f"),
-            "total_leads_pagos_crm",
-            alt.Tooltip("total_pago_crm:Q", format=",.2f")
+            alt.Tooltip("total_leads:Q", title="Total de Leads"),
+            alt.Tooltip("total_leads_digitado_corban:Q", title="Leads Digitados CORBAN"),
+            alt.Tooltip("total_leads_pagos_corban:Q", title="Leads Pagos CORBAN"),
+            alt.Tooltip("total_leads_digitado_crm:Q", title="Leads Digitados CRM"),
+            alt.Tooltip("total_leads_pagos_crm:Q", title="Leads Pagos CRM"),
         ]
     )
     .add_params(departamento_select)
@@ -409,15 +405,11 @@ graf_departamento_02 = (
             alt.value("#d3d3d3")
         ),
         tooltip=[
-            "total_leads",
-            "total_leads_digitado_corban",
-            alt.Tooltip("total_digitado_corban:Q", format=",.2f"),
-            "total_leads_pagos_corban",
-            alt.Tooltip("total_pago_corban:Q", format=",.2f"),
-            "total_leads_digitado_crm",
-            alt.Tooltip("total_digitado_crm:Q", format=",.2f"),
-            "total_leads_pagos_crm",
-            alt.Tooltip("total_pago_crm:Q", format=",.2f")
+            alt.Tooltip("total_leads:Q", title="Total de Leads"),
+            alt.Tooltip("total_leads_digitado_corban:Q", title="Leads Digitados CORBAN"),
+            alt.Tooltip("total_digitado_corban:Q", format=",.2f", title="Valor Digitado CORBAN"),
+            alt.Tooltip("total_leads_digitado_crm:Q", title="Leads Digitados CRM"),
+            alt.Tooltip("total_digitado_crm:Q", format=",.2f", title="Valor Digitado CRM")
         ]
     )
     .add_params(departamento_select)
@@ -446,15 +438,11 @@ graf_departamento_03 = (
             alt.value("#d3d3d3")
         ),
         tooltip=[
-            "total_leads",
-            "total_leads_digitado_corban",
-            alt.Tooltip("total_digitado_corban:Q", format=",.2f"),
-            "total_leads_pagos_corban",
-            alt.Tooltip("total_pago_corban:Q", format=",.2f"),
-            "total_leads_digitado_crm",
-            alt.Tooltip("total_digitado_crm:Q", format=",.2f"),
-            "total_leads_pagos_crm",
-            alt.Tooltip("total_pago_crm:Q", format=",.2f")
+            alt.Tooltip("total_leads:Q", title="Total de Leads"),
+            alt.Tooltip("total_leads_pagos_corban:Q", title="Leads Pagos CORBAN"),
+            alt.Tooltip("total_pago_corban:Q", format=",.2f", title="Valor Pago CORBAN"),
+            alt.Tooltip("total_leads_pagos_crm:Q", title="Leads Pagos CRM"),
+            alt.Tooltip("total_pago_crm:Q", format=",.2f", title="Valor Pago CRM")
         ]
     )
     .add_params(departamento_select)
