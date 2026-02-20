@@ -193,9 +193,27 @@ dados_filtrados = df.copy()
 with st.sidebar:
     st.title('Filtros')
 
-    ##### FILTRO DE INTERVALO DATA/HORA MENSAGEM #####
+    ##### FILTRO DE INTERVALO DATA/HORA #####
     df['dt_message'] = (
         pd.to_datetime(df['dt_message'], utc=True)
+        .dt.tz_localize(None)
+    )
+
+    df['dt_inclusao_corban'] = (
+        pd.to_datetime(df['dt_inclusao_corban'], utc=True)
+        .dt.tz_localize(None)
+    )
+    df['dt_inclusao_crm'] = (
+        pd.to_datetime(df['dt_inclusao_crm'], utc=True)
+        .dt.tz_localize(None)
+    )
+
+    df['dt_pagamento_corban'] = (
+        pd.to_datetime(df['dt_pagamento_corban'], utc=True)
+        .dt.tz_localize(None)
+    )
+    df['dt_pagamento_crm'] = (
+        pd.to_datetime(df['dt_pagamento_crm'], utc=True)
         .dt.tz_localize(None)
     )
 
@@ -207,7 +225,7 @@ with st.sidebar:
         st.session_state.filtro_dt_fim_mensagem = None
 
     with st.container():
-        st.write("Data da Mensagem")
+        st.write("Intervalo de Data")
 
         col1, col2 = st.columns(2)
 
@@ -229,120 +247,161 @@ with st.sidebar:
         if dt_inicio and dt_fim:
 
             if dt_inicio <= dt_fim:
-                dados_filtrados = dados_filtrados[
+
+                mask = (
+                    # dt_message sempre deve estar no intervalo
                     (dados_filtrados['dt_message'] >= dt_inicio) &
                     (dados_filtrados['dt_message'] <= dt_fim)
-                ]
-            else:
-                st.warning("A data inicial não pode ser maior que a data final.")
+                )
 
-    ##### FILTRO DE INTERVALO DATA/HORA INCLUSÃO #####
-    df['dt_inclusao_corban'] = (
-        pd.to_datetime(df['dt_inclusao_corban'], utc=True)
-        .dt.tz_localize(None)
-    )
-    df['dt_inclusao_crm'] = (
-        pd.to_datetime(df['dt_inclusao_crm'], utc=True)
-        .dt.tz_localize(None)
-    )
-
-    # Inicializa session_state como None
-    if "filtro_dt_inicio_inclusao" not in st.session_state:
-        st.session_state.filtro_dt_inicio_inclusao = None
-
-    if "filtro_dt_fim_inclusao" not in st.session_state:
-        st.session_state.filtro_dt_fim_inclusao = None
-
-    with st.container():
-        st.write("Data da Inclusão")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            dt_inicio = st.datetime_input(
-                "Início:",
-                value=st.session_state.filtro_dt_inicio_inclusao,
-                key="filtro_dt_inicio_inclusao"
-            )
-
-        with col2:
-            dt_fim = st.datetime_input(
-                "Fim:",
-                value=st.session_state.filtro_dt_fim_inclusao,
-                key="filtro_dt_fim_inclusao"
-            )
-
-        # Aplica filtro somente se ambos forem definidos
-        if dt_inicio and dt_fim:
-
-            if dt_inicio <= dt_fim:
-                dados_filtrados = dados_filtrados[(dados_filtrados['dt_inclusao_corban'].notna()) | (dados_filtrados['dt_inclusao_crm'].notna())]
-                dados_filtrados = dados_filtrados[
-                    (dados_filtrados['dt_inclusao_corban'] >= dt_inicio) &
-                    (dados_filtrados['dt_inclusao_corban'] <= dt_fim) |
+                # Inclusão corban
+                mask &= (
+                    (
+                        (dados_filtrados['dt_inclusao_corban'] >= dt_inicio) &
+                        (dados_filtrados['dt_inclusao_corban'] <= dt_fim)
+                    ) |
                     (dados_filtrados['dt_inclusao_corban'].isna())
-                ]
-                dados_filtrados = dados_filtrados[
-                    (dados_filtrados['dt_inclusao_crm'] >= dt_inicio) &
-                    (dados_filtrados['dt_inclusao_crm'] <= dt_fim) |
+                )
+
+                # Inclusão crm
+                mask &= (
+                    (
+                        (dados_filtrados['dt_inclusao_crm'] >= dt_inicio) &
+                        (dados_filtrados['dt_inclusao_crm'] <= dt_fim)
+                    ) |
                     (dados_filtrados['dt_inclusao_crm'].isna())
-                ]
-            else:
-                st.warning("A data inicial não pode ser maior que a data final.")
+                )
 
-    ##### FILTRO DE INTERVALO DATA/HORA PAGAMENTO #####
-    df['dt_pagamento_corban'] = (
-        pd.to_datetime(df['dt_pagamento_corban'], utc=True)
-        .dt.tz_localize(None)
-    )
-    df['dt_pagamento_crm'] = (
-        pd.to_datetime(df['dt_pagamento_crm'], utc=True)
-        .dt.tz_localize(None)
-    )
-
-    # Inicializa session_state como None
-    if "filtro_dt_inicio_pagamento" not in st.session_state:
-        st.session_state.filtro_dt_inicio_pagamento = None
-
-    if "filtro_dt_fim_pagamento" not in st.session_state:
-        st.session_state.filtro_dt_fim_pagamento = None
-
-    with st.container():
-        st.write("Data do Pagamento")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            dt_inicio = st.datetime_input(
-                "Início:",
-                value=st.session_state.filtro_dt_inicio_pagamento,
-                key="filtro_dt_inicio_pagamento"
-            )
-
-        with col2:
-            dt_fim = st.datetime_input(
-                "Fim:",
-                value=st.session_state.filtro_dt_fim_pagamento,
-                key="filtro_dt_fim_pagamento"
-            )
-
-        # Aplica filtro somente se ambos forem definidos
-        if dt_inicio and dt_fim:
-
-            if dt_inicio <= dt_fim:
-                dados_filtrados = dados_filtrados[(dados_filtrados['dt_pagamento_corban'].notna()) | (dados_filtrados['dt_pagamento_crm'].notna())]
-                dados_filtrados = dados_filtrados[
-                    (dados_filtrados['dt_pagamento_corban'] >= dt_inicio) &
-                    (dados_filtrados['dt_pagamento_corban'] <= dt_fim) |
+                # Pagamento corban
+                mask &= (
+                    (
+                        (dados_filtrados['dt_pagamento_corban'] >= dt_inicio) &
+                        (dados_filtrados['dt_pagamento_corban'] <= dt_fim)
+                    ) |
                     (dados_filtrados['dt_pagamento_corban'].isna())
-                ]
-                dados_filtrados = dados_filtrados[
-                    (dados_filtrados['dt_pagamento_crm'] >= dt_inicio) &
-                    (dados_filtrados['dt_pagamento_crm'] <= dt_fim) |
+                )
+
+                # Pagamento crm
+                mask &= (
+                    (
+                        (dados_filtrados['dt_pagamento_crm'] >= dt_inicio) &
+                        (dados_filtrados['dt_pagamento_crm'] <= dt_fim)
+                    ) |
                     (dados_filtrados['dt_pagamento_crm'].isna())
-                ]
+                )
+
+                dados_filtrados = dados_filtrados[mask]
+
             else:
                 st.warning("A data inicial não pode ser maior que a data final.")
+
+    # ##### FILTRO DE INTERVALO DATA/HORA INCLUSÃO #####
+    # df['dt_inclusao_corban'] = (
+    #     pd.to_datetime(df['dt_inclusao_corban'], utc=True)
+    #     .dt.tz_localize(None)
+    # )
+    # df['dt_inclusao_crm'] = (
+    #     pd.to_datetime(df['dt_inclusao_crm'], utc=True)
+    #     .dt.tz_localize(None)
+    # )
+
+    # # Inicializa session_state como None
+    # if "filtro_dt_inicio_inclusao" not in st.session_state:
+    #     st.session_state.filtro_dt_inicio_inclusao = None
+
+    # if "filtro_dt_fim_inclusao" not in st.session_state:
+    #     st.session_state.filtro_dt_fim_inclusao = None
+
+    # with st.container():
+    #     st.write("Data da Inclusão")
+
+    #     col1, col2 = st.columns(2)
+
+    #     with col1:
+    #         dt_inicio = st.datetime_input(
+    #             "Início:",
+    #             value=st.session_state.filtro_dt_inicio_inclusao,
+    #             key="filtro_dt_inicio_inclusao"
+    #         )
+
+    #     with col2:
+    #         dt_fim = st.datetime_input(
+    #             "Fim:",
+    #             value=st.session_state.filtro_dt_fim_inclusao,
+    #             key="filtro_dt_fim_inclusao"
+    #         )
+
+    #     # Aplica filtro somente se ambos forem definidos
+    #     if dt_inicio and dt_fim:
+
+    #         if dt_inicio <= dt_fim:
+    #             dados_filtrados = dados_filtrados[(dados_filtrados['dt_inclusao_corban'].notna()) | (dados_filtrados['dt_inclusao_crm'].notna())]
+    #             dados_filtrados = dados_filtrados[
+    #                 (dados_filtrados['dt_inclusao_corban'] >= dt_inicio) &
+    #                 (dados_filtrados['dt_inclusao_corban'] <= dt_fim) |
+    #                 (dados_filtrados['dt_inclusao_corban'].isna())
+    #             ]
+    #             dados_filtrados = dados_filtrados[
+    #                 (dados_filtrados['dt_inclusao_crm'] >= dt_inicio) &
+    #                 (dados_filtrados['dt_inclusao_crm'] <= dt_fim) |
+    #                 (dados_filtrados['dt_inclusao_crm'].isna())
+    #             ]
+    #         else:
+    #             st.warning("A data inicial não pode ser maior que a data final.")
+
+    # ##### FILTRO DE INTERVALO DATA/HORA PAGAMENTO #####
+    # df['dt_pagamento_corban'] = (
+    #     pd.to_datetime(df['dt_pagamento_corban'], utc=True)
+    #     .dt.tz_localize(None)
+    # )
+    # df['dt_pagamento_crm'] = (
+    #     pd.to_datetime(df['dt_pagamento_crm'], utc=True)
+    #     .dt.tz_localize(None)
+    # )
+
+    # # Inicializa session_state como None
+    # if "filtro_dt_inicio_pagamento" not in st.session_state:
+    #     st.session_state.filtro_dt_inicio_pagamento = None
+
+    # if "filtro_dt_fim_pagamento" not in st.session_state:
+    #     st.session_state.filtro_dt_fim_pagamento = None
+
+    # with st.container():
+    #     st.write("Data do Pagamento")
+
+    #     col1, col2 = st.columns(2)
+
+    #     with col1:
+    #         dt_inicio = st.datetime_input(
+    #             "Início:",
+    #             value=st.session_state.filtro_dt_inicio_pagamento,
+    #             key="filtro_dt_inicio_pagamento"
+    #         )
+
+    #     with col2:
+    #         dt_fim = st.datetime_input(
+    #             "Fim:",
+    #             value=st.session_state.filtro_dt_fim_pagamento,
+    #             key="filtro_dt_fim_pagamento"
+    #         )
+
+    #     # Aplica filtro somente se ambos forem definidos
+    #     if dt_inicio and dt_fim:
+
+    #         if dt_inicio <= dt_fim:
+    #             dados_filtrados = dados_filtrados[(dados_filtrados['dt_pagamento_corban'].notna()) | (dados_filtrados['dt_pagamento_crm'].notna())]
+    #             dados_filtrados = dados_filtrados[
+    #                 (dados_filtrados['dt_pagamento_corban'] >= dt_inicio) &
+    #                 (dados_filtrados['dt_pagamento_corban'] <= dt_fim) |
+    #                 (dados_filtrados['dt_pagamento_corban'].isna())
+    #             ]
+    #             dados_filtrados = dados_filtrados[
+    #                 (dados_filtrados['dt_pagamento_crm'] >= dt_inicio) &
+    #                 (dados_filtrados['dt_pagamento_crm'] <= dt_fim) |
+    #                 (dados_filtrados['dt_pagamento_crm'].isna())
+    #             ]
+    #         else:
+    #             st.warning("A data inicial não pode ser maior que a data final.")
 
     # Botão de limpeza
     if st.button("🧹 Limpar filtros"):
