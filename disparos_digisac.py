@@ -8,6 +8,7 @@ from datetime import date
 from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from querys.gravar_bd import GravarBandoDados
+from regras.obter_dados import carregar_dados
 from regras.formatadores import Regras
 from regras.tratamentos import Tratamentos
 from io import BytesIO
@@ -60,45 +61,10 @@ def metric_card(label, value):
         unsafe_allow_html=True
     )
 
-
-
 # =======================================
 
 ##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao()
-
-conectar.conectar_postgres()
-conectar.conectar_postgres_aws()
-
-conn_postgres     = conectar.obter_conexao_postgres()
-conn_postgres_aws = conectar.obter_conexao_postgres_aws()
-
-consulta = QuerysSQL()
-
-clientes = consulta.get_clientes_digisac()
-tickets  = consulta.get_tickets_gigisac()
-tags     = consulta.get_tags_digisac()
-disparos = consulta.get_disparados_digisac()
-falhas   = consulta.get_falhas_digisac()
-corban   = consulta.get_corban()
-crm      = consulta.get_crm()
-
-df_clientes = pd.read_sql_query(clientes, conn_postgres    )
-df_tickets  = pd.read_sql_query(tickets , conn_postgres    )
-df_tags     = pd.read_sql_query(tags    , conn_postgres    )
-df_disparos = pd.read_sql_query(disparos, conn_postgres    )
-df_falhas   = pd.read_sql_query(falhas  , conn_postgres    )
-df_corban   = pd.read_sql_query(corban  , conn_postgres    )
-df_crm      = pd.read_sql_query(crm     , conn_postgres_aws)
-
-df_01 = pd.merge(df_clientes, df_tickets , on='number'   , how='left')
-df_02 = pd.merge(df_01      , df_tags    , on='ticket_id', how='left')
-df_03 = pd.merge(df_02      , df_disparos, on='number'   , how='left')
-df_04 = pd.merge(df_03      , df_falhas  , on='number'   , how='left')
-df_05 = pd.merge(df_04      , df_corban  , on='number'   , how='left')
-df    = pd.merge(df_05      , df_crm     , on='number'   , how='left')
-
-df = df[(df['pagamento_corban'].isna()) & (df['pagamento_crm'].isna())]
+df = carregar_dados('disparos_digisac')
 
 # =============== DATAS =================
 # Data Atual

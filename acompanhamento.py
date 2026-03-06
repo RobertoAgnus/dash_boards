@@ -6,6 +6,7 @@ from datetime import date, datetime
 from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from regras.formatadores import Regras
+from regras.obter_dados import carregar_dados
 from regras.tratamentos import Tratamentos
 
 
@@ -60,25 +61,7 @@ def metric_card(label, value):
 
 
 ##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao()
-
-conectar.conectar_postgres_aws()
-conectar.conectar_postgres()
-
-conn_postgres_aws = conectar.obter_conexao_postgres_aws()
-conn_postgres     = conectar.obter_conexao_postgres()
-
-consulta = QuerysSQL()
-
-digisac, corban, crm = consulta.get_acompanhamento()
-
-df_digisac = pd.read_sql_query(digisac, conn_postgres)
-df_corban  = pd.read_sql_query(corban, conn_postgres)
-df_crm     = pd.read_sql_query(crm, conn_postgres_aws)
-
-# ============= TRATAMENTOS =============
-df_01 = pd.merge(df_digisac, df_corban, on='telefone', how='left')
-df = pd.merge(df_01, df_crm, on='telefone', how='left')
+df = carregar_dados('acompanhamento')
 
 # ==========================================================================
 # ========================== TRATAMENTO DE DATAS ===========================

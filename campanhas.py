@@ -8,6 +8,7 @@ from datetime import date
 from querys.connect import Conexao
 from querys.querys_sql import QuerysSQL
 from regras.formatadores import Regras
+from regras.obter_dados import carregar_dados
 from regras.tratamentos import Tratamentos
 
 # from conexoes.database import Conexao
@@ -62,42 +63,9 @@ def metric_card(label, value):
 
 
 ##### CARREGAR OS DADOS (1x) #####
-conectar = Conexao()
-
-conectar.conectar_postgres_aws()
-conectar.conectar_postgres()
-
-conn_postgres_aws = conectar.obter_conexao_postgres_aws()
-conn_postgres     = conectar.obter_conexao_postgres()
-
-consulta = QuerysSQL()
-
-digisac, corban, crm    = consulta.get_campanhas()
-campanhas               = consulta.get_campanhas_meta()
-fones_crm, fones_corban = consulta.get_telefones()
-comissoes_corban        = consulta.get_comissoes_corban()
-tabelas_comissoes       = consulta.get_tabelas_comissao()
-
-# df_digisac      = pd.read_sql_query(digisac, conn_postgres)
-df_corban       = pd.read_sql_query(corban, conn_postgres)
-df_crm          = pd.read_sql_query(crm, conn_postgres_aws)
-custo_campanhas = pd.read_sql_query(campanhas, conn_postgres)
-df_fones_crm    = pd.read_sql_query(fones_crm, conn_postgres_aws)
-df_comissoes    = pd.read_sql_query(comissoes_corban, conn_postgres)
-df_tabelas      = pd.read_sql_query(tabelas_comissoes, conn_postgres)
+df_corban, df_crm, custo_campanhas, df_fones_crm, df_comissoes, df_tabelas = carregar_dados('campanhas')
 
 # ============= TRATAMENTOS =============
-df_corban = pd.merge(df_corban, df_fones_crm, on='cpf_corban', how='left')
-df_corban = pd.merge(df_corban, df_comissoes, on='proposta_id', how='left')
-
-sem_fones = df_corban[df_corban['numero_corban'].isnull()]
-
-cpfs_sem_fone = sem_fones['cpf_corban'].unique().tolist()
-
-df_fones_corban = pd.read_sql_query(fones_corban, conn_postgres, params=(cpfs_sem_fone,))
-
-df_corban = pd.merge(df_corban, df_fones_corban, on='cpf_corban', how='left')
-
 df_corban['numero_corban'] = np.where(df_corban['numero_corban_x'].isnull(), df_corban['numero_corban_y'], df_corban['numero_corban_x'])
 
 custo_campanhas['nome'] = custo_campanhas['nome'].apply(tratamentos.mapeia_campanha)
