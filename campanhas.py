@@ -347,7 +347,9 @@ with st.sidebar:
         filtros = [str(x).strip() for x in selectbox_mensagem]
         dados_filtrados = dados_filtrados[dados_filtrados['mensagens'].isin(filtros)]
         
-        custo_campanhas = custo_campanhas[custo_campanhas['nome'].isin(filtros)]
+        filtros_limpos = [s.replace("-", "").replace(" ", "") for s in filtros]
+
+        custo_campanhas = custo_campanhas[custo_campanhas['nome'].isin(filtros_limpos)]
         
 
     ##### FILTRO DE INTERVALO DE DATA MENSAGEM #####
