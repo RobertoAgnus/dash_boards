@@ -61,7 +61,16 @@ class Tratamentos:
         
     ##### FUNÇÃO PARA MAPEAR AS CAMPANHAS #####
     def mapeia_campanha(self, valor):
-        return valor.replace('[CAMPEÕES ', '[').replace('TRABALHA +1 ANO', 'CR+1').replace('CAIXA DE PERGUNTAS', 'CRCP').replace('CR ', 'CR')
+        valor = (
+            valor
+            .replace('[CAMPEÕES ', '[')
+            .replace('TRABALHA +1 ANO', 'CR+1')
+            .replace('CAIXA DE PERGUNTAS', 'CRCP')
+            .replace('CR ', 'CR')
+            .replace('-', '')
+            .replace(' ', '')
+        )
+        return valor
 
     ##### FUNÇÃO PARA GERAR OS CARDS #####
     def metric_card(self, label, value):

@@ -348,8 +348,10 @@ with st.sidebar:
         dados_filtrados = dados_filtrados[dados_filtrados['mensagens'].isin(filtros)]
         
         filtros_limpos = [s.replace("-", "").replace(" ", "") for s in filtros]
+        print(filtros)
+        print(filtros_limpos)
 
-        custo_campanhas = custo_campanhas[custo_campanhas['nome'].isin(filtros_limpos)]
+        custo_campanhas = custo_campanhas[custo_campanhas['nome'].str.replace("-", "").str.replace(" ", "").isin(filtros_limpos)]
         
 
     ##### FILTRO DE INTERVALO DE DATA MENSAGEM #####
