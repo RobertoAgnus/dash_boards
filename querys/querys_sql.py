@@ -507,7 +507,7 @@ class QuerysSQL:
                             LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
                             CASE
                                 WHEN LENGTH(t.telefone) < 11
-                                THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
+                                    THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
                                 ELSE t.telefone
                             END AS numero_corban
                         from unificados.clientes c 

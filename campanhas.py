@@ -328,7 +328,7 @@ with st.sidebar:
     st.title('Filtros')
 
     ##### FILTRO DE MENSAGENS INICIAIS #####
-    mensagem_inicial = df_crm_corban['mensagens'].dropna().unique().tolist()
+    mensagem_inicial = custo_campanhas['nome'].dropna().unique().tolist()
     mensagem_inicial = [str(x).strip() for x in mensagem_inicial if x is not None]
     mensagem_inicial = sorted(mensagem_inicial)
     
@@ -343,15 +343,23 @@ with st.sidebar:
     )
     
     if len(selectbox_mensagem) != 0:
-        dados_filtrados['mensagens'] = dados_filtrados['mensagens'].astype(str).str.strip()
+        custo_campanhas['nome'] = custo_campanhas['nome'].astype(str).str.strip()
         filtros = [str(x).strip() for x in selectbox_mensagem]
-        dados_filtrados = dados_filtrados[dados_filtrados['mensagens'].isin(filtros)]
-        
         filtros_limpos = [s.replace("-", "").replace(" ", "") for s in filtros]
-        print(filtros)
-        print(filtros_limpos)
-
-        custo_campanhas = custo_campanhas[custo_campanhas['nome'].str.replace("-", "").str.replace(" ", "").isin(filtros_limpos)]
+        
+        dados_filtrados = dados_filtrados[
+            dados_filtrados['mensagens']
+            .str.replace("-", "")
+            .str.replace(" ", "")
+            .isin(filtros_limpos)
+        ]
+                
+        custo_campanhas = custo_campanhas[
+            custo_campanhas['nome']
+            .str.replace("-", "")
+            .str.replace(" ", "")
+            .isin(filtros_limpos)
+        ]
         
 
     ##### FILTRO DE INTERVALO DE DATA MENSAGEM #####
