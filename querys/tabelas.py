@@ -1,5 +1,5 @@
-from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, text
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, text
 
 from conexoes.database import Conexao
 
