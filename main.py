@@ -15,9 +15,9 @@ def obter_usuario(usuario):
     conectar.conectar_postgres()
     conn = conectar.obter_conexao_postgres()
 
-    query = f"SELECT * FROM controle.usuarios WHERE usuario = '%s';"
+    query = f"SELECT * FROM controle.usuarios WHERE usuario = %s;"
 
-    df = pd.read_sql_query(query, conn, params=usuario)
+    df = pd.read_sql_query(query, conn, params=[usuario])
 
     lista_json = df.to_dict(orient="records")
 
