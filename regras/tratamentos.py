@@ -66,9 +66,6 @@ class Tratamentos:
             .replace('[CAMPEÕES ', '[')
             .replace('TRABALHA +1 ANO', 'CR+1')
             .replace('CAIXA DE PERGUNTAS', 'CRCP')
-            .replace('CR ', 'CR')
-            .replace('-', '')
-            .replace(' ', '')
         )
         return valor
 

@@ -328,7 +328,7 @@ with st.sidebar:
     st.title('Filtros')
 
     ##### FILTRO DE MENSAGENS INICIAIS #####
-    mensagem_inicial = custo_campanhas['nome'].dropna().unique().tolist()
+    mensagem_inicial = df_crm_corban['mensagens'].dropna().unique().tolist()
     mensagem_inicial = [str(x).strip() for x in mensagem_inicial if x is not None]
     mensagem_inicial = sorted(mensagem_inicial)
     
@@ -343,21 +343,19 @@ with st.sidebar:
     )
     
     if len(selectbox_mensagem) != 0:
-        custo_campanhas['nome'] = custo_campanhas['nome'].astype(str).str.strip()
+        dados_filtrados['mensagens'] = dados_filtrados['mensagens'].astype(str).str.strip()
         filtros = [str(x).strip() for x in selectbox_mensagem]
         filtros_limpos = [s.replace("-", "").replace(" ", "") for s in filtros]
         
         dados_filtrados = dados_filtrados[
             dados_filtrados['mensagens']
-            .str.replace("-", "")
-            .str.replace(" ", "")
+            .str.replace(r"[- ]", "", regex=True)
             .isin(filtros_limpos)
         ]
-                
+        
         custo_campanhas = custo_campanhas[
             custo_campanhas['nome']
-            .str.replace("-", "")
-            .str.replace(" ", "")
+            .str.replace(r"[- ]", "", regex=True)
             .isin(filtros_limpos)
         ]
         
@@ -509,7 +507,20 @@ custo_campanhas = custo_campanhas.rename(columns={'data': 'Data da Mensagem', 'n
 
 custo_campanhas['Data da Mensagem'] = pd.to_datetime(custo_campanhas['Data da Mensagem']).dt.strftime('%d/%m/%Y')
 
-controle = pd.merge(controle, custo_campanhas, on=['Data da Mensagem', 'Campanhas'], how='outer')
+controle['_campanha_key'] = controle['Campanhas'].str.replace(r"[- ]", '', regex=True)
+custo_campanhas['_campanha_key'] = custo_campanhas['Campanhas'].str.replace(r"[- ]", '', regex=True)
+
+controle = pd.merge(
+    controle, 
+    custo_campanhas, 
+    left_on=['Data da Mensagem', '_campanha_key'], 
+    right_on=['Data da Mensagem', '_campanha_key'], 
+    how='outer'
+)
+
+controle.drop(columns=['_campanha_key'], inplace=True)
+
+controle = controle.rename(columns={'Campanhas_x': 'Campanhas'})
 
 controle['Investimento'] = np.where(controle['Campanhas'] == 'Disparos', controle['valor_disparos'], controle['Investimento'])
 
