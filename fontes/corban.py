@@ -1,19 +1,20 @@
 import pandas as pd
 
 from querys.querys_sql import QuerysSQL
-from regras.formatadores import formatar_cpf, formatar_telefone
+from regras.formatadores import Regras
 
 
 def get_corban(conn):
     ##### CRIAR INSTÂNCIA ÚNICA #####
     consulta = QuerysSQL()
+    regras = Regras()
 
     consulta_corban = consulta.get_corban()
     df = pd.read_sql_query(consulta_corban, conn)
 
-    df = formatar_cpf(df, 'cpf_corban')
+    df = regras.formatar_cpf(df, 'cpf_corban')
 
-    df = formatar_telefone(df, 'telefone_propostas')
+    df = regras.formatar_telefone(df, 'telefone_propostas')
 
     df['data_atualizacao_api'] = pd.to_datetime(df['data_atualizacao_api'])
     

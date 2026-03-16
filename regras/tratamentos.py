@@ -1,55 +1,88 @@
+import re
 import streamlit as st
-
 from datetime import date
 
 
-##### FUNÇÃO PARA OBTER AS DATAS CONSULTA #####
-def get_datas_consulta(dados):
-    # Remove linhas com Data Consulta vazia
-    dados = dados.dropna(subset=['Data Consulta'])
+class Tratamentos:
+    def __init__(self):
+        ...
 
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Consulta'].min()
-    maior_data = date.today()
-    
-    return menor_data, maior_data
+    ##### FUNÇÃO PARA OBTER AS DATAS #####
+    def get_datas(self, df, coluna):
+        # Remove linhas com Data Mensagem vazia
+        df = df.dropna(subset=[coluna])
 
-##### FUNÇÃO PARA OBTER AS DATAS DISPAROS #####
-def get_datas_disparos(dados):
-    # Remove linhas com Data disparos vazia
-    dados = dados.dropna(subset=['Data Disparo'])
+        # Obtendo a menor e a maior data da coluna 'data'
+        menor_data = df[coluna].min()
+        maior_data = date.today()
+        
+        return menor_data, maior_data
 
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Disparo'].min()
-    maior_data = date.today()
 
-    return menor_data, maior_data
+    ##### FUNÇÃO PARA MAPEAR MENSAGENS #####
+    def mapeia_mensagens(self, mensagem):
+        if '[' in str(mensagem):
+            resultado = re.search(r'\[[^\]]+\]', mensagem)
 
-##### FUNÇÃO PARA OBTER AS DATAS CORBAN #####
-def get_datas_corban(dados):
-    # Remove linhas com Data Corban vazia
-    dados = dados.dropna(subset=['Data Corban'])
+            try:
+                if (len(resultado.group()) < 10):
+                    return resultado.group() if resultado else None
+                else:
+                    return "Orgânico"
+            except AttributeError:
+                return "Orgânico"
+            
+        elif '(' in str(mensagem):
+            resultado = re.search(r'\([^\)]+\)', mensagem)
+            
+            try:
+                if (len(resultado.group()) < 9) and (len(resultado.group()) > 3):
+                    if re.search(r"[^\(0-9R$\)]", resultado.group()):
+                        return resultado.group() if resultado else None
+                    else:
+                        return "Orgânico"
+                else:
+                    return "Orgânico"
+            except AttributeError:
+                return "Orgânico"
+        elif ("Olá! Gostaria" in str(mensagem)) |\
+            ("Olá! Quero" in str(mensagem)) |\
+            ("Olá! Tenho interesse" in str(mensagem)) |\
+            ("Olá, Gostaria" in str(mensagem)) |\
+            ("Olá, quero" in str(mensagem)):
+            return "(site)"
+        elif ("Falar com atendente" in str(mensagem)) |\
+            ("Falar com suporte" in str(mensagem)) |\
+            ("Ver atualização" in str(mensagem)) |\
+            ("Receber proposta" in str(mensagem)):
+            return "Disparos"
+        else:
+            return "Orgânico"
+        
+    ##### FUNÇÃO PARA MAPEAR AS CAMPANHAS #####
+    def mapeia_campanha(self, valor):
+        valor = (
+            valor
+            .replace('[CAMPEÕES ', '[')
+            .replace('TRABALHA +1 ANO', 'CR+1')
+            .replace('CAIXA DE PERGUNTAS', 'CRCP')
+        )
+        return valor
 
-    # Obtendo a menor e a maior data da coluna 'data'
-    menor_data = dados['Data Corban'].min()
-    maior_data = date.today()
-
-    return menor_data, maior_data
-
-##### FUNÇÃO PARA GERAR OS CARDS #####
-def metric_card(label, value):
-    st.markdown(
-        f"""
-        <div style="
-            background-color: #262730;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 15px;
-            height: auto;
-        ">
-            <p style="color: white; font-weight: bold;">{label}</p>
-            <h3 style="color: white; font-size: calc(1rem + 1vw)">{value}</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    ##### FUNÇÃO PARA GERAR OS CARDS #####
+    def metric_card(self, label, value):
+        st.markdown(
+            f"""
+            <div style="
+                background-color: #262730;
+                border-radius: 10px;
+                text-align: center;
+                margin-bottom: 15px;
+                height: auto;
+            ">
+                <p style="color: white; font-weight: bold; font-size: clamp(0.5rem, 1.2vw, 0.9rem)">{label}</p>
+                <h3 style="color: white; font-size: clamp(0.5rem, 4vw, 1.5rem)">{value}</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )

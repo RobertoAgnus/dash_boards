@@ -69,8 +69,8 @@ class QuerysSQL:
         query = """select distinct
                         LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF",
                         concat(tc.ddd, tc.numero) as "telefoneAPICorban" 
-                    from corban.clientes cc  
-                    left join corban.telefones tc on cc.cliente_id = tc.cliente_id;"""
+                    from unificados.clientes cc  
+                    left join unificados.telefones tc on cc.cliente_id = tc.cliente_id;"""
         return query
     
     def consulta_base_fgts(self, condicao):
@@ -129,11 +129,14 @@ class QuerysSQL:
         return query
     
     def obtem_telefones_api_corban(self):
-        query = """select 
-                        concat(tc.ddd, tc.numero) as "telefoneAPI", 
-                        LPAD(cc.cliente_cpf::TEXT, 11, '0') AS "CPF"
-                    from corban.telefones tc 
-                    left join corban.clientes cc on tc.cliente_id = cc.cliente_id;"""
+        query = """
+                select 
+                    cc.cpf as cpf_telefone_corban, 
+                    tc.telefone as telefone_corban 
+                from unificados.telefones tc
+                right join unificados.clientes cc 
+                    on cc.cliente_id = tc.cliente_id_corban;
+                """
         return query
     
     ##### COMISSÕES CORBAN #####
@@ -142,7 +145,7 @@ class QuerysSQL:
                         ac.proposta_id,
                         ac.data_status_api,
                         ac.status_api
-                    from corban.api ac ;"""
+                    from unificados.api ac ;"""
         return query
 
     def comissionamento(self):
@@ -153,7 +156,7 @@ class QuerysSQL:
                                 REPLACE(cc2.recebe_valor_base, ',', '.')::NUMERIC
                             ELSE 0
                         end as recebe_valor_base
-                    from corban.comissionamentos cc2 ;"""
+                    from unificados.comissionamentos cc2 ;"""
         return query
 
     def comissoes(self):
@@ -161,7 +164,7 @@ class QuerysSQL:
                         cc.data,
                         cc.valor,
                         cc.proposta_id
-                    from corban.comissoes cc ;"""
+                    from unificados.comissoes cc ;"""
         return query
 
     def datas(self):
@@ -169,14 +172,14 @@ class QuerysSQL:
                         dc.cancelado,
                         dc.pagamento,
                         dc.proposta_id
-                    from corban.datas dc ;"""
+                    from unificados.datas dc ;"""
         return query
 
     def proposta(self):
         query = """select
                         pc.proposta_id,
                         pc.valor_total_comissionado
-                    from corban.contrato pc ;"""
+                    from unificados.contrato pc ;"""
         return query
 
     def propostas(self):
@@ -185,60 +188,77 @@ class QuerysSQL:
                         psc.origem,
                         psc.proposta_id,
                         psc.status_nome
-                    from corban.propostas psc;"""
+                    from unificados.propostas psc;"""
         return query
 
 
     def get_digisac(self):
-        query = f"""select
-                        cpf as cpf_digisac,
-                        nome_interno,
-                        telefone as telefone_digisac,
-                        data,
-                        falha
-                    from "extracoes".digisac
+        query = f"""select distinct
+                        case 
+                            when d.cpf = '' then c.cpf
+                            when c.cpf is null then d.cpf
+                            else c.cpf
+                        end as cpf_digisac,
+                        case 
+                            when d.nome_interno = '' then c.nome_interno
+                            when c.nome_interno = '' then d.nome_interno
+                            when c.nome_interno is null then d.nome_interno
+                            else c.nome_interno 
+                        end as nome_interno,	
+                        d.telefone as telefone_digisac,
+                        d.data,
+                        d.falha
+                    from extracoes.digisac d 
+                    full outer join public.clientes c 
+                        on d.telefone = c.telefone
                     where data >= '2025-11-01';"""
         return query
     
     def get_corban(self):
-        query = f"""select 
-                        ac.status_api,
-                        cc.cliente_cpf as cpf_corban,
-                        cc.cliente_nome as nome_corban,
-                        concat(tc.ddd,tc.numero) as telefone_propostas,
-                        ac.data_atualizacao_api 
-                    from corban.api ac
-                    left join corban.contrato pc on ac.proposta_id = pc.proposta_id 
-                    left join corban.clientes cc on pc.cliente_id = cc.cliente_id
-                    left join corban.telefones tc on cc.cliente_id = tc.cliente_id
-                    where pc.produto_id = 13;"""
+        query = f"""
+                select 
+                    ac.status_api,
+                    cc.cpf as cpf_corban,
+                    cc.nome as nome_corban,
+                    tc.telefone as telefone_propostas,
+                    ac.data_atualizacao_api 
+                from unificados.api ac
+                left join unificados.contrato pc 
+                    on ac.proposta_id_corban = pc.proposta_id_corban 
+                left join unificados.clientes cc 
+                    on pc.cliente_id_corban = cc.cliente_id
+                left join unificados.telefones tc 
+                    on cc.cliente_id = tc.cliente_id_corban
+                where pc.produto_id = 13;
+                """
         return query
     
     def get_telefones_corban(self):
         query = f"""select 
-                        cc.cliente_cpf as cpf_telefone_corban, 
-                        concat(tc.ddd,tc.numero) as telefone_corban 
-                    from corban.telefones tc
-                    right join corban.clientes cc on cc.cliente_id = tc.cliente_id;"""
+                        cc.cpf as cpf_telefone_corban, 
+                        tc.telefone as telefone_corban 
+                    from unificados.telefones tc
+                    right join unificados.clientes cc 
+                        on cc.cliente_id = tc.cliente_id_corban;"""
         return query
     
-    def get_crm_consulta_mysql_aws(self):
-        query = f"""SELECT 
-                        cs.id AS consultaId,
-                        cs.clienteId,
-                        cs.updatedAt AS dataConsulta,
-                        c.cpf,
-                        cs.erros,
-                        cs.tabela as tabelaId,
-                        cs.valorLiberado,
-                        cs.valorContrato,
-                        b.nome as banco
-                    FROM CRM.Consultas cs
-                    left join CRM.Bancos b on cs.bancoId = b.id
-                    left join CRM.Clientes c on cs.clienteId = c.id
-                    WHERE cs.updatedAt >= '2025-11-01 00:00:00'
-                    AND (c.cpf is not null OR c.cpf <> '');"""
-        return query
+    # def get_crm_consulta_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     cs.id AS consultaId,
+    #                     cs.clienteId,
+    #                     cs.updatedAt AS dataConsulta,
+    #                     c.cpf,
+    #                     cs.erros,
+    #                     cs.tabela as tabelaId,
+    #                     cs.valorLiberado,
+    #                     cs.valorContrato,
+    #                     b.nome as banco
+    #                 FROM CRM.Consultas cs
+    #                 left join CRM.Bancos b on cs.bancoId = b.id
+    #                 left join CRM.Clientes c on cs.clienteId = c.id
+    #                 WHERE cs.updatedAt >= '2025-11-01 00:00:00'
+    #                 AND (c.cpf is not null OR c.cpf <> '');"""
+    #     return query
     
     def get_crm_consulta_postgres_aws(self):
         query = f"""SELECT 
@@ -258,13 +278,13 @@ class QuerysSQL:
                     AND (c.cpf is not null OR c.cpf <> '');"""
         return query
     
-    def get_crm_cliente_mysql_aws(self):
-        query = f"""SELECT 
-                        cl.id AS clienteId,
-                        cl.cpf,
-                        cl.nome
-                    FROM CRM.Clientes cl;"""
-        return query
+    # def get_crm_cliente_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     cl.id AS clienteId,
+    #                     cl.cpf,
+    #                     cl.nome
+    #                 FROM CRM.Clientes cl;"""
+    #     return query
     
     def get_crm_cliente_postgres_aws(self):
         query = f"""SELECT 
@@ -274,30 +294,30 @@ class QuerysSQL:
                     FROM public."Clientes" cl;"""
         return query
     
-    def get_crm_telefone_mysql_aws(self):
-        query = f"""WITH fone_sistema AS (
-                        SELECT 
-                            cl.id, 
-                            ts.telefone 
-                        FROM CRM.Clientes cl 
-                        LEFT JOIN CRM.Telefones ts 
-                            ON cl.id = ts.clienteId
-                    )
-                    SELECT DISTINCT *
-                    FROM (
-                        SELECT 
-                            fs.id AS clienteId, 
-                            CASE
-                                WHEN fs.telefone IS NULL THEN tc.telefone
-                                WHEN fs.telefone <> tc.telefone THEN tc.telefone
-                                when tc.telefone is null then fs.telefone
-                            END AS telefone_crm
-                        FROM fone_sistema fs 
-                        LEFT JOIN CRM.Telefones tc 
-                            ON fs.id = tc.clienteId
-                    ) AS resultado
-                    WHERE telefone_crm IS not NULL;"""
-        return query
+    # def get_crm_telefone_mysql_aws(self):
+    #     query = f"""WITH fone_sistema AS (
+    #                     SELECT 
+    #                         cl.id, 
+    #                         ts.telefone 
+    #                     FROM CRM.Clientes cl 
+    #                     LEFT JOIN CRM.Telefones ts 
+    #                         ON cl.id = ts.clienteId
+    #                 )
+    #                 SELECT DISTINCT *
+    #                 FROM (
+    #                     SELECT 
+    #                         fs.id AS clienteId, 
+    #                         CASE
+    #                             WHEN fs.telefone IS NULL THEN tc.telefone
+    #                             WHEN fs.telefone <> tc.telefone THEN tc.telefone
+    #                             when tc.telefone is null then fs.telefone
+    #                         END AS telefone_crm
+    #                     FROM fone_sistema fs 
+    #                     LEFT JOIN CRM.Telefones tc 
+    #                         ON fs.id = tc.clienteId
+    #                 ) AS resultado
+    #                 WHERE telefone_crm IS not NULL;"""
+    #     return query
     
     def get_crm_telefone_postgres_aws(self):
         query = f"""WITH fone_sistema AS (
@@ -324,25 +344,25 @@ class QuerysSQL:
                     WHERE telefone_crm IS not NULL;"""
         return query
     
-    def get_sistema_lead_mysql_aws(self):
-        query = f"""SELECT 
-                        l.consultaId,
-                        l.clientId AS clienteId,
-                        l.telefone AS telefone_lead
-                    FROM sistema.Leads l
-                    WHERE l.consultaId IS NOT NULL 
-                        and l.clientId IS NOT NULL;"""
-        return query
+    # def get_sistema_lead_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     l.consultaId,
+    #                     l.clientId AS clienteId,
+    #                     l.telefone AS telefone_lead
+    #                 FROM sistema.Leads l
+    #                 WHERE l.consultaId IS NOT NULL 
+    #                     and l.clientId IS NOT NULL;"""
+    #     return query
     
-    def get_crm_lead_mysql_aws(self):
-        query = f"""SELECT 
-                        l.consultaId,
-                        l.clientId AS clienteId,
-                        l.telefone AS telefone_lead
-                    FROM CRM.Leads l
-                    WHERE l.consultaId IS NOT NULL 
-                        and l.clientId IS NOT NULL;"""
-        return query
+    # def get_crm_lead_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     l.consultaId,
+    #                     l.clientId AS clienteId,
+    #                     l.telefone AS telefone_lead
+    #                 FROM CRM.Leads l
+    #                 WHERE l.consultaId IS NOT NULL 
+    #                     and l.clientId IS NOT NULL;"""
+    #     return query
     
     def get_crm_autoatendimento_postgres_aws(self):
         query = f"""SELECT 
@@ -354,12 +374,12 @@ class QuerysSQL:
                         and l."clienteId" IS NOT NULL;"""
         return query
     
-    def get_crm_tabela_mysql_aws(self):
-        query = f"""SELECT 
-                        tb.id AS tabelaId,
-                        tb.nome AS tabela
-                    FROM CRM.Tabelas tb;"""
-        return query
+    # def get_crm_tabela_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     tb.id AS tabelaId,
+    #                     tb.nome AS tabela
+    #                 FROM CRM.Tabelas tb;"""
+    #     return query
     
     def get_crm_tabela_postgres_aws(self):
         query = f"""SELECT 
@@ -368,12 +388,12 @@ class QuerysSQL:
                     FROM public."Tabelas" tb;"""
         return query
     
-    def get_crm_parcela_mysql_aws(self):
-        query = f"""SELECT 
-                        pc.consultaId,
-                        pc.num AS parcelas
-                    FROM CRM.Parcelas pc;"""
-        return query
+    # def get_crm_parcela_mysql_aws(self):
+    #     query = f"""SELECT 
+    #                     pc.consultaId,
+    #                     pc.num AS parcelas
+    #                 FROM CRM.Parcelas pc;"""
+    #     return query
     
     def get_crm_parcela_postgres_aws(self):
         query = f"""SELECT 
@@ -408,62 +428,30 @@ class QuerysSQL:
                         where m.campo_personalizado = 'CPF_aprovado'
                             and m.dt_mensagem >= '2026-01-05 00:00:00.000';
                         """
-        query_corban = f"""
+        query_corban = """
                         select
                             c.nome,
                             LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
-                            CASE
-                                WHEN LENGTH(t.telefone) < 11
-                                THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
-                                ELSE t.telefone
-                            END AS numero_corban,
                             dt.pagamento as liberacao,
                             ct.valor_financiado,
                             ct.valor_liberado,
                             ct.valor_parcela,
                             ct.prazo,
                             ct.banco_nome as nome_banco,
-                            cc.valor as valor_comissao
-                        from unificados.clientes c 
-                        left join unificados.telefones t 
-                            on c.id = t.cliente_id
+                            ct.proposta_id_corban as proposta_id,
+                            ct.tabela_id
+                        from unificados.propostas p
                         left join unificados.contrato ct
-                            on c.id = ct.cliente_id 
-                        left join unificados.propostas p
-                            on ct.proposta_id_corban = cast(p.proposta_id as varchar)
+                            on p.proposta_id = cast(ct.proposta_id_corban  as integer)
                         left join unificados.api a
                             on ct.proposta_id_corban = a.proposta_id_corban
-                        left join unificados.comissoes cc
-                            on ct.proposta_id_corban = cc.proposta_id_corban
                         left join unificados.datas dt
                             on ct.proposta_id_corban = dt.proposta_id_corban
-                        where 
-                            dt.cadastro >= '2026-01-05' 
-                            and (a.status_api in ('APROVADA')
+                        left join unificados.clientes c
+                            on ct.cliente_id_corban = c.cliente_id
+                        where (a.status_api in ('APROVADA')
                             or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'));
                         """
-        # query_crm = f"""
-        #             select 
-        #                 c.nome as nome,
-        #                 c.cpf as cpf,
-        #                 t.numero as telefone,
-        #                 p."dataPagamento" as liberacao,
-        #                 p."valorBruto" as valor_financiado,
-        #                 p."valorLiberado" as valor_liberado,
-        #                 (p."valorLiberado" / p.prazo) as valor_parcela,
-        #                 p.prazo,
-        #                 b.nome as nome_banco,
-        #                 p."valorTotalComissao" as valor_comissao
-        #             from public."Propostas" p
-        #             left join public."Clientes" c
-        #                 on p."clienteId" = c.id
-        #             left join public."Telefones" t
-        #                 on c.id = t."clienteId" 
-        #             left join public."Bancos" b
-        #                 on p."bancoId" = b.id
-        #             where p."usuarioId" = '29' 
-        #                 and p."dataPagamento" >= '2026-01-05 00:00:00.000';
-        #             """
         query_crm = f"""
                     select 
                         aa.telefone as numero,
@@ -485,29 +473,233 @@ class QuerysSQL:
                         case 
                             when p."dataPagamento" is not null then p.prazo 
                         end as prazo,
-                        case
-                            when p."valorTotalComissao" = 0 then p."valorLiberado"*0.09
-                            when p."dataPagamento" is not null then p."valorTotalComissao"
-                        end as "valorTotalComissao"
-                    from public."AutoAtendimento" aa
+                        p."valorTotalComissao",
+                        t.codigo
+                    from public."AutoAtendimento" aa 
+                    left join public."Consultas" cs 
+                        on aa."simulacaoFgtsId" = cs.id or aa."simulacaoCltId" = cs.id
                     left join public."Propostas" p 
-                        on p."clienteId" = aa."clienteId"
-                    left join public."Clientes" c 
-                        on aa."clienteId" = c.id
-                    left join public."Consultas" cs
-                        on p."consultaId" = cs.id
+                        on cs.id = p."consultaId" 
+                    left join public."Tabelas" t 
+                        on cs."tabelaId" = t.id 
                     left join public."Bancos" b 
                         on cs."bancoId" = b.id
-                    where aa."createdAt" >= '2026-01-05T00:00:00';
+                    left join public."Clientes" c 
+                        on aa."clienteId" = c.id;
                 """
         return query_digisac, query_corban, query_crm
-        # return query
         
+    def get_telefones(self):
+        query_crm = """
+                select distinct
+                    c.cpf as cpf_corban, 
+                    CASE
+                        WHEN LENGTH(t.numero) < 11
+                        THEN SUBSTRING(t.numero FROM 1 FOR 2) || '9' || SUBSTRING(t.numero FROM 3)
+                        ELSE t.numero
+                    END AS numero_corban
+                from public."Clientes" c 
+                left join public."Telefones" t 
+                    on c.id = t."clienteId";
+                """
+        query_corban = """
+                        select 
+                            LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') as cpf_corban,
+                            CASE
+                                WHEN LENGTH(t.telefone) < 11
+                                    THEN SUBSTRING(t.telefone FROM 1 FOR 2) || '9' || SUBSTRING(t.telefone FROM 3)
+                                ELSE t.telefone
+                            END AS numero_corban
+                        from unificados.clientes c 
+                        left join unificados.telefones t 
+                            on c.cliente_id = t.cliente_id_corban
+                        where LPAD(REGEXP_REPLACE(c.cpf, '\D', '', 'g')::text, 11, '0') = ANY(%s);
+                        """
+        return query_crm, query_corban
+    
     def get_campanhas_meta(self):
         query = """
                 SELECT * FROM controle.campanhas;
                 """
         return query
+    
+    def get_comissoes_corban(self):
+        query = """
+                select 
+                    cc.proposta_id_corban as proposta_id,
+                    sum(cc.valor) as valor_comissao
+                from unificados.comissoes cc
+                group by cc.proposta_id_corban, cc.valor;
+                """
+        return query
+    
+    def get_tabelas_comissao(self):
+        query = """
+                select
+                    cast(t.tabela_codigo as varchar) as codigo,
+                    t.percentual_valor_liberado as percentual,
+                    case 
+                        when t.prazo_inicio is null then 0
+                        else t.prazo_inicio
+                    end as prazo_inicio,
+                    case
+                        when t.prazo_fim is null then 99
+                        else t.prazo_fim
+                    end as prazo_fim 
+                from unificados.tabelas t
+                where t.vigencia_fim is null
+                    and t.percentual_valor_liberado > 0;
+                """
+        return query
+    
+    ##### DISPAROS DIGISAC #####
+
+    def get_clientes_digisac(self):
+        query = """
+                select
+                    c.name,
+                    c.internal_name,
+                    c.number
+                from digisac.clientes c;
+                """
+        return query
+    
+    def get_tickets_gigisac(self):
+        query = """
+                select
+                    tk.id as ticket_id,
+                    tk.number,
+                    tk.dt_message
+                from digisac.tickets tk;
+                """
+        return query
+    
+    def get_tags_digisac(self):
+        query = """
+                select
+                    tg.ticket_id,
+                    tg.label
+                from digisac.tags tg;
+                """
+        return query
+    
+    def get_disparados_digisac(self):
+        query = """
+                select
+                    *
+                from digisac.disparados d;
+                """
+        return query
+
+    def get_falhas_digisac(self):
+        query = """
+                select
+                    f.numero as number,
+                    f.falha
+                from digisac.falhas f;
+                """
+        return query
+    
+    def get_corban(self):
+        query = """
+                select distinct
+                    t.telefone as number,
+                    dt.pagamento as pagamento_corban
+                from unificados.propostas p
+                left join unificados.contrato ct
+                    on p.proposta_id = cast(ct.proposta_id_corban  as integer)
+                left join unificados.api a
+                    on ct.proposta_id_corban = a.proposta_id_corban
+                left join unificados.datas dt
+                    on ct.proposta_id_corban = dt.proposta_id_corban
+                left join unificados.clientes c
+                    on ct.cliente_id_corban = c.cliente_id
+                left join unificados.telefones t 
+                    on c.cliente_id = t.cliente_id_corban 
+                where (a.status_api in ('APROVADA')
+                    or (p.status_nome = 'Pago' and ct.banco_nome = 'Credspot'))
+                    and dt.pagamento is not null;
+                """
+        return query
+    
+    def get_crm(self):
+        query = """
+                select distinct
+                    aa.telefone as number,
+                    p."dataPagamento" as pagamento_crm
+                from public."AutoAtendimento" aa 
+                left join public."Consultas" cs 
+                    on aa."simulacaoFgtsId" = cs.id or aa."simulacaoCltId" = cs.id
+                left join public."Propostas" p 
+                    on cs.id = p."consultaId" 
+                left join public."Tabelas" t 
+                    on cs."tabelaId" = t.id 
+                left join public."Bancos" b 
+                    on cs."bancoId" = b.id
+                left join public."Clientes" c 
+                    on aa."clienteId" = c.id 
+                where p."dataPagamento" is not null ;
+                """
+        return query
+    
+    def insert_disparos(self):
+        query = """
+
+                """
+        return query
+    
+    ##### ACOMPANHAMENTO #####
+    def get_acompanhamento(self):
+        query_digisac = """
+                        select distinct
+                            tk.number as telefone,
+                            cast(tk.dt_message as timestamp),
+                            dp.name as departamento
+                        from digisac.tickets tk 
+                        left join digisac.tags tg
+                            on tk.id = tg.ticket_id
+                        left join digisac.falhas f 
+                            on f.numero = tk.number
+                        left join digisac.departamentos dp
+                            on tk."departmentId" = dp.id
+                        where tg.label not like '%facta';
+                        """
+        query_corban = """
+                        select distinct
+                            t.telefone,
+                            dt.inclusao as dt_inclusao_corban,
+                            dt.pagamento as dt_pagamento_corban,
+                            ct.valor_liberado as valor_liberado_corban,
+                            a.status_api as status_corban,
+                            p.status_nome as substatus_corban
+                        from unificados.contrato ct 
+                        left join unificados.api a 
+                            on ct.proposta_id_corban = a.proposta_id_corban 
+                        left join unificados.datas dt
+                            on ct.proposta_id_corban = dt.proposta_id_corban 
+                        left join unificados.telefones t  
+                            on ct.cliente_id_corban = t.cliente_id_corban 
+                        left join unificados.propostas p 
+                            on ct.proposta_id_corban = cast(p.proposta_id as varchar);
+                        """
+        query_crm = """
+                    select distinct
+                        t.numero as telefone,
+                        p."dataInclusao" as dt_inclusao_crm,
+                        p."dataPagamento" as dt_pagamento_crm,
+                        p."valorLiberado" as valor_liberado_crm,
+                        sb.nome as status_crm,
+                        NULL as substatus_crm
+                    from public."Propostas" p 
+                    left join public."Consultas" cs 
+                        on p."consultaId" = cs.id 
+                    left join public."StatusBanco" sb 
+                        on p."statusBancoId" = sb.id
+                    left join public."Telefones" t  
+                        on p."clienteId" = t."clienteId" 
+                    where cs."usuarioId" = '29';
+                    """
+        return query_digisac, query_corban, query_crm
 
     #####################################################################
     def get_campanhas_teste(self):
@@ -578,9 +770,9 @@ class QuerysSQL:
                     left join public."Consultas" cs
                         on p."consultaId" = cs.id
                     left join public."Bancos" b 
-                        on cs."bancoId" = b.id
-                    where aa."createdAt" >= '2026-01-05T00:00:00';
+                        on cs."bancoId" = b.id;
                 """
+                    # where aa."createdAt" >= '2026-01-05T00:00:00';
         return query_corban, query_crm
     
     def get_teste_corban_propostas(self):
