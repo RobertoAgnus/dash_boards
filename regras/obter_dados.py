@@ -9,7 +9,7 @@ from regras.merges import merge_crm_telefones_corban, merge_crm_disparos, merge_
 
 
 ##### CACHE DE CONSULTAS #####
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=300,show_spinner=False)
 def carregar_dados(pagina):
     conectar = Conexao()
     consulta = QuerysSQL()
