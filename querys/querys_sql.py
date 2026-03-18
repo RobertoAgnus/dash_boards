@@ -221,15 +221,18 @@ class QuerysSQL:
                     cc.cpf as cpf_corban,
                     cc.nome as nome_corban,
                     tc.telefone as telefone_propostas,
-                    ac.data_atualizacao_api 
+                    ac.data_atualizacao_api,
+                    dt.pagamento as pagamento_corban
                 from unificados.api ac
-                left join unificados.contrato pc 
-                    on ac.proposta_id_corban = pc.proposta_id_corban 
+                left join unificados.contrato ct 
+                    on ac.proposta_id_corban = ct.proposta_id_corban 
+                left join unificados.datas dt
+                    on ct.proposta_id_corban = dt.proposta_id_corban 
                 left join unificados.clientes cc 
-                    on pc.cliente_id_corban = cc.cliente_id
+                    on ct.cliente_id_corban = cc.cliente_id
                 left join unificados.telefones tc 
                     on cc.cliente_id = tc.cliente_id_corban
-                where pc.produto_id = 13;
+                where ct.produto_id = 13;
                 """
         return query
     
