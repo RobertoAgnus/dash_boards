@@ -34,14 +34,14 @@ class Conexao:
 
         self.engine_aws = create_engine(
             f"postgresql+psycopg2://{config_postgres_aws['user']}:{config_postgres_aws['password']}@"
-            f"{config_postgres_aws['host']}:{config_postgres_aws['port']}/{config_postgres_aws['dbname']}"
+            f"{config_postgres_aws['host']}:{config_postgres_aws['port']}/{config_postgres_aws['database']}"
         )
 
         config_postgres = self.config_postgres
 
         self.engine = create_engine(
             f"postgresql+psycopg2://{config_postgres['user']}:{config_postgres['password']}@"
-            f"{config_postgres['host']}:{config_postgres['port']}/{config_postgres['dbname']}"
+            f"{config_postgres['host']}:{config_postgres['port']}/{config_postgres['database']}"
         )
 
     # def conectar_mysql_aws(self):
