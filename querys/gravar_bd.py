@@ -3,7 +3,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from querys.tabelas import Disparados
 
-from conexoes.database import Conexao
+# from conexoes.database import Conexao
+from querys.connect import Conexao
 
 class GravarBandoDados:
     def __init__(self):

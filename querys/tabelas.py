@@ -1,7 +1,8 @@
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String, DateTime, text
 
-from conexoes.database import Conexao
+# from conexoes.database import Conexao
+from querys.connect import Conexao
 
 Base = declarative_base()
 SCHEMA = "digisac"
