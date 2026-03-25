@@ -2,6 +2,7 @@ import mysql.connector
 import psycopg2
 import streamlit as st
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 
 class Conexao:
     def __init__(self):
@@ -32,17 +33,17 @@ class Conexao:
 
         config_postgres_aws = self.config_postgres_aws
 
-        self.engine_aws = create_engine(
+        self.engine_aws = create_engine(URL.create(
             f"postgresql+psycopg2://{config_postgres_aws['user']}:{config_postgres_aws['password']}@"
             f"{config_postgres_aws['host']}:{config_postgres_aws['port']}/{config_postgres_aws['database']}"
-        )
+        ))
 
         config_postgres = self.config_postgres
 
-        self.engine_postgres = create_engine(
-            f"postgresql+psycopg2://{config_postgres['user']}:{config_postgres['password']}@"
-            f"{config_postgres['host']}:{config_postgres['port']}/{config_postgres['database']}"
-        )
+        self.engine_postgres = create_engine(URL.create(
+            f"postgresql+psycopg2://{config_postgres['user']}:{config_postgres['password']}"
+            f"@{config_postgres['host']}:{config_postgres['port']}/{config_postgres['database']}"
+        ))
 
     # def conectar_mysql_aws(self):
     #     try:
