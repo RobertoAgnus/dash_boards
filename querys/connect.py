@@ -39,7 +39,7 @@ class Conexao:
 
         config_postgres = self.config_postgres
 
-        self.engine = create_engine(
+        self.engine_postgres = create_engine(
             f"postgresql+psycopg2://{config_postgres['user']}:{config_postgres['password']}@"
             f"{config_postgres['host']}:{config_postgres['port']}/{config_postgres['database']}"
         )
